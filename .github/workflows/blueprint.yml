@@ -11,18 +11,27 @@ concurrency:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build_project:
     runs-on: ubuntu-latest
-    name: Build project
     steps:
       - name: Checkout project
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install blueprint dependencies
+        run: |
+          python -m venv env
+          . env/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install leanblueprint
 
       - name: Build Lean project
         uses: leanprover/lean-action@v1.4.0
@@ -32,12 +41,10 @@ jobs:
           mk_all-check: false
           use-github-cache: false
 
-      - name: Generate LeanArchitect blueprint files
+      - name: Generate LeanArchitect files
         run: ~/.elan/bin/lake build :blueprint
 
-      - name: Compile blueprint only
-        uses: leanprover-community/docgen-action@main
-        with:
-          blueprint: true
-          build-page: false
-          deploy: false
+      - name: Build blueprint web
+        run: |
+          . env/bin/activate
+          leanblueprint web
