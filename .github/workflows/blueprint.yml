@@ -68,6 +68,11 @@ jobs:
         run: |
           . env/bin/activate
           leanblueprint pdf
+          
+      - name: Prepare site output directory
+        run: |
+          mkdir -p _site
+          chmod u+rwx _site
 
       - name: Build homepage with Jekyll
         uses: actions/jekyll-build-pages@v1
