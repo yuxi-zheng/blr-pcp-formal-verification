@@ -59,10 +59,14 @@ jobs:
       - name: Generate LeanArchitect files
         run: ~/.elan/bin/lake build :blueprint
 
-      - name: Build blueprint web and pdf
+      - name: Build blueprint web
         run: |
           . env/bin/activate
           leanblueprint web
+
+      - name: Build blueprint pdf
+        run: |
+          . env/bin/activate
           leanblueprint pdf
 
       - name: Build homepage with Jekyll
