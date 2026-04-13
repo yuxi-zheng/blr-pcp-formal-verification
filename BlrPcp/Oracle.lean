@@ -1,9 +1,13 @@
 import Architect
 
 import CompPoly.Multivariate.CMvPolynomial
-import VCVio
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.OracleComp
+import VCVio.OracleComp.Constructions.SampleableType
 
 #min_imports
+
+open CPoly CMvPolynomial
 
 variable {n : ℕ} {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F]
 
@@ -19,7 +23,6 @@ abbrev QESAT : Set (List (CMvPolynomial n F)) := fun polys =>
   ∃ (a : Fin n → F), polys.all (fun p => CMvPolynomial.eval a p == 0)
 
 
-def p1 : CMvPolynomial 3 𝔽₂ := C 1 + X 0
-def p2 : CMvPolynomial 3 𝔽₂ := C 0 + X 0 * X 1 + X 0 * X 2
-
-#eval QESAT (F := 𝔽₂) (n := 3) [p1, p2] -- withness should be (1, 0, 0) or (1, 1, 1)
+@[blueprint
+  (statement := /-- $(x + 1, xy + z) ∈ \mathrm{QESAT}(\F_2)$. -/)]
+example : QESAT (F := (ZMod 2)) (n := 3) [C 1 + X 0, X 0 * X 1 + X 0 * X 2] := by native_decide

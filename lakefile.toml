@@ -7,7 +7,7 @@ warn.sorry = false
 [[require]]
 name = "LeanArchitect"
 git = "https://github.com/hanwenzhu/LeanArchitect.git"
-rev = "main"
+rev = "f11aef7d20b1ecb6a0aa59002efab9740ad8fd68"
 
 [[require]]
 name = "VCVio"

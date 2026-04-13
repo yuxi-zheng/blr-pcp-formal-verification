@@ -1,4 +1,4 @@
-{"version": "1.2.0",
+{"version": "1.1.0",
  "packagesDir": ".lake/packages",
  "packages":
  [{"url": "https://github.com/PatrickMassot/checkdecls.git",
@@ -45,10 +45,10 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "d7e9b2b867fd93c076b62c3022f3e5420f0b40a1",
+   "rev": "f11aef7d20b1ecb6a0aa59002efab9740ad8fd68",
    "name": "LeanArchitect",
    "manifestFile": "lake-manifest.json",
-   "inputRev": "main",
+   "inputRev": "f11aef7d20b1ecb6a0aa59002efab9740ad8fd68",
    "inherited": false,
    "configFile": "lakefile.lean"},
   {"url": "https://github.com/leanprover-community/plausible",
@@ -142,5 +142,4 @@
    "inherited": true,
    "configFile": "lakefile.lean"}],
  "name": "BlrPcp",
- "lakeDir": ".lake",
- "fixedToolchain": false}
+ "lakeDir": ".lake"}
