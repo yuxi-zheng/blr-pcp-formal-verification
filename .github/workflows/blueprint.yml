@@ -137,14 +137,16 @@ jobs:
           build: true
           lint: false
           mk_all-check: false
-          use-github-cache: false
+          # use-github-cache: false
+          build-args: :blueprint
 
-      - name: Generate LeanArchitect files
-        run: ~/.elan/bin/lake build :blueprint
+      # - name: Generate LeanArchitect files
+      #   run: ~/.elan/bin/lake build :blueprint
 
       - name: Build homepage, API docs, and blueprint
         uses: leanprover-community/docgen-action@main
         with:
           blueprint: true
           homepage: home_page
-          api-docs: true
+          # api-docs: true
+          api-docs: false
