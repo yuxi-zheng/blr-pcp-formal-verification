@@ -81,15 +81,15 @@ def RunsInTime {α : Type} {F : Type} {ℓ : ℕ} (_ : PCPVerifier α F ℓ) (_ 
   true
 
 @[blueprint
-  (statement := /-- A language $L$ is in $\mathrm{PCP}[ε_c, ε_s, Σ, ℓ, q, r]$
-if there exists a prover $P$, a verifier $V$ and a polynomial $t$ such that for every $x ∈ L$ of size $n = |x|$,
+  (statement := /-- A language $L \subseteq \{0,1\}^*$ is in $\mathrm{PCP}[ε_c, ε_s, Σ, ℓ, q, r]$
+if there exists a prover $P$, a verifier $V$ and a polynomial $t$ such that for every $x ∈ \{0,1\}^*$ of size $n = |x|$,
 $P$ produces a proof $\pi$ of length $\ell(n)$,
 $V$ runs in time at most $t(n)$,
 makes at most $q(n)$ queries to $\pi$
 and uses at most $r(n)$ bits of randomness, and such that the following holds:
 \begin{itemize}
-  \item Completeness: $\forall x \in L,\, \Pr\left[V^\pi(x)=1 \mid \pi \leftarrow P(x)\right] \geq 1 - \varepsilon_c$.
-  \item Soundness: $\forall x \notin L,\, \forall \widetilde{\pi},\, \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
+  \item Completeness: If $x \in L$, then $\Pr\left[V^\pi(x)=1 \mid \pi \leftarrow P(x)\right] \geq 1 - \varepsilon_c$.
+  \item Soundness: If $x \in L$, then $\forall \widetilde{\pi},\, \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
 \end{itemize}-/)]
 def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type) (ℓ q r : ℕ) : Set (Set α) :=
   { L | ∃ (V : PCPVerifier α F ℓ) (t : Polynomial ℕ), ∀ x,
