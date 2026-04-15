@@ -88,8 +88,8 @@ $V$ runs in time at most $t(n)$,
 makes at most $q(n)$ queries to $\pi$
 and uses at most $r(n)$ bits of randomness, and such that the following holds:
 \begin{itemize}
-  \item Completeness: If $x ∈ L$, then $\forall x \in L,\, \Pr\left[V^\pi(x)=1 \mid \pi \leftarrow P(x)\right] \geq 1 - \varepsilon_c$.
-  \item Soundness: If $x \notin L$, then $\forall x \notin L,\, \forall \widetilde{\pi},\, \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
+  \item Completeness: $\forall x \in L,\, \Pr\left[V^\pi(x)=1 \mid \pi \leftarrow P(x)\right] \geq 1 - \varepsilon_c$.
+  \item Soundness: $\forall x \notin L,\, \forall \widetilde{\pi},\, \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
 \end{itemize}-/)]
 def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type) (ℓ q r : ℕ) : Set (Set α) :=
   { L | ∃ (V : PCPVerifier α F ℓ) (t : Polynomial ℕ), ∀ x,
@@ -102,7 +102,7 @@ def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type) (ℓ q 
       Pr[= true | simulateQ (RandOracle.impl + (ProofOracle (P' x)).impl) (V x)] ≤ ε_s) }
 
 @[blueprint
-  (statement := /-- $\mathrm{QESAT}(\F_2) ∈\mathrm{PCP}[ε_c = 0, ε_s = 1/2, Σ = \F_2, ℓ = \exp(n), q = O(1), r = n^{O(1)}]$. -/)]
+  (statement := /-- $\mathrm{QESAT}(\F_2) ∈\mathrm{PCP}[ε_c = 0, ε_s = 1/2, \Sigma = \F_2, ℓ = \exp(n), q = O(1), r = n^{O(1)}]$. -/)]
 theorem QESAT_exp_PCP {n : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (n := n) (F := (ZMod 2)) ∈ PCP QESAT.size 0 (1/2) (ZMod 2) 0 0 0 := by -- TODO: change ℓ q r to the correct values (for that we need to change the definition of PCP)
   sorry
