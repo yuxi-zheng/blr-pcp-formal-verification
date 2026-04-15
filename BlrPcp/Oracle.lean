@@ -89,7 +89,7 @@ makes at most $q(n)$ queries to $\pi$
 and uses at most $r(n)$ bits of randomness, and such that the following holds:
 \begin{itemize}
   \item Completeness: If $x \in L$, then $\Pr\left[V^\pi(x)=1 \mid \pi \leftarrow P(x)\right] \geq 1 - \varepsilon_c$.
-  \item Soundness: If $x \in L$, then $\forall \widetilde{\pi},\, \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
+  \item Soundness: If $x \notin L$, then $\forall \widetilde{\pi},\, \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
 \end{itemize}-/)]
 def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type) (ℓ q r : ℕ) : Set (Set α) :=
   { L | ∃ (V : PCPVerifier α F ℓ) (t : Polynomial ℕ), ∀ x,
