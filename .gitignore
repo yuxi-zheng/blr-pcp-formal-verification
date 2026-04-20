@@ -1,11 +1,16 @@
 ## macOS
 .DS_Store
 ## Python venv
+venv/
 .venv/
+## Codex
+.codex
+.codex/
 ## Lake
 .lake/*
 .cache/*
 ## Blueprint
+/blueprint/lean_decls
 /blueprint/print/print.log
 /blueprint/web/
 /blueprint/src/web.paux
@@ -36,3 +41,4 @@
 *.synctex.gz
 *.synctex.gz(busy)
 *.pdfsync
+scripts/build_blueprint.sh
