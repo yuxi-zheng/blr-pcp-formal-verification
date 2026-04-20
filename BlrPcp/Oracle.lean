@@ -65,19 +65,20 @@ def PCPQueryBound {F α : Type} {ℓ : ℕ}
       | .inr _, (q, r) => (q - 1, r))
 
 @[blueprint
-  (statement := /-- A \textit{PCP prover} is a function that takes an input $x$ and produces a proof $\pi : [ℓ] → \Sigma$,
-represented as a function from an index set to the PCP alphabet. $ℓ$ is the \textit{proof length}. -/)]
-abbrev PCPProver (α : Type) (F : Type) (ℓ : ℕ) : Type :=
-  α → (Fin ℓ → F)
+  (statement := /-- A \textit{PCP prover} is a function that takes an input $x$ and produces a proof
+$\pi : [\ell(|x|)] \to \Sigma$, represented as a function from an index set to the PCP alphabet. -/)]
+abbrev PCPProver (α : Type) (size : α → ℕ) (F : Type) (ℓ : ℕ → ℕ) : Type :=
+  (x : α) → Fin (ℓ (size x)) → F
 
 @[blueprint
   (statement := /-- A \textit{PCP verifier} is an oracle machine that takes an input $x$ and has access to two oracles:
 a randomness oracle, and a proof oracle. -/)]
-abbrev PCPVerifier (α : Type) (F : Type) (ℓ : ℕ) : Type :=
-  α → OracleComp (PCPOracleSpec F ℓ) Bool
+abbrev PCPVerifier (α : Type) (size : α → ℕ) (F : Type) (ℓ : ℕ → ℕ) : Type :=
+  (x : α) → OracleComp (PCPOracleSpec F (ℓ (size x))) Bool
 
 /-- TODO: Runtime bound of a computation `V(x)` -/
-def RunsInTime {α : Type} {F : Type} {ℓ : ℕ} (_ : PCPVerifier α F ℓ) (_ : α) (_ : ℕ) : Prop :=
+def RunsInTime {α : Type} {size : α → ℕ} {F : Type} {ℓ : ℕ → ℕ}
+    (_ : PCPVerifier α size F ℓ) (_ : α) (_ : ℕ) : Prop :=
   true
 
 @[blueprint
@@ -91,17 +92,20 @@ and uses at most $r(n)$ bits of randomness, and the following holds:
   \item Completeness: If $x \in L$, then $\Pr\left[V^\pi(x)=1 \mid \pi \leftarrow P(x)\right] \geq 1 - \varepsilon_c$.
   \item Soundness: If $x \notin L$, then $\forall \widetilde{\pi},\, \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
 \end{itemize}-/)]
-def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type) (ℓ q r : ℕ) : Set (Set α) :=
-  { L | ∃ (V : PCPVerifier α F ℓ) (t : Polynomial ℕ), ∀ x,
+def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
+    (ℓ q r : ℕ → ℕ) : Set (Set α) :=
+  { L | ∃ (V : PCPVerifier α size F ℓ) (t : Polynomial ℕ), ∀ x,
     RunsInTime V x (t.eval (size x)) ∧
-    PCPQueryBound (V x) q r ∧
-    (x ∈ L → ∃ P : PCPProver α F ℓ,
+    PCPQueryBound (V x) (q (size x)) (r (size x)) ∧
+    (x ∈ L → ∃ P : PCPProver α size F ℓ,
       Pr[= true | simulateQ (RandOracle.impl + (ProofOracle (P x)).impl) (V x)] ≥ 1 - ε_c ) ∧
-    (x ∉ L → ∀ P' : PCPProver α F ℓ,
+    (x ∉ L → ∀ P' : PCPProver α size F ℓ,
       Pr[= true | simulateQ (RandOracle.impl + (ProofOracle (P' x)).impl) (V x)] ≤ ε_s) }
 
 @[blueprint
   (statement := /-- $\mathrm{QESAT}(\F_2) ∈\mathrm{PCP}[ε_c = 0, ε_s = 1/2, \Sigma = \F_2, ℓ = \exp(n), q = O(1), r = n^{O(1)}]$. -/)]
-theorem QESAT_exp_PCP {n : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
-    QESAT (n := n) (F := (ZMod 2)) ∈ PCP QESAT.size 0 (1/2) (ZMod 2) 0 0 0 := by -- TODO: change ℓ q r to the correct values (for that we need to change the definition of PCP)
+theorem QESAT_exp_PCP {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
+    QESAT (n := vars) (F := (ZMod 2)) ∈
+      PCP (QESAT.size (n := vars) (F := (ZMod 2))) 0 (1/2) (ZMod 2)
+        (fun n => 2 ^ n) (fun _ => q) r.eval := by
   sorry
