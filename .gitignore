@@ -10,6 +10,7 @@ venv/
 .lake/*
 .cache/*
 ## Blueprint
+/blueprint/lean_decls
 /blueprint/print/print.log
 /blueprint/web/
 /blueprint/src/web.paux
