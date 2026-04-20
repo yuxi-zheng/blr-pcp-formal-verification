@@ -39,3 +39,4 @@
 *.synctex.gz
 *.synctex.gz(busy)
 *.pdfsync
+scripts/build_blueprint.sh
