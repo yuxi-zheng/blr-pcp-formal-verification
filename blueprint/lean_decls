@@ -18,3 +18,7 @@ PCPProver
 PCPVerifier
 PCP
 QESAT_exp_PCP
+Maschke
+regular_repr_character
+groupFourierTransform
+gowers_hatami

@@ -1,0 +1,208 @@
+%%%%%%%%%%%%%%%%%%%%%%
+% This file is a self-contained blueprint for the Gowers-Hatami theorem, following Thomas' lecture notes.
+% Many definitions have been formalized in representation theory in mathlib:
+% https://leanprover-community.github.io/mathlib_docs/representation_theory/basic.html
+% However for completeness we include the definitions as comments.
+%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Preliminaries}
+\begin{definition}[$\sigma$ inner product.]\label{sigmaInner}\lean{sigmaInner}\leanok
+    The $\sigma$ inner product between matrices $A$ and $B$ is defined as
+    \be
+    \inner{A}{B}_{\sigma} = \Tr(A^* B \sigma),
+    \ee
+    where $\sigma \geq 0$ and $A^*$ denotes conjugate-transpose.
+\end{definition}
+
+\begin{definition}[$(\epsilon, \sigma)$-representation.]\label{approx-representation}\uses{sigmaInner}\lean{IsApproxRepresentation}\leanok
+Given a finite group \(G\), an integer \(d \geq 1, \varepsilon \geq 0\), and a \(d\)-dimensional positive semidefinite matrix \(\sigma\) with trace 1 , an \((\varepsilon, \sigma)\)-representation of \(G\) is a map \(f: G \rightarrow U_{d}(\mathbb{C})\), to the  \(d \times d\) unitary matrices, such that
+\be
+\mathbb{E}_{x, y \in G} \Re\left(\left\langle f(x)^{*} f(y), f\left(x^{-1} y\right)\right\rangle_{\sigma}\right) \geq 1-\varepsilon,
+\ee
+where $\Re$ denotes taking real part of the inner product. 
+\end{definition}
+
+\begin{proposition}\label{UnitarySigmaError}\uses{sigmaInner}\lean{sigma_proximity_iff}
+Let $G$ be a finite group, and let $f, f_2 : G \to U(n)$ be functions into the unitary matrices. Then 
+\[
+\mathbb{E}_{x \in G}\|f(x) - f_2(x)\|_\sigma^2 \le 2\varepsilon
+\quad \Longleftrightarrow \quad
+\mathbb{E}_{x \in G}
+\Re\!\left(\langle f(x), f_2(x)\rangle_\sigma\right)
+\ge 1 - \varepsilon.
+\]
+\end{proposition}
+\begin{proof}
+    For unitary matrices $A, B$, we have
+    \be
+    \| A- B\|_\sigma^2 = 2 - 2 \Re \inner{A}{B}_\sigma.
+    \ee
+    Since $\EE$ is linear, this proves the proposition.
+\end{proof}
+TODO:
+\begin{itemize}
+    \item Relation to classical BLR test
+\end{itemize}
+
+
+\section{Representation theory}
+
+% Representation theory exists on mathlib but for completeness we include the definitions as comments
+
+% \begin{definition}[Representation]
+%     Let $G$ be a group and $V$ a finite-dimensional complex vector space. A \emph{representation} of $G$ is a homomorphism
+%     \be
+%         \rho : G \to \mathrm{GL}(V),
+%     \ee
+%     such that for all $x,y \in G$,
+%     \be
+%         \rho(xy) = \rho(x)\rho(y).
+%     \ee
+% \end{definition}
+
+\begin{definition}[Unitary Representation]\label{UnitaryRep}\lean{UnitaryRep}
+    A \emph{unitary representation} of $G$ is a representation to unitary matrices $\rho : G \to U(V)$.
+\end{definition}
+
+% \begin{definition}[Irreducible representation]
+%     A representation $\rho : G \to \mathrm{GL}(V)$ is called \emph{irreducible} if the only subspaces $W \subseteq V$ satisfying
+%     \be
+%         \rho(x) W \subseteq W \quad \text{for all } x \in G
+%     \ee
+%     are $W = \{0\}$ and $W = V$.
+% \end{definition}
+
+% For the rest of the notes, we will write ``irrep'' as a shorthand to denote irreducible representation.
+
+% \begin{definition}[Completely reducible]
+%     A representation $\rho : G \to \mathrm{GL}(V)$ is \emph{completely reducible} if $V$ can be decomposed as a direct sum of invariant subspaces,
+%     \be
+%         V = \bigoplus_i V_i,
+%     \ee
+%     where each $V_i$ carries an irreducible representation of $G$.
+% \end{definition}
+
+% \begin{definition}[Inequivalent representations]
+%     Two representations $\rho_1 : G \to \mathrm{GL}(V)$ and $\rho_2 : G \to \mathrm{GL}(W)$ are \emph{equivalent} if there exists an invertible linear map $T : V \to W$ such that
+%     \be
+%         T \rho_1(x)T^{-1} = \rho_2(x) \quad \text{for all } x \in G.
+%     \ee
+%     They are \emph{inequivalent} if no such map exists.
+% \end{definition}
+
+% \begin{definition}[Character]
+%     Let $\rho : G \to \mathrm{GL}(V)$ be a representation. The \emph{character} of $\rho$ is the function $\chi_\rho : G \to \mathbb{C}$ defined by
+%     \be
+%         \chi_\rho(x) = \mathrm{Tr}[\rho(x)].
+%     \ee
+% \end{definition}
+
+\begin{definition}[Regular representation]\label{RegularRep}\lean{regularRep}\uses{UnitaryRep}
+    Let $R: G \rightarrow \mathbb{C}[G]$ be a regular representation where $\{\ket{g}, g\in G\}$ forms a basis of \(\mathbb{C}[G]\). The representation is given by
+    \be
+    R(d) \ket{g} = \ket{xg}.
+    \ee
+    
+\end{definition}
+
+It is possible to decompose any representation of a finite group into direct sums over irreps. 
+
+\begin{theorem}[Maschke's theorem]\label{Maschke}\lean{Maschke}
+    Let $G$ be a finite group and let $\rho : G \to \mathrm{GL}(V)$ be a finite-dimensional representation over $\mathbb{C}$. Then $\rho$ is completely reducible. In particular, there exists a decomposition
+    \be
+        \rho \cong \bigoplus_{m} r_m \, \rho_m,
+    \ee
+    where $\{\rho_m\}$ is a set of inequivalent irreducible representations of $G$, and $r_m \in \mathbb{Z}^+$ are the multiplicities.
+\end{theorem}
+
+\begin{sproof}
+    Maschke's theorem is partially formalized in $\texttt{Mathlib.RepresentationTheory.Maschke}$ but incomplete.
+    Jonathan's team is formalizing this.
+\end{sproof}
+
+% mathlib: `FDRep.char_orthonormal`
+% \begin{theorem}[Petit orthogonality theorem]\label{PetitOrthogonality}
+%      Let $R_a$ and $R_b$ be two non-equivalent irreps of $G$. The characters satisfy the orthogonality relation
+% \be
+% \sum_{g\in G} \chi^*_a(g) \chi_b(g) = \abs{G} \delta_{a,b}.
+% \ee    
+% \end{theorem}
+
+\begin{proposition}[Decomposition of the regular representation]\label{RegDecompIrrep}\lean{regularRep}\uses{Maschke,RegularRep}
+    Let $R : G \to \mathrm{GL}(\mathbb{C}[G])$ be the regular representation of a finite group $G$. Then
+    \be
+        R \cong \bigoplus_{\rho \in \widehat{G}} d_\rho \, \rho,
+    \ee
+    where $\widehat{G}$ is a complete set of inequivalent irreducible representations of $G$, and $d_\rho = \dim(V_\rho)$ is the dimension of $\rho$.
+\end{proposition}
+
+\begin{sproof}
+    This can be proven using Maschke's theorem in \ref{Maschke} to decompose into irreps with multiplicity. 
+    Then use character orthogonality theorem in mathlib $\texttt{FDRep.char\_orthonormal}$ to show the multiplicity equals irrep dimension. 
+    A more formal statement is given by the Peter-Weyl theorem. 
+\end{sproof}
+
+
+\begin{proposition}[Character of regular representation.]\label{regular_repr_character}\lean{regular_repr_character}\uses{RegDecompIrrep}
+Let $G$ be a finite group and $\sum_\rho$ denotes summing over the complete set of inequivalent irreps $\hat{G}$
+    \be\label{eq:regular_repr_characterr}
+    \sum_{\rho \in \hat{G}} d_{\rho} \operatorname{Tr}(\rho(x))=|G| \delta_{x, e}.
+    \ee
+\end{proposition}
+\begin{sproof}
+    The proof uses decomposition of regular representation and definition of character. 
+\end{sproof}
+
+% \begin{fact}
+%     Let $\hat{G}$ be the complete set of inequivalent irreps of $G$ and $d_\rho = \dim(\rho)$ the dimension, then
+%      \be\label{eq:dim_rho_group}
+%      \sum_{\rho} d_{\rho}^{2}=|G|.
+%      \ee
+% \end{fact}
+% \begin{sproof}
+%     This is a corollary from Fact.~\ref{regular_repr_character} for $x=e$.
+% \end{sproof}
+
+\begin{definition}[Group fourier transform]\label{GroupFourier}\lean{groupFourierTransform}
+    Let $f: G \rightarrow U_d(\cc)$ be a map and \(\rho: G \rightarrow U_{d_{\rho}}(\mathbb{C})\) be a unitary irrep. The fourier transform of $f$ at the representation $\rho$ is denoted by $\hat{f}$:
+    \be
+\hat{f}(\rho)=\mathbb{E}_{x \in G} f(x) \otimes \overline{\rho(x)},
+    \ee
+    where $\overline{\rho(x)}$ denotes complex conjugate of $\rho(x)$. 
+\end{definition}
+
+\section{Gowers Hatami Theorem}
+
+\begin{theorem}[Gowers-Hatami]\label{gowers-hatami}\lean{gowers_hatami}
+  \uses{UnitarySigmaError, approx-representation,sigma_proximity_iff,GroupFourier,regular_repr_character}
+Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d}(\mathbb{C})\) an \((\varepsilon, \sigma)\)-representation of \(G\). Then there exists a \(d^{\prime} \geq d\), an isometry \(V: \mathbb{C}^{d} \rightarrow \mathbb{C}^{d^{\prime}}\), and a representation \(g: G \rightarrow U_{d^{\prime}}(\mathbb{C})\) such that
+\be
+\mathbb{E}_{x \in G}\left\|f(x)-V^{*} g(x) V\right\|_{\sigma}^{2} \leq 2 \varepsilon.
+\ee 
+\end{theorem}
+
+\begin{sproof}
+    The full proof can be found in the lecture notes Theorem 2.3~\cite{lecture}.
+    In particular, the proof is constructive. The isometry is defined as 
+    \(V: \mathbb{C}^{d} \rightarrow \mathbb{C}^{d} \otimes\left(\oplus_{\rho} \mathbb{C}^{d_{\rho}} \otimes \mathbb{C}^{d_{\rho}}\right)\) by
+    \be\label{eq:isometry_V}
+    V u = \bigoplus_{\rho} d_{\rho}^{1 / 2} \sum_{i=1}^{d_{\rho}}\left(\hat{f}(\rho)\left(u \otimes e_{i}\right)\right) \otimes e_{i}.
+    \ee
+    And the exact representation is defined as 
+    \be
+    g(x)=\bigoplus_{\rho}\left(I_{d} \otimes I_{d_{\rho}} \otimes \rho(x)\right).
+    \ee
+
+    The proof requires the following two ingredients:
+    \begin{enumerate}
+        \item $V$ is an isometry:
+        \be
+        V^{*} V  = \I_d
+        \ee 
+        \item The isometry ``averages'' over group multiplication. For any \(x \in G\),
+        \be
+        V^{*} g(x) V = \mathbb{E}_{z} f(z)^{*} f(z x).
+        \ee
+    \end{enumerate}
+    Both ingredients follow from the key identity over the regular representation in \equref{eq:regular_repr_characterr}.
+\end{sproof}
