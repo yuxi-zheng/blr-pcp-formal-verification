@@ -1,7 +1,7 @@
 BlrPcp.IsLinear
 BlrPcp.BLRAcceptsAt
 BlrPcp.rejectionProbabilityBLR
-BlrPcp.HasAdditiveCharacters
+BlrPcp.charFn
 BlrPcp.characters_orthonormal_basis
 BlrPcp.fourier_expansion
 BlrPcp.parseval_plancherel
