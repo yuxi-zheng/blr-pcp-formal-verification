@@ -8,8 +8,3 @@ regularRep
 regular_repr_character
 groupFourierTransform
 gowers_hatami
-QESAT
-PCPProver
-PCPVerifier
-PCP
-QESAT_exp_PCP
