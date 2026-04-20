@@ -1,6 +1,7 @@
 ## macOS
 .DS_Store
 ## Python venv
+venv/
 .venv/
 ## Codex
 .codex
@@ -39,4 +40,3 @@
 *.synctex.gz
 *.synctex.gz(busy)
 *.pdfsync
-scripts/build_blueprint.sh

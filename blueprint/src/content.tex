@@ -9,8 +9,24 @@
 Fix hereafter a finite field $F$.
 \input{../../.lake/build/blueprint/library/BlrPcp}
 
+
 \inputleanmodule{BlrPcp.Basic}
+
+
 \chapter{Gowers Hatami theorem}
+
+Here is an example how we can write latex text and refer to lean definition
+\begin{theorem}[Gowers-Hatami]
+  \label{thm:gowers-hatami}
+  \lean{thm:gowers-hatami}
+  \uses{def:sigma-inner}    
+Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d}(\mathbb{C})\) an \((\varepsilon, \sigma)\)-representation of \(G\). Then there exists a \(d^{\prime} \geq d\), an isometry \(V: \mathbb{C}^{d} \rightarrow \mathbb{C}^{d^{\prime}}\), and a representation \(g: G \rightarrow U_{d^{\prime}}(\mathbb{C})\) such that
+\be
+\mathbb{E}_{x \in G}\left\|f(x)-V^{*} g(x) V\right\|_{\sigma}^{2} \leq 2 \varepsilon.
+\ee 
+\end{theorem}
+
+\inputleanmodule{BlrPcp.GowersHatami}
 \chapter{Linear PCP for linear equations}
 \inputleanmodule{BlrPcp.Oracle}
 \chapter{Linear PCP for tensor checks}
