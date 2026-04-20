@@ -4,6 +4,7 @@ import Mathlib.Algebra.Algebra.ZMod
 import Mathlib.Data.ZMod.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.Complex.Polynomial.Basic
+import Mathlib.Analysis.Fourier.FiniteAbelian.PontryaginDuality
 import Mathlib.Analysis.SpecialFunctions.Complex.CircleAddChar
 import Mathlib.FieldTheory.Finite.Trace
 import Architect
@@ -83,13 +84,103 @@ noncomputable def charFn (α : Vec F Idx) : ComplexFn F Idx := by
   exact fun x =>
     ZMod.stdAddChar (N := ringChar F) (Algebra.trace (ZMod (ringChar F)) F ⟪α, x⟫ᵥ)
 
+private lemma dotProduct_single (a : Vec F Idx) (i : Idx) (t : F) :
+    dotProduct a (Pi.single i t) = a i * t := by
+  classical
+  rw [dotProduct, Finset.sum_eq_single i]
+  · simp
+  · intro j _ hij
+    simp [Pi.single_eq_of_ne hij]
+  · intro hi
+    simp at hi
+
+private lemma dotProduct_sub_left (a b x : Vec F Idx) :
+    dotProduct (a - b) x = dotProduct a x - dotProduct b x := by
+  simp [dotProduct, sub_mul, Finset.sum_sub_distrib]
+
+private noncomputable def dotProductAddMonoidHom (a : Vec F Idx) : Vec F Idx →+ F where
+  toFun := dotProduct a
+  map_zero' := by simp [dotProduct]
+  map_add' x y := by
+    simp [dotProduct, mul_add, Finset.sum_add_distrib]
+
+private noncomputable def baseChar : AddChar F ℂ := by
+  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
+  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
+  exact (ZMod.stdAddChar (N := ringChar F)).compAddMonoidHom
+    (Algebra.trace (ZMod (ringChar F)) F).toAddMonoidHom
+
+private noncomputable def charAddChar (a : Vec F Idx) : AddChar (Vec F Idx) ℂ :=
+  (baseChar (F := F)).compAddMonoidHom (dotProductAddMonoidHom (F := F) (Idx := Idx) a)
+
+@[simp] private lemma charAddChar_apply (a x : Vec F Idx) :
+    charAddChar (F := F) (Idx := Idx) a x = charFn a x := rfl
+
+private lemma charAddChar_injective :
+    Function.Injective (charAddChar (F := F) (Idx := Idx)) := by
+  classical
+  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
+  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
+  intro a b hab
+  by_contra hne
+  have hsub : a - b ≠ 0 := sub_ne_zero.mpr hne
+  obtain ⟨i, hi⟩ : ∃ i, (a - b) i ≠ 0 := by
+    by_contra h
+    apply hsub
+    ext j
+    by_contra hj
+    exact h ⟨j, hj⟩
+  obtain ⟨t, ht⟩ := FiniteField.trace_to_zmod_nondegenerate F (a := (a - b) i) hi
+  let x : Vec F Idx := Pi.single i t
+  have hEval : charFn a x = charFn b x := by
+    simpa using congr_fun (congrArg DFunLike.coe hab) x
+  have hTraceEq :
+      Algebra.trace (ZMod (ringChar F)) F (dotProduct a x) =
+        Algebra.trace (ZMod (ringChar F)) F (dotProduct b x) := by
+    exact ZMod.injective_stdAddChar (N := ringChar F) hEval
+  have hTraceSub :
+      Algebra.trace (ZMod (ringChar F)) F (dotProduct (a - b) x) = 0 := by
+    have : Algebra.trace (ZMod (ringChar F)) F (dotProduct a x - dotProduct b x) = 0 := by
+      simpa [LinearMap.map_sub] using sub_eq_zero.mpr hTraceEq
+    simpa [dotProduct_sub_left] using this
+  have : Algebra.trace (ZMod (ringChar F)) F ((a - b) i * t) = 0 := by
+    simpa [x, dotProduct_single] using hTraceSub
+  exact ht this
+
 axiom fourierCoeff : ComplexFn F Idx → Vec F Idx → Complex
 
 
 lemma characters_orthonormal_basis :
     (∀ α β : Vec F Idx, ⟪charFn α, charFn β⟫ = if α = β then 1 else 0) ∧
       Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx))) = ⊤ := by
-  sorry
+  classical
+  have horth : ∀ α β : Vec F Idx, ⟪charFn α, charFn β⟫ = if α = β then 1 else 0 := by
+    intro α β
+    simpa [fnInner, expectation, RCLike.wInner_cWeight_eq_expect, Fintype.expect_eq_sum_div_card,
+      div_eq_mul_inv, RCLike.inner_apply, charAddChar_injective.eq_iff, eq_comm, mul_comm,
+      mul_left_comm, mul_assoc] using
+      (AddChar.wInner_cWeight_eq_boole (ψ₁ := charAddChar (F := F) (Idx := Idx) β)
+        (ψ₂ := charAddChar (F := F) (Idx := Idx) α)).symm
+  have hbij : Function.Bijective (charAddChar (F := F) (Idx := Idx)) := by
+    refine (Fintype.bijective_iff_injective_and_card
+      (charAddChar (F := F) (Idx := Idx))).2 ?_
+    exact ⟨charAddChar_injective (F := F) (Idx := Idx),
+      (AddChar.card_eq (α := Vec F Idx)).symm⟩
+  have hrange :
+      Set.range (charFn (F := F) (Idx := Idx)) =
+        Set.range (((↑) : AddChar (Vec F Idx) ℂ → Vec F Idx → ℂ)) := by
+    ext f
+    constructor
+    · rintro ⟨a, rfl⟩
+      exact ⟨charAddChar (F := F) (Idx := Idx) a, rfl⟩
+    · rintro ⟨ψ, rfl⟩
+      rcases hbij.surjective ψ with ⟨a, rfl⟩
+      exact ⟨a, rfl⟩
+  have hspan :
+      Submodule.span ℂ (Set.range (((↑) : AddChar (Vec F Idx) ℂ → Vec F Idx → ℂ))) = ⊤ := by
+    simpa [AddChar.coe_complexBasis (α := Vec F Idx)] using
+      (AddChar.complexBasis (α := Vec F Idx)).span_eq
+  exact ⟨horth, hrange ▸ hspan⟩
 
 lemma fourier_expansion (g : ComplexFn F Idx) : True := by
   sorry
