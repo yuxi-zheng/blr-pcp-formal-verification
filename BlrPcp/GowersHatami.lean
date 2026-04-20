@@ -296,12 +296,11 @@ the Fourier transform of $f$ at $\rho$ is
   \[
     \hat f(\rho) = \mathbb{E}_{x \in G}\, f(x) \otimes \overline{\rho(x)}.
   \]
-  The group Fourier transform of `f : G → Mₐ(ℂ)` at the irrep `ρ`, defined as
-`𝔼_{x ∈ G} f(x) ⊗ conj(ρ(x))`.
-
-The complex conjugate of `ρ(x)` is obtained via `Matrix.map _ conj` where
+   The group Fourier transform of $f : G → Mₐ(ℂ)$ at the irrep $ρ$, defined as
+$\mathbb{E}_{x ∈ G} f(x) ⊗ conj(ρ(x))$. -/)]
+/- The complex conjugate of `rho(x)` is obtained via `Matrix.map _ conj` where
 `conj = starRingEnd ℂ` applied pointwise. The Kronecker product then gives
-a `(d * dρ) × (d * dρ)` matrix, and we average over `G`.-/)]
+a `(d * dρ) × (d * dρ)` matrix, and we average over $G$.-/
 noncomputable def fourierTransform
     {dρ : ℕ}
     (f : G → Matrix (Fin d) (Fin d) ℂ)
