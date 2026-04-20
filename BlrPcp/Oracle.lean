@@ -30,7 +30,7 @@ def size (polys : List (CMvPolynomial n F)) : ℕ :=
 end QESAT
 
 @[blueprint
-  (statement := /-- $(x + 1, xy + z) ∈ \mathrm{QESAT}(\F_2)$. -/)]
+  (statement := /-- $(x + 1, xy + z) ∈ \mathrm{QESAT}(𝔽_2)$. -/)]
 example : QESAT (n := 3) (F := (ZMod 2)) [C 1 + X 0, X 0 * X 1 + X 0 * X 2] := by native_decide
 
 abbrev RandOracleSpec : OracleSpec Unit :=
