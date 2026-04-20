@@ -1,8 +1,11 @@
 import Mathlib.Data.Fintype.BigOperators
 import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+import Mathlib.Algebra.Algebra.ZMod
 import Mathlib.Data.ZMod.Basic
 import Mathlib.Data.Real.Basic
 import Mathlib.Analysis.Complex.Polynomial.Basic
+import Mathlib.Analysis.SpecialFunctions.Complex.CircleAddChar
+import Mathlib.FieldTheory.Finite.Trace
 import Architect
 
 open scoped BigOperators
@@ -54,17 +57,55 @@ axiom distance : ScalarFn F Idx → ScalarFn F Idx → Real
 axiom distanceToLinear : ScalarFn F Idx → Real
 
 axiom phaseLift : ScalarFn F Idx → F → ComplexFn F Idx
-axiom charFn : Vec F Idx → ComplexFn F Idx
-axiom fourierCoeff : ComplexFn F Idx → Vec F Idx → Complex
 
+/-- The standard bilinear pairing on `F^Idx`. -/
+def dotProduct (a x : Vec F Idx) : F :=
+  ∑ i, a i * x i
+
+/-- Notation for the standard bilinear pairing on `F^Idx`. -/
+scoped notation "⟪" a ", " x "⟫ᵥ" => dotProduct a x
+
+/-- The uniform expectation of a complex-valued function on `F^Idx`. -/
+noncomputable def expectation (f : ComplexFn F Idx) : Complex :=
+  (Fintype.card (Vec F Idx) : Complex)⁻¹ * ∑ x, f x
+
+/-- The expectation-based Hermitian inner product on complex-valued functions on `F^Idx`. -/
+noncomputable def fnInner (f g : ComplexFn F Idx) : Complex :=
+  expectation fun x => f x * star (g x)
+
+/-- The squared `L²` norm associated to `fnInner`. -/
+noncomputable def fnNormSq (f : ComplexFn F Idx) : Real :=
+  (Fintype.card (Vec F Idx) : Real)⁻¹ * ∑ x, ‖f x‖ ^ 2
+
+/-- The `L²` norm associated to the expectation inner product. -/
+noncomputable def fnNorm (f : ComplexFn F Idx) : Real :=
+  Real.sqrt (fnNormSq f)
+
+/-- Notation for the expectation-based Hermitian inner product on `F^Idx → ℂ`. -/
+scoped notation "⟪" f ", " g "⟫" => fnInner f g
+
+/-- Notation for the expectation-based `L²` norm on `F^Idx → ℂ`. -/
+scoped notation "‖" f "‖₂" => fnNorm f
+
+/-- The additive character indexed by `α : F^Idx`, defined by
+`χ_α(x) = ω_p^{Tr(∑ i, α i * x i)}` where `p = ringChar F`. -/
 @[blueprint "def:ff-additive-characters"
-  (statement := /-- Write $q = p^e$. For each $\alpha \in \mathbb{F}_q^n$, define
-  the additive character
+  (statement := /-- Write $F=\mathbb{F}_q$ where $q = p^m$ for a prime number $p$ and a positive integer $m$. For each $\alpha \in \mathbb{F}_q^n$, define
+  the additive character $\chi_\alpha : \mathbb{F}_q \rightarrow \mathbb{C}$ as
   \[
     \chi_\alpha(x) := \omega_p^{\mathrm{Tr}(\langle \alpha, x\rangle)},
   \]
-  where $\mathrm{Tr} : \mathbb{F}_q \to \mathbb{F}_p$ is the field trace. -/)]
+  where $ \omega_p = \exp(2π i/p)$ and  $\mathrm{Tr} : \mathbb{F}_q \to \mathbb{F}_p $ is the field trace $\mathrm{Tr}(a) = \sum_{j=0}^{m-1} a^{p^j}$. -/)]
+noncomputable def charFn (α : Vec F Idx) : ComplexFn F Idx := by
+  classical
+  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
+  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
+  exact fun x =>
+    ZMod.stdAddChar (N := ringChar F) (Algebra.trace (ZMod (ringChar F)) F ⟪α, x⟫ᵥ)
+
 def HasAdditiveCharacters : Prop := True
+
+axiom fourierCoeff : ComplexFn F Idx → Vec F Idx → Complex
 
 @[blueprint "lem:ff-characters-orthonormal"
   (statement := /-- The family $\{\chi_\alpha\}_{\alpha \in \mathbb{F}_q^n}$ is an

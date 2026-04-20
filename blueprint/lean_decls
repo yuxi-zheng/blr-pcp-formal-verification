@@ -12,3 +12,8 @@ BlrPcp.spectral_lower_bound
 BlrPcp.improved_analysis_finite_fields
 BlrPcp.almost_linear_of_high_acceptance
 BlrPcp.boolean_special_case
+QESAT
+PCPProver
+PCPVerifier
+PCP
+QESAT_exp_PCP
