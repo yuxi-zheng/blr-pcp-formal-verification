@@ -8,8 +8,26 @@
 \chapter{BLR test on general finite fields}
 \input{../../.lake/build/blueprint/library/BlrPcp}
 
+\begin{definition}[Some definition]
+  \label{def:truncated-observable}
+  \lean{thm:gowers-hatami}
+  \uses{def:sigma-inner}
+  \leanok
+  Let $U = U_L \cdots U_1$ be an $L$-layer circuit, $O$ an observable, and $k \geq 0$
+  an integer threshold.  Define a sequence $O_{L+1} := O$ and, recursively for
+  $j = L, L-1, \ldots, 1$,
+  \[
+    O_j
+    \;:=\;
+    \sum_{\substack{s \in \widetilde{\mathcal{P}}_n \\ |s| \leq k}}
+    \operatorname{Tr}\!\bigl[U_{j+1}^\dagger O_{j+1} U_{j+1} \cdot s\bigr]\,s.
+  \]
+  The \emph{weight-$k$ truncated observable} is $O_U^{(k)} := O_1$.
+\end{definition}
+
 \inputleanmodule{BlrPcp.Basic}
 \chapter{Gowers Hatami theorem}
+\inputleanmodule{BlrPcp.GowersHatami}
 \chapter{Linear PCP for linear equations}
 \inputleanmodule{BlrPcp.Oracle}
 \chapter{Linear PCP for tensor checks}
