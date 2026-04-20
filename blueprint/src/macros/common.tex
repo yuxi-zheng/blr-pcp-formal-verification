@@ -9,13 +9,15 @@
 % (this is what the [theorem] arguments mean) and never resets it.
 % If you want for instance to number them within chapters then you can add
 % [chapter] at the end of the next line.
-\newtheorem{theorem}{Theorem}
-\newtheorem{proposition}[theorem]{Proposition}
-\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{theorem}{Theorem}[section]
 \newtheorem{corollary}[theorem]{Corollary}
-
-\theoremstyle{definition}
+\newtheorem{proposition}[theorem]{Proposition}
 \newtheorem{definition}[theorem]{Definition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{observation}[theorem]{Observation}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{question}[theorem]{Question}
 
 \newcommand{\N}{\mathbb{N}}
 \newcommand{\Z}{\mathbb{Z}}
@@ -25,3 +27,239 @@
 \newcommand{\A}{\mathbb{A}}
 \newcommand{\F}{\mathbb{F}}
 \newcommand{\PP}{\mathbb{P}}
+
+
+\usepackage{amsthm}
+
+\usepackage{amsmath,amssymb}
+\usepackage{url}
+\usepackage{multicol}
+\usepackage{bbm}
+
+\usepackage{algorithm2e}
+\usepackage{color}
+
+
+% \usepackage{mathbbol}
+
+% Emphasis in theorems
+\newcommand{\emphth}[1]{{\rm\sf {#1}}}
+
+% inner product
+\newcommand{\inner}[2]{\langle #1, #2 \rangle}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Calligraphic and blackboard type letters.
+
+\def\cA{{\cal A}}
+\def\cB{{\cal B}}
+\def\cC{{\cal C}}
+\def\cD{{\cal D}}
+\def\cE{{\cal E}}
+\def\cF{{\cal F}}
+\def\cG{{\cal G}}
+\def\cH{{\cal H}}
+\def\cI{{\cal I}}
+\def\cJ{{\cal J}}
+\def\cK{{\cal K}}
+\def\cL{{\cal L}}
+\def\cM{{\cal M}}
+\def\cN{{\cal N}}
+\def\cO{{\cal O}}
+\def\cP{{\cal P}}
+\def\cQ{{\cal Q}}
+\def\cR{{\cal R}}
+\def\cS{{\cal S}}
+\def\cT{{\cal T}}
+\def\cU{{\cal U}}
+\def\cV{{\cal V}}
+\def\cW{{\cal W}}
+\def\cX{{\cal X}}
+\def\cY{{\cal Y}}
+\def\cZ{{\cal Z}}
+%%%%%%%%%%%%%%%%%
+\def\bbC{{\mathbb C}}
+\def\bbE{{\mathbb E}}
+\def\bbF{{\mathbb F}}
+\def\bbG{{\mathbb G}}
+\def\bbM{{\mathbb M}}
+\def\bbN{{\mathbb N}}
+\def\bbQ{{\mathbb Q}}
+\def\bbR{{\mathbb R}}
+\def\bbV{{\mathbb V}}
+\def\bbZ{{\mathbb Z}}
+\def\Z{{\mathbb Z}}
+\def\Zq{\bbZ_q}
+
+%%%%%%%%%%%%%%%%%
+
+
+% Rounding commands
+
+\newcommand{\ceil}[1]{\left\lceil #1 \right\rceil}
+\newcommand{\floor}[1]{\left\lfloor #1 \right\rfloor}
+\newcommand{\round}[1]{\left\lfloor #1 \right\rceil}
+\newcommand{\roundG}[1]{\left\lfloor #1 \right\rceil_{\matG}}
+
+% Other short-hands
+
+\def\binset{\{0,1\}}
+\def\pmset{\{\pm 1\}}
+\def\ind{\mathbbm{1}}
+\def\lq{\lceil \log q \rceil}
+\def\q2{\lfloor q/2 \rceil}
+
+\newcommand{\norm}[1]{\left\| {#1} \right\|}
+\newcommand{\norminf}[1]{\left\| {#1} \right\|_{\infty}}
+
+
+
+
+
+% Asymptotics
+
+\def\poly{{\rm poly}}
+\def\polylog{{\rm polylog}}
+\def\polyloglog{{\rm polyloglog}}
+\newcommand{\ppt}{\mbox{{\sc ppt}}}
+\def\Otilde{\widetilde{O}}
+
+\def\Tr{{\rm Tr}}
+
+
+% Complexity classes
+
+\def\NP{\mathbf{NP}}
+
+
+
+
+\newcommand{\medskipo}{\medskip}
+\newcommand{\medskipoo}{\medskipo}
+
+
+\newcommand{\db}{{\mathtt{DB}}}
+\newcommand{\dbs}{{|\db|}}
+
+\newcommand{\esw}{\shname}
+\newcommand{\esym}{\symname}
+
+\newcommand{\hsk}{{hsk}}
+\newcommand{\hpk}{{hpk}}
+\newcommand{\hevk}{{hevk}}
+\def\hesk{\hsk}
+\def\hepk{\hpk}
+
+\newcommand{\symsk}{{symsk}}
+
+
+\newcommand{\tr}{\tau}
+\newcommand{\ntr}{\hat{\tau}}
+
+
+\def \ra {\rightarrow}
+\newcommand{\hvcs}{\hat{\vc{s}}}
+\newcommand{\hmxA}{\hat{\mx{A}}}
+\newcommand{\hvce}{\hat{\vc{e}}}
+\newcommand{\hvcb}{\hat{\vc{b}}}
+\newcommand{\he}{{\hat{e}}}
+\newcommand{\heta}{{\hat{\eta}}}
+\newcommand{\hpsi}{{\hat{\psi}}}
+\newcommand{\hPsi}{{\hat{\Psi}}}
+\newcommand{\hchi}{{\hat{\chi}}}
+\newcommand{\hvcv}{{\hat{\vc{v}}}}
+\newcommand{\hw}{{\hat{w}}}
+\newcommand{\hvca}{{\hat{\vc{a}}}}
+\newcommand{\hb}{{\hat{b}}}
+\newcommand{\hB}{{\hat{B}}}
+\newcommand{\homega}{{\hat{\omega}}}
+
+
+\def \C {\mathbb{C}}
+\def \R {\mathbb{R}}
+\def \Z {\mathbb{Z}}
+
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\im}{Im}
+% \DeclareMathOperator*{\ker}{Ker}
+\DeclareSymbolFont{bbold}{U}{bbold}{m}{n}
+\DeclareMathSymbol{\bbpi}{\mathord}{bbold}{"19}
+
+\newcommand{\abs}[1]{\left\lvert{#1}\right\rvert}
+
+%===Spaces===
+
+\newcommand{\Bits}{\{0,1\}}
+\newcommand{\Field}{\mathbb{F}}
+\newcommand{\bits}{\{0,1\}}
+
+
+%===Parameters===
+
+\newcommand{\Security}{\lambda}
+
+%===Vectors and Matrices===
+
+\newcommand{\vect}[1]{\mathbf{#1}}
+\newcommand{\id}[1]{I_{#1}}%identity matrix
+\newcommand{\zmat}[1]{O_{#1}}%zero matrix
+\newcommand{\matnorm}[1]{\lvert #1 \rvert}
+\newcommand{\Transpose}[1]{#1^{\intercal}}
+\newcommand{\dotp}[2]{\langle #1,#2 \rangle}
+\newcommand{\concat}{\mathbin\Vert}
+\newcommand{\accessVectorAt}[2]{#1[#2]}
+
+
+%===malicious===
+\newcommand{\Malicious}[1]{\widetilde{#1}}
+
+%===language and relation===
+\newcommand{\Relation}{R}
+\newcommand{\Language}{L}
+\newcommand{\Index}{\mathbbm{i}}
+\newcommand{\Instance}{\mathbbm{x}}
+\newcommand{\InstanceSize}{k}
+\newcommand{\IndexSize}{n}
+\newcommand{\Witness}{\mathbbm{w}}
+\newcommand{\GetLanguage}[1]{\Language(#1)}
+\newcommand{\size}[2]{{\mathrm{size}_{#1}}(#2)}
+
+
+%===Probability===
+\newcommand{\prob}[1]{\mathrm{Pr}\left[ #1\right]}
+\newcommand{\negl}[1]{\mathrm{negl(#1)}}
+
+
+\def\ff{{\varphi}}
+\def\fg{{\gamma}}
+\def\f{{f}}
+\newcommand{\fexp}[2]{#1_{#2}}
+\def\g{{g}}
+\def\lin{{\text{$\mathcal{LIN}$}}}
+\def\affine{{\text{$\mathcal{AFFINE}$}}}
+\def\characters{{\text{$\hat{G}$} }}
+\def\BLRVerifier{{\text{$\mathsf{V}_{\mathsf{BLR}}^f$ }}}
+\def\FoldedBLRVerifier{{\text{$\mathsf{V}_{\mathsf{Folded-BLR}}^f$ }}}
+\def\PVSLVerifier{{\text{$\mathsf{V}_{\text{P-vs-L}}^{f,\cA}$ }}}
+\def\PVSKVerifier{{\text{$\mathsf{V}_{\text{P-vs-k-space}}^{f,\cA}$ }}}
+\def\GBLRVerifier{{\text{$\mathsf{V}_{\text{GBLR}}^{f,\cA}$ }}}
+\def\RVerifier{{\text{$\mathsf{V}_{\text{R-P-vs-L}}^{f,\cA}$ }}}
+\def\HSHadamardPCPProver{{\text{$\mathsf{P}_{\text{Had}}$ }}}
+
+\def\HSHadamardPCPVerifier{{\text{$\mathsf{V}_{\text{PCP}}^{A,B}$ }}}
+
+\def\HSHadamardPCPLinVerifier{{\text{$\mathsf{V}^{B}_{\text{LPCP}}$ }}}
+\def\HSHadamardPCPLinVerifierGi{{\text{$\mathsf{V}^{g_i}_{\text{LPCP}}$ }}}
+
+\usepackage[capitalise]{cleveref}
+  \crefname{step}{Step}{Steps}
+
+
+
+
+
