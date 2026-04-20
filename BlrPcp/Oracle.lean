@@ -5,7 +5,6 @@ import VCVio.OracleComp.OracleSpec
 import VCVio.OracleComp.OracleComp
 import VCVio.OracleComp.OracleContext
 import VCVio.OracleComp.QueryTracking.QueryBound
-import VCVio.OracleComp.QueryTracking.CostModel
 import VCVio.OracleComp.Constructions.SampleableType
 
 open CPoly CMvPolynomial OracleComp
@@ -34,35 +33,36 @@ end QESAT
   (statement := /-- $(x + 1, xy + z) ∈ \mathrm{QESAT}(\F_2)$. -/)]
 example : QESAT (n := 3) (F := (ZMod 2)) [C 1 + X 0, X 0 * X 1 + X 0 * X 2] := by native_decide
 
-/- A coinflip oracle -/
+abbrev RandOracleSpec : OracleSpec Unit :=
+  coinSpec
+
+/- A proof is represented as a function `π : [ℓ] → F`.
+  `π(q)` is the answer to query `q`. -/
+abbrev ProofOracleSpec (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ) :=
+  Fin ℓ →ₒ F
+
 abbrev RandOracle : OracleContext Unit ProbComp :=
-  { spec := coinSpec,
+  { spec := RandOracleSpec,
     impl := fun _ => $ᵗ Bool }
 
-/- A proof is represented as a function `π : [n] → F`.
-  `π(q)` is the answer to query `q`. -/
-abbrev ProofOracle (proof : Fin n → F) : OracleContext (Fin n) ProbComp :=
-  { spec := Fin n →ₒ F,
+abbrev ProofOracle (proof : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp :=
+  { spec := ProofOracleSpec F ℓ,
     impl := fun q => pure (proof q) }
 
-/- Defining the costs for randomness and query complexity
-  TODO: make more ergonomic -/
+abbrev PCPOracleSpec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ Fin ℓ) :=
+  RandOracleSpec + ProofOracleSpec F ℓ
 
-def randCanQuery : Sum Unit (Fin n) → ℕ → Prop
-  | Sum.inl _, b => 0 < b
-  | Sum.inr _, _ => True
-
-def randCost : Sum Unit (Fin n) → ℕ → ℕ
-  | Sum.inl _, b => b - 1
-  | Sum.inr _, b => b
-
-def funcCanQuery : Sum Unit (Fin n) → ℕ → Prop
-  | Sum.inl _, _ => True
-  | Sum.inr _, b => 0 < b
-
-def funcCost : Sum Unit (Fin n) → ℕ → ℕ
-  | Sum.inl _, b => b
-  | Sum.inr _, b => b - 1
+/-- `PCPQueryBound oa q r` means `oa` makes at most `q` proof queries
+and at most `r` randomness queries. -/
+def PCPQueryBound {F α : Type} {ℓ : ℕ}
+    (oa : OracleComp (PCPOracleSpec F ℓ) α) (q r : ℕ) : Prop :=
+  IsQueryBound oa (q, r)
+    (fun
+      | .inl _, (_, r) => 0 < r
+      | .inr _, (q, _) => 0 < q)
+    (fun
+      | .inl _, (q, r) => (q, r - 1)
+      | .inr _, (q, r) => (q - 1, r))
 
 @[blueprint
   (statement := /-- A \textit{PCP prover} is a function that takes an input $x$ and produces a proof $\pi : [ℓ] → \Sigma$,
@@ -74,7 +74,7 @@ abbrev PCPProver (α : Type) (F : Type) (ℓ : ℕ) : Type :=
   (statement := /-- A \textit{PCP verifier} is an oracle machine that takes an input $x$ and has access to two oracles:
 a randomness oracle, and a proof oracle. -/)]
 abbrev PCPVerifier (α : Type) (F : Type) (ℓ : ℕ) : Type :=
-  α → OracleComp (RandOracle.spec + (Fin ℓ →ₒ F)) Bool
+  α → OracleComp (PCPOracleSpec F ℓ) Bool
 
 /-- TODO: Runtime bound of a computation `V(x)` -/
 def RunsInTime {α : Type} {F : Type} {ℓ : ℕ} (_ : PCPVerifier α F ℓ) (_ : α) (_ : ℕ) : Prop :=
@@ -82,11 +82,11 @@ def RunsInTime {α : Type} {F : Type} {ℓ : ℕ} (_ : PCPVerifier α F ℓ) (_ 
 
 @[blueprint
   (statement := /-- A language $L \subseteq \{0,1\}^*$ is in $\mathrm{PCP}[ε_c, ε_s, Σ, ℓ, q, r]$
-if there exists a prover $P$, a verifier $V$ and a polynomial $t$ such that for every $x ∈ \{0,1\}^*$ of size $n = |x|$,
+if there exists a PCP prover $P$, a PCP verifier $V$ and a polynomial $t$ such that for every $x ∈ \{0,1\}^*$ of size $n$,
 $P$ produces a proof $\pi$ of length $\ell(n)$,
 $V$ runs in time at most $t(n)$,
 makes at most $q(n)$ queries to $\pi$
-and uses at most $r(n)$ bits of randomness, and such that the following holds:
+and uses at most $r(n)$ bits of randomness, and the following holds:
 \begin{itemize}
   \item Completeness: If $x \in L$, then $\Pr\left[V^\pi(x)=1 \mid \pi \leftarrow P(x)\right] \geq 1 - \varepsilon_c$.
   \item Soundness: If $x \notin L$, then $\forall \widetilde{\pi},\, \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
@@ -94,8 +94,7 @@ and uses at most $r(n)$ bits of randomness, and such that the following holds:
 def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type) (ℓ q r : ℕ) : Set (Set α) :=
   { L | ∃ (V : PCPVerifier α F ℓ) (t : Polynomial ℕ), ∀ x,
     RunsInTime V x (t.eval (size x)) ∧
-    IsQueryBound (V x) q funcCanQuery funcCost ∧
-    IsQueryBound (V x) r randCanQuery randCost ∧
+    PCPQueryBound (V x) q r ∧
     (x ∈ L → ∃ P : PCPProver α F ℓ,
       Pr[= true | simulateQ (RandOracle.impl + (ProofOracle (P x)).impl) (V x)] ≥ 1 - ε_c ) ∧
     (x ∉ L → ∀ P' : PCPProver α F ℓ,

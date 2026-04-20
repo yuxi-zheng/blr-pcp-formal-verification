@@ -2,6 +2,10 @@
 .DS_Store
 ## Python venv
 venv/
+.venv/
+## Codex
+.codex
+.codex/
 ## Lake
 .lake/*
 .cache/*
