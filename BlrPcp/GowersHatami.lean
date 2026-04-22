@@ -59,9 +59,39 @@ For unitary matrices $A, B$ and a state $\sigma$,
 
 theorem sigmaNormSq_sub_unitary
     (σ A B : Matrix (Fin d) (Fin d) ℂ)
-    (hσ : Matrix.PosSemidef σ) :
+    (hσ : Matrix.PosSemidef σ) (hσtr : Matrix.trace σ = 1)
+    (hA : A ∈ Matrix.unitaryGroup (Fin d) ℂ)
+    (hB : B ∈ Matrix.unitaryGroup (Fin d) ℂ) :
     sigmaNormSq σ (A - B) = 2 - 2 * (sigmaInner σ A B).re := by
-  sorry
+  have hA' : Aᴴ * A = 1 := Matrix.mem_unitaryGroup_iff'.mp hA
+  have hB' : Bᴴ * B = 1 := Matrix.mem_unitaryGroup_iff'.mp hB
+  have hσH : σᴴ = σ := hσ.1
+  have hcross :
+      (Matrix.trace (Bᴴ * A * σ)).re = (Matrix.trace (Aᴴ * B * σ)).re := by
+    have htrace :
+        Matrix.trace (Bᴴ * A * σ) = star (Matrix.trace (Aᴴ * B * σ)) := by
+      calc
+        Matrix.trace (Bᴴ * A * σ)
+            = Matrix.trace (σ * (Bᴴ * A)) := by
+                rw [Matrix.trace_mul_cycle]
+                simp [Matrix.mul_assoc]
+        _ = Matrix.trace ((Aᴴ * B * σ)ᴴ) := by
+                congr 1
+                simp [Matrix.conjTranspose_mul, Matrix.mul_assoc, hσH]
+        _ = star (Matrix.trace (Aᴴ * B * σ)) := Matrix.trace_conjTranspose _
+    calc
+      (Matrix.trace (Bᴴ * A * σ)).re
+          = (star (Matrix.trace (Aᴴ * B * σ))).re := by rw [htrace]
+      _ = (Matrix.trace (Aᴴ * B * σ)).re := by
+              simp
+  unfold sigmaNormSq sigmaInner
+  simp only [Matrix.conjTranspose_sub]
+  rw [Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_sub]
+  simp only [hA', hB']
+  simp only [Matrix.sub_mul, Matrix.trace_sub, hσtr, one_mul]
+  simp only [Complex.sub_re, Complex.one_re]
+  rw [hcross]
+  ring
 
 /-!
 ### ε-proximity in σ-norm vs. inner product
