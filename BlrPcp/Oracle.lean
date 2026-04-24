@@ -16,8 +16,8 @@ variable {n : ℕ} {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F
 over a field $\F$ is a list of polynomials $p_1, \ldots, p_m \in \F[x_1, \ldots, x_n]$
 where each $p_i$ has total degree at most $2$.
 
-$\QESAT(\F) := \{ (p_1, \ldots, p_m) \mid
-  \exists a_1, \ldots, a_n \in \F, \, \forall i \in [m], \, p_i(a_1, \ldots, a_n) = 0 \}$. -/)]
+\[\QESAT(\F) := \{ (p_1, \ldots, p_m) \mid
+  \exists a_1, \ldots, a_n \in \F, \, \forall i \in [m], \, p_i(a_1, \ldots, a_n) = 0 \}.\] -/)]
 abbrev QESAT : Set (List (CMvPolynomial n F)) := fun polys =>
   (∀ p ∈ polys, p.totalDegree ≤ 2) ∧
   ∃ (a : Fin n → F), ∀ p ∈ polys, CMvPolynomial.eval a p = 0

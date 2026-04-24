@@ -1,0 +1,26 @@
+\begin{definition}\label{LINEQ}\lean{LINEQ}
+For a field \(\F\) and parameters \(m, n \in \N\), we define the language
+\[\LINEQ(m,n) := \{ (M \in \F^{m\times n},c \in \F^{m}) \mid \exists b\in \F^n, \, Mb = c \}.\]
+\end{definition}
+
+\begin{theorem}\label{LINEQ_LPCP}\lean{LINEQ_LPCP}\uses{LINEQ}
+  \[\LINEQ(m,n) \in \LPCP\left[\varepsilon_c=0, \varepsilon_s= 1 / |\F|, \Sigma = \F, \ell = n, q = 1, r = m \log |\F|\right].\]
+\end{theorem}
+
+\begin{proof}
+Consider the following LPCP verifier \(V^{\langle b, \cdot \rangle } (M,c)\):
+\begin{enumerate}
+  \item Sample \(r \leftarrow \F^m\).
+  \item Query \(b\in \F^n \) at \(u:= \Transpose{M}r \in \F^n\).
+  \item Accept if and only if \(\langle b,u\rangle = \langle c, r\rangle\).
+\end{enumerate}
+
+\emph{Completeness:} If \(Mb =c\), then for every \(r \in \F^m\), we have \[\langle b, u \rangle = \Transpose{b} (\Transpose{M} r) = \Transpose{(Mb)} r = \langle c , r\rangle.\]
+\emph{Soundness:} If \(Mb \neq c\), then 
+\begin{gather*}
+  \Pr_{r\leftarrow \F^m} \left[\langle b, u \rangle =  \langle c , r\rangle \right] = \Pr_{r\leftarrow \F^m} \left[\langle Mb, r \rangle =  \langle c , r\rangle \right] 
+  \\= \Pr_{r\leftarrow \F^m} \left[ \sum_{i=1}^{m} (Mb - c)_{i} \cdot r_{i} =  0\right] \leq 1 / |\F|,
+\end{gather*}
+where the last inequality follows from the Schwartz-Zippel lemma.
+
+\end{proof}
