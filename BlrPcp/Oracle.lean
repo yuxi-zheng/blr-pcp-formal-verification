@@ -76,7 +76,7 @@ def PCPQueryBound {F α : Type} {ℓ : ℕ}
 
 @[blueprint
   (statement := /-- A language $L \subseteq \{0,1\}^*$ is in $\PCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
-if there a polynomial-time PCP verifier $V$
+if there exists a polynomial-time PCP verifier $V$
 such that for every $x \in \{0,1\}^*$,
 $V$ makes at most $q(|x|)$ queries to the proof oracle,
 uses at most $r(n)$ bits of randomness, and the following holds:
@@ -147,7 +147,7 @@ def LPCPQueryBound {F α : Type} {ℓ : ℕ} [Field F]
 
 @[blueprint
   (statement := /-- A language $L \subseteq \{0,1\}^*$ is in $\LPCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
-if there a polynomial-time LPCP verifier $V$
+if there exists a polynomial-time LPCP verifier $V$
 such that for every $x \in \{0,1\}^*$,
 $V$ makes at most $q(|x|)$ queries to the linear proof oracle,
 uses at most $r(n)$ bits of randomness, and the following holds:
