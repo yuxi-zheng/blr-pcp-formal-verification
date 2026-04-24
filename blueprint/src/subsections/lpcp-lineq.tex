@@ -1,9 +1,9 @@
-\begin{definition}\label{LINEQ}\lean{LINEQ}
+\begin{definition}\label{LINEQ}
 For a field \(\F\) and parameters \(m, n \in \N\), we define the language
 \[\LINEQ(m,n) := \{ (M \in \F^{m\times n},c \in \F^{m}) \mid \exists b\in \F^n, \, Mb = c \}.\]
 \end{definition}
 
-\begin{theorem}\label{LINEQ_LPCP}\lean{LINEQ_LPCP}\uses{LINEQ}
+\begin{theorem}\label{LINEQ_LPCP}\uses{LINEQ}
   \[\LINEQ(m,n) \in \LPCP\left[\varepsilon_c=0, \varepsilon_s= 1 / |\F|, \Sigma = \F, \ell = n, q = 1, r = m \log |\F|\right].\]
 \end{theorem}
 
