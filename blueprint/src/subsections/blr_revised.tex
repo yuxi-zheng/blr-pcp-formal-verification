@@ -142,6 +142,91 @@ In particular, if $\abs{h(x)}=1$ for every $x$, then
 $\sum_{\alpha\in\bbF_q^n}\abs{\widehat h(\alpha)}^2=1$.
 \end{lemma}
 
+\begin{proof}
+We use the character basis of the additive group \(F^{\mathrm{Idx}}\). For
+each \(\alpha \in F^{\mathrm{Idx}}\), let \(\chi_\alpha\) denote the additive
+character
+\[
+    \chi_\alpha(x)
+    =
+    \omega_p^{\operatorname{Tr}(\langle \alpha,x\rangle)} .
+\]
+By the orthogonality of additive characters,
+\[
+    \langle \chi_\alpha,\chi_\beta\rangle
+    =
+    \mathbb E_x\!\left[\chi_\alpha(x)\overline{\chi_\beta(x)}\right]
+    =
+    \begin{cases}
+    1, & \alpha=\beta,\\
+    0, & \alpha\neq \beta.
+    \end{cases}
+\]
+Moreover, these characters span the vector space of all complex-valued
+functions on \(F^{\mathrm{Idx}}\). Hence
+\(\{\chi_\alpha : \alpha \in F^{\mathrm{Idx}}\}\) is an orthonormal basis with
+respect to the inner product
+\[
+    \langle g,h\rangle
+    =
+    \mathbb E_x\!\left[g(x)\overline{h(x)}\right].
+\]
+
+Therefore every \(g : F^{\mathrm{Idx}}\to \mathbb C\) admits a unique expansion
+\[
+    g
+    =
+    \sum_{\alpha \in F^{\mathrm{Idx}}} c_\alpha \chi_\alpha .
+\]
+Taking the inner product with \(\chi_\beta\) gives
+\[
+    \langle g,\chi_\beta\rangle
+    =
+    \sum_{\alpha \in F^{\mathrm{Idx}}}
+        c_\alpha \langle \chi_\alpha,\chi_\beta\rangle
+    =
+    c_\beta .
+\]
+By definition, \(\widehat g(\beta)=\langle g,\chi_\beta\rangle\). Hence
+\(c_\beta=\widehat g(\beta)\) for every \(\beta\), and so
+\[
+    g
+    =
+    \sum_{\alpha \in F^{\mathrm{Idx}}}
+        \widehat g(\alpha)\chi_\alpha .
+\]
+Evaluating this identity at \(x\) gives the Fourier inversion formula.
+
+For Parseval's identity, use the same expansion:
+\[
+\begin{aligned}
+    \|g\|_2^2
+    &= \langle g,g\rangle \\
+    &=
+    \left\langle
+        \sum_{\alpha}\widehat g(\alpha)\chi_\alpha,
+        \sum_{\beta}\widehat g(\beta)\chi_\beta
+    \right\rangle \\
+    &=
+    \sum_{\alpha,\beta}
+        \widehat g(\alpha)
+        \overline{\widehat g(\beta)}
+        \langle \chi_\alpha,\chi_\beta\rangle .
+\end{aligned}
+\]
+By orthonormality, all terms with \(\alpha\neq\beta\) vanish, while
+\(\langle\chi_\alpha,\chi_\alpha\rangle=1\). Therefore
+\[
+    \|g\|_2^2
+    =
+    \sum_{\alpha}
+        \widehat g(\alpha)\overline{\widehat g(\alpha)}
+    =
+    \sum_{\alpha} |\widehat g(\alpha)|^2 .
+\]
+Since \(\|g\|_2^2=\mathbb E_x |g(x)|^2\), this proves Parseval's identity.
+\end{proof}
+
 \begin{definition}[Fourier expansion of a finite-field-valued function]
 \label{def:fourier-expansion-field-valued}
 Let $f:\bbF_q^n\to\bbF_q$. For each $c\in\bbF_q^\times$, define
