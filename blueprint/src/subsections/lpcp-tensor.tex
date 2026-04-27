@@ -1,0 +1,105 @@
+\begin{definition}\label{tensor-product}
+For a field \(\F\), vectors \(a \in \F^n\) and \(b \in \F^m\), the tensor product \(a \otimes b \in \F^{n \times m}\) 
+is the matrix defined by
+\[
+  (a \otimes b)_{i,j} := a_i \cdot b_j \quad \forall i \in [n],\, j \in [m].
+\]
+We write \(\mathrm{flat}(a \otimes b) \in \F^{n \cdot m}\) for the row-concatenation of \(a \otimes b\).
+\end{definition}
+
+For our purposes, we would love to test to check if $\mathrm{flat}(a \otimes a) = b$
+
+\begin{definition}\label{tensor-language}
+For a field \(\F\) and \(n \in \N\), define the tensor test language
+\[
+  \mathrm{TENSORQ}(\F, n) :=
+    \bigl\{ (a, b) \in \F^n \times \F^{n^2} \mid b = \mathrm{flat}(a \otimes a) \bigr\}.
+\]
+\end{definition}
+
+\begin{theorem}\label{tensor-lpcp}\uses{tensor-product, tensor-language}
+For every finite field \(\F\) and \(n \in \N\),
+\[
+  \mathrm{TENSORQ}(\F, n) \in
+  \LPCP\!\left[
+    \varepsilon_c = 0,\;
+    \varepsilon_s = \frac{2|\F|-1}{|\F|^2},\;
+    \Sigma = \F,\;
+    \ell = n + n^2,\;
+    q = 2,\;
+    r = 2n \cdot \log(|\F|)
+  \right].
+\]
+\end{theorem}
+\begin{proof}
+Consider the following LPCP verifier \(V^{\langle a,\cdot\rangle, \langle b,\cdot\rangle}\) proceeds as follows:
+\begin{enumerate}
+  \item Sample \(s, t \leftarrow \F^n\).
+  \item Query \(a\) at \(s\) and at \(t\), obtaining \(\langle a, s \rangle\) and \(\langle a, t \rangle\).
+  \item Query \(b\) at \(\mathrm{flat}(s \otimes t)\), obtaining \(\langle b, \mathrm{flat}(s \otimes t) \rangle\).
+  \item Check if \(\langle b, \mathrm{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle\).
+\end{enumerate}
+
+\emph{Completeness.}
+Suppose \(b = \mathrm{flat}(a \otimes a)\). Then  \(\forall s, t \in \F^n\),
+\begin{align*}
+  \langle b,\, \mathrm{flat}(s \otimes t) \rangle
+    &= \langle \mathrm{flat}(a \otimes a),\, \mathrm{flat}(s \otimes t) \rangle
+     = \sum_{i,j \in [n]} a_i a_j s_i t_j \\
+    &= \Bigl(\sum_{i \in [n]} a_i s_i\Bigr) \cdot \Bigl(\sum_{j \in [n]} a_j t_j\Bigr)
+     = \langle a, s \rangle \cdot \langle a, t \rangle,
+\end{align*}
+
+\emph{Soundness.}
+Suppose \(b \neq \mathrm{flat}(a \otimes a)\), i.e., there exists \(i^*, j^* \in [n]\) such that
+\(b_{i^* j^*} \neq a_{i^*} \cdot a_{j^*}\).
+For each \(i \in [n]\) define the linear polynomial \(p_i(t) := \sum_{j \in [n]} (b_{ij} - a_i a_j)\, t_j\).
+The check can be rewritten as
+\[
+  \langle b, \mathrm{flat}(s \otimes t) \rangle - \langle a,s\rangle\langle a,t\rangle
+  = \sum_{i \in [n]}  \sum_{j \in [n]} (b_{ij} - a_i a_j)\, s_i t_j
+  = \sum_{i \in [n]} p_i(t)\, s_i.
+\]
+
+Immediate application of Polynomial Identity Testing yields a lower bound of $1 - \tfrac{2}{|\F|}$ but we can do better.
+Since \(b_{i^* j^*} \neq a_{i^*} a_{j^*}\), the polynomial \(p_{i^*}\) is nonzero, so by the
+Schwartz--Zippel lemma applied to \(t\),
+\[
+  \Pr_{t}\!\bigl[p_{i^*}(t) \neq 0\bigr] \geq 1 - \tfrac{1}{|\F|}.
+\]
+Conditioned on \(p_{i^*}(t) \neq 0\), the expression \(\sum_i p_i(t)\,s_i\) is a nonzero linear polynomial
+in \(s\), so by the Schwartz--Zippel lemma applied to \(s\),
+\[
+  \Pr_{s \leftarrow \F^n}\!\Bigl[\sum_i p_i(t)\,s_i \neq 0 \;\Big|\; p_{i^*}(t) \neq 0\Bigr]
+  \geq 1 - \tfrac{1}{|\F|}.
+\]
+Hence
+\[
+  \Pr_{s,t}\!\bigl[\text{verifier rejects}\bigr]
+  \;\geq\; \Bigl(1 - \tfrac{1}{|\F|}\Bigr)^{\!2},
+\]
+and therefore
+\[
+  \Pr_{s,t}\!\bigl[\text{verifier accepts}\bigr]
+  \;\leq\; 1 - \Bigl(1 - \tfrac{1}{|\F|}\Bigr)^{\!2}
+  = \frac{2|\F|-1}{|\F|^2}. \qedhere
+\]
+\end{proof}
+
+
+\begin{corollary}\label{tensor-lpcp-binary}\uses{tensor-product, tensor-language}
+\[
+  \mathrm{TENSORQ}(\F_2, n) \in
+  \LPCP\!\left[
+    \varepsilon_c = 0,\;
+    \varepsilon_s = \frac{3}{4},\;
+    \Sigma = \F_2,\;
+    \ell = n + n^2,\;
+    q = 2,\;
+    r = 2 \log(2) \cdot n
+  \right].
+\]
+\end{corollary}
+\begin{proof}
+  Immediate.
+\end{proof}

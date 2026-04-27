@@ -8,6 +8,7 @@ import VCVio.OracleComp.QueryTracking.QueryBound
 import VCVio.OracleComp.Constructions.SampleableType
 
 open CPoly CMvPolynomial OracleComp
+open scoped Matrix
 
 variable {n : ℕ} {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F]
 
@@ -167,3 +168,17 @@ def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
       Pr[= true | simulateQ (RandOracle.impl + (LinProofOracle π).impl) (V x)] ≥ 1 - ε_c) ∧
     (x ∉ L → ∀ π : Fin (ℓ (size x)) → F,
       Pr[= true | simulateQ (RandOracle.impl + (LinProofOracle π).impl) (V x)] ≤ ε_s) }
+
+abbrev LINEQ (m n : ℕ) (F : Type) [Field F] :
+    Set (Matrix (Fin m) (Fin n) F × (Fin m → F)) :=
+  { (M, c) | ∃ b, M *ᵥ b = c }
+
+namespace LINEQ
+def size {m n : ℕ} (_ : (Matrix (Fin m) (Fin n) F) × (Fin m → F)) : ℕ :=
+  (m * n + m) * Nat.clog 2 (Fintype.card F)
+end LINEQ
+
+theorem LINEQ_LPCP {m n : ℕ} : ∃ (r : Polynomial ℕ),
+    LINEQ m n (F := F) ∈ LPCP (LINEQ.size) 0 (1 / (Fintype.card F)) F
+      (fun n => n) (fun _ => 1) (fun _ => m * Nat.clog 2 (Fintype.card F)) := by
+  sorry
