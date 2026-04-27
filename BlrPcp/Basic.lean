@@ -49,7 +49,7 @@ scoped notation "⟪" a ", " x "⟫ᵥ" => dotProduct a x
 
 /-- The uniform expectation of a complex-valued function on `F^Idx`. -/
 noncomputable def expectation (f : ComplexFn F Idx) : Complex :=
-  (Fintype.card (Vec F Idx) : Complex)⁻¹ * ∑ x, f x
+  (Fintype.card (Vec F Idx) : Real)⁻¹ * ∑ x, f x
 
 /-- The expectation-based Hermitian inner product on complex-valued functions on `F^Idx`. -/
 noncomputable def fnInner (f g : ComplexFn F Idx) : Complex :=
@@ -176,7 +176,7 @@ private lemma charAddChar_injective :
   exact ht this
 
 
-lemma characters_orthonormal_basis :
+lemma characters_orthogonal_basis :
     (∀ α β : Vec F Idx, ⟪charFn α, charFn β⟫ = if α = β then 1 else 0) ∧
       Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx))) = ⊤ := by
   classical
