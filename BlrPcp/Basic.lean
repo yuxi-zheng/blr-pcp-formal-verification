@@ -44,7 +44,27 @@ noncomputable def rejectionProbabilityBLR (f : ScalarFn F Idx) : Real :=
 axiom distance : ScalarFn F Idx → ScalarFn F Idx → Real
 axiom distanceToLinear : ScalarFn F Idx → Real
 
-axiom phaseLift : ScalarFn F Idx → F → ComplexFn F Idx
+/-- The `c`-phase of `f : F^Idx → F`, defined by
+`f_c(x) = ω_p^{Tr(c * f(x))}` where `p = ringChar F`. -/
+noncomputable def phaseLift (f : ScalarFn F Idx) (c : F) : ComplexFn F Idx := by
+  classical
+  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
+  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
+  exact fun x =>
+    ZMod.stdAddChar (N := ringChar F) (Algebra.trace (ZMod (ringChar F)) F (c * f x))
+
+/-- Identifier-style notation for the `c`-phase, allowing terms such as `f_c`. -/
+scoped macro_rules
+  | `($id:ident) =>
+      let parts := id.getId.toString.splitOn "_"
+      match parts with
+      | [f, c] =>
+          if c.length = 1 then
+            `(phaseLift $(Lean.mkIdent <| Lean.Name.mkSimple f)
+              $(Lean.mkIdent <| Lean.Name.mkSimple c))
+          else
+            Lean.Macro.throwUnsupported
+      | _ => Lean.Macro.throwUnsupported
 
 /-- The standard bilinear pairing on `F^Idx`. -/
 def dotProduct (a x : Vec F Idx) : F :=
@@ -147,7 +167,16 @@ private lemma charAddChar_injective :
     simpa [x, dotProduct_single] using hTraceSub
   exact ht this
 
-axiom fourierCoeff : ComplexFn F Idx → Vec F Idx → Complex
+/-- The Fourier coefficient `\hat f(\alpha)` is the expectation inner product
+of `f` with the character `χ_α`. -/
+noncomputable def fourierCoeff (f : ComplexFn F Idx) (α : Vec F Idx) : Complex :=
+  ⟪f, charFn α⟫
+
+/-- Postfix notation for the Fourier transform `f ↦ \hat f`. -/
+scoped postfix:max "̂" => fourierCoeff
+
+/-- Application notation for Fourier coefficients, allowing `f̂(α)`. -/
+scoped notation:max f:max "̂(" α:max ")" => fourierCoeff f α
 
 
 lemma characters_orthonormal_basis :
