@@ -33,38 +33,11 @@ def BLRAcceptsAt (f : ScalarFn F Idx) (a b : F) (x y : Vec F Idx) : Prop :=
 
 axiom acceptanceProbabilityBLR : ScalarFn F Idx → Real
 
-@[blueprint "def:ff-blr-reject-prob"
-  (statement := /-- The rejection probability of the finite-field BLR test is
-  \[
-    \Pr[V_{BLR}^f = 0] = 1 - \Pr[V_{BLR}^f = 1].
-  \] -/)]
 noncomputable def rejectionProbabilityBLR (f : ScalarFn F Idx) : Real :=
   1 - acceptanceProbabilityBLR f
 
 axiom distance : ScalarFn F Idx → ScalarFn F Idx → Real
 axiom distanceToLinear : ScalarFn F Idx → Real
-
-/-- The `c`-phase of `f : F^Idx → F`, defined by
-`f_c(x) = ω_p^{Tr(c * f(x))}` where `p = ringChar F`. -/
-noncomputable def phaseLift (f : ScalarFn F Idx) (c : F) : ComplexFn F Idx := by
-  classical
-  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
-  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
-  exact fun x =>
-    ZMod.stdAddChar (N := ringChar F) (Algebra.trace (ZMod (ringChar F)) F (c * f x))
-
-/-- Identifier-style notation for the `c`-phase, allowing terms such as `f_c`. -/
-scoped macro_rules
-  | `($id:ident) =>
-      let parts := id.getId.toString.splitOn "_"
-      match parts with
-      | [f, c] =>
-          if c.length = 1 then
-            `(phaseLift $(Lean.mkIdent <| Lean.Name.mkSimple f)
-              $(Lean.mkIdent <| Lean.Name.mkSimple c))
-          else
-            Lean.Macro.throwUnsupported
-      | _ => Lean.Macro.throwUnsupported
 
 /-- The standard bilinear pairing on `F^Idx`. -/
 def dotProduct (a x : Vec F Idx) : F :=
@@ -103,6 +76,40 @@ noncomputable def charFn (α : Vec F Idx) : ComplexFn F Idx := by
   letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
   exact fun x =>
     ZMod.stdAddChar (N := ringChar F) (Algebra.trace (ZMod (ringChar F)) F ⟪α, x⟫ᵥ)
+
+/-- The `c`-phase of `f : F^Idx → F`, defined by
+`f_c(x) = ω_p^{Tr(c * f(x))}` where `p = ringChar F`. -/
+noncomputable def phaseLift (f : ScalarFn F Idx) (c : F) : ComplexFn F Idx := by
+  classical
+  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
+  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
+  exact fun x =>
+    ZMod.stdAddChar (N := ringChar F) (Algebra.trace (ZMod (ringChar F)) F (c * f x))
+
+/-- The Fourier coefficient `\hat f(\alpha)` is the expectation inner product
+of `f` with the character `χ_α`. -/
+noncomputable def fourierCoeff (f : ComplexFn F Idx) (α : Vec F Idx) : Complex :=
+  ⟪f, charFn α⟫
+
+/-- Postfix notation for the Fourier transform `f ↦ \hat f`. -/
+scoped postfix:max "̂" => fourierCoeff
+
+/-- Application notation for Fourier coefficients, allowing `f̂(α)`. -/
+scoped notation:max f:max "̂(" α:max ")" => fourierCoeff f α
+
+/-- Identifier-style notation for the `c`-phase, allowing terms such as `f_c`. -/
+scoped macro_rules
+  | `($id:ident) =>
+      let parts := id.getId.toString.splitOn "_"
+      match parts with
+      | [f, c] =>
+          if c.length = 1 then
+            `(phaseLift $(Lean.mkIdent <| Lean.Name.mkSimple f)
+              $(Lean.mkIdent <| Lean.Name.mkSimple c))
+          else
+            Lean.Macro.throwUnsupported
+      | _ => Lean.Macro.throwUnsupported
+
 
 private lemma dotProduct_single (a : Vec F Idx) (i : Idx) (t : F) :
     dotProduct a (Pi.single i t) = a i * t := by
@@ -166,17 +173,6 @@ private lemma charAddChar_injective :
   have : Algebra.trace (ZMod (ringChar F)) F ((a - b) i * t) = 0 := by
     simpa [x, dotProduct_single] using hTraceSub
   exact ht this
-
-/-- The Fourier coefficient `\hat f(\alpha)` is the expectation inner product
-of `f` with the character `χ_α`. -/
-noncomputable def fourierCoeff (f : ComplexFn F Idx) (α : Vec F Idx) : Complex :=
-  ⟪f, charFn α⟫
-
-/-- Postfix notation for the Fourier transform `f ↦ \hat f`. -/
-scoped postfix:max "̂" => fourierCoeff
-
-/-- Application notation for Fourier coefficients, allowing `f̂(α)`. -/
-scoped notation:max f:max "̂(" α:max ")" => fourierCoeff f α
 
 
 lemma characters_orthonormal_basis :
