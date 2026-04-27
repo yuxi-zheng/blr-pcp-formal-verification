@@ -1,0 +1,102 @@
+\begin{definition}
+\label{QESAT}
+\lean{QESAT}
+\leanok
+A system of $m$ quadratic equations in $n$ variables
+over a field $\F$ is a list of polynomials
+$p_1, \ldots, p_m \in \F[x_1, \ldots, x_n]$
+where each $p_i$ has total degree at most $2$.
+
+\[
+  \QESAT(\F,n) :=
+  \{ (p_1, \ldots, p_m) \mid
+    \exists a_1, \ldots, a_n \in \F, \,
+    \forall i \in [m], \,
+    p_i(a_1, \ldots, a_n) = 0 \}.
+\]
+\end{definition}
+
+For example, $(x + 1, xy + z) \in \QESAT(\F_2,3)$.
+
+\begin{definition}
+\label{PCPVerifier}
+\lean{PCPVerifier}
+\leanok
+A \emph{PCP verifier} is a probabilistic oracle Turing machine
+$V$ with query access to a function $\pi : [\ell (|x|)] \to \Sigma$.
+\end{definition}
+
+\begin{definition}
+\uses{PCPVerifier}
+\label{PCP}
+\lean{PCP}
+\leanok
+A language $L \subseteq \{0,1\}^*$ is in
+$\PCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
+if there exists a polynomial-time PCP verifier $V$
+such that for every $x \in \{0,1\}^*$,
+$V$ makes at most $q(|x|)$ queries to the proof oracle,
+uses at most $r(|x|)$ bits of randomness, and the following holds:
+\begin{itemize}
+  \item Completeness: If $x \in L$, then
+  $\exists \pi \in \Sigma^{\ell(|x|)}, \,
+  \Pr\left[V^\pi(x)=1 \right] \geq 1 - \varepsilon_c$.
+  \item Soundness: If $x \notin L$, then
+  $\forall \widetilde{\pi} \in \Sigma^{\ell(|x|)},\,
+  \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
+\end{itemize}
+\end{definition}
+
+The following theorem is the main goal of this chapter.
+
+\begin{theorem}
+\uses{QESAT,PCP}
+\label{QESAT_exp_PCP}
+\lean{QESAT_exp_PCP}
+\leanok
+\[
+  \mathrm{QESAT}(\F_2,n) \in
+  \mathrm{PCP}[
+    \varepsilon_c = 0,
+    \varepsilon_s = 1/2,
+    \Sigma = \F_2,
+    \ell = \exp(|x|),
+    q = O(1),
+    r = |x|^{O(1)}
+  ].
+\]
+\end{theorem}
+\begin{proof}\uses{LINEQ_LPCP}
+\end{proof}
+
+\begin{definition}
+\label{LPCPVerifier}
+\lean{LPCPVerifier}
+\leanok
+A \emph{LPCP verifier} is a probabilistic oracle Turing machine
+$V$ with query access to a linear function
+$\langle \pi,\cdot \rangle : \Sigma^{\ell(|x|)} \to \Sigma$.
+\end{definition}
+
+\begin{definition}
+\uses{LPCPVerifier}
+\label{LPCP}
+\lean{LPCP}
+\leanok
+A language $L \subseteq \{0,1\}^*$ is in
+$\LPCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
+if there exists a polynomial-time LPCP verifier $V$
+such that for every $x \in \{0,1\}^*$,
+$V$ makes at most $q(|x|)$ queries to the linear proof oracle,
+uses at most $r(|x|)$ bits of randomness, and the following holds:
+\begin{itemize}
+  \item Completeness: If $x \in L$, then
+  $\exists \pi \in \Sigma^{\ell(|x|)}, \,
+  \Pr\left[V^{\langle \pi, \cdot \rangle}(x)=1 \right]
+  \geq 1 - \varepsilon_c$.
+  \item Soundness: If $x \notin L$, then
+  $\forall \widetilde{\pi} \in \Sigma^{\ell(|x|)},\,
+  \Pr\left[V^{\langle \widetilde{\pi}, \cdot \rangle}(x)=1 \right]
+  \leq \varepsilon_s$.
+\end{itemize}
+\end{definition}
