@@ -1,17 +1,28 @@
 import Architect
-
-import Mathlib.Algebra.MvPolynomial.SchwartzZippel
 import CompPoly.Multivariate.CMvPolynomial
-import VCVio.OracleComp.OracleSpec
+import Mathlib.Algebra.MvPolynomial.SchwartzZippel
+import VCVio.OracleComp.Constructions.SampleableType
 import VCVio.OracleComp.OracleComp
 import VCVio.OracleComp.OracleContext
 import VCVio.OracleComp.QueryTracking.QueryBound
-import VCVio.OracleComp.Constructions.SampleableType
+
+/-!
+# Oracle computations
+
+This file defines PCPs and LPCPs in terms of oracle computations.
+
+## Main declarations
+
+- `PCP`, `LPCP`: PCP and linear PCP language classes with query and randomness bounds.
+- `LINEQ_LPCP`: A linear PCP for linear equations.
+- `QESAT_exp_PCP`: An exponential-length PCP for QESAT.
+-/
 
 open CPoly CMvPolynomial OracleComp
 open scoped Matrix
 
-variable {n : ℕ} {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F]
+variable {n : ℕ} {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F]
+    [SampleableType F]
 
 instance instEncodableZModOfNeZero (q : ℕ) [NeZero q] : Encodable (ZMod q) :=
   Encodable.ofEquiv (Fin q) (ZMod.finEquiv q).symm
@@ -22,14 +33,16 @@ over a field $\F$ is a list of polynomials $p_1, \ldots, p_m \in \F[x_1, \ldots,
 where each $p_i$ has total degree at most $2$.
 
 \[\QESAT(\F) := \{ (p_1, \ldots, p_m) \mid
-  \exists a_1, \ldots, a_n \in \F, \, \forall i \in [m], \, p_i(a_1, \ldots, a_n) = 0 \}.\] -/)]
+  \exists a_1, \ldots, a_n \in \F, \, \forall i \in [m], \,
+  p_i(a_1, \ldots, a_n) = 0 \}.\] -/)]
 abbrev QESAT : Set (List (CMvPolynomial n F)) := fun polys =>
   (∀ p ∈ polys, p.totalDegree ≤ 2) ∧
   ∃ (a : Fin n → F), ∀ p ∈ polys, CMvPolynomial.eval a p = 0
 
 namespace QESAT
 /-- The size of a QESAT instance if it was a binary string
-    TODO: the proper way would be to use this: https://leanprover-community.github.io/mathlib4_docs/Mathlib/Computability/Encoding.html -/
+TODO: the proper way would be to use this:
+https://leanprover-community.github.io/mathlib4_docs/Mathlib/Computability/Encoding.html -/
 def size (polys : List (CMvPolynomial n F)) : ℕ :=
   polys.length * (n + 1)^2
 end QESAT
@@ -40,18 +53,18 @@ example : QESAT (n := 3) (F := (ZMod 2)) [X 0 + C 1, X 0 * X 1 + X 2] := by nati
 abbrev RandOracleSpec : OracleSpec ℕ :=
   unifSpec
 
-abbrev RandOracle : OracleContext ℕ ProbComp :=
-  { spec := RandOracleSpec,
-    impl := fun n => $ᵗ Fin (n + 1) }
+abbrev RandOracle : OracleContext ℕ ProbComp where
+  spec := RandOracleSpec
+  impl := fun n => $ᵗ Fin (n + 1)
 
 /-- A proof is represented as a function `π : [ℓ] → F`.
-  `π(q)` is the answer to query `q`. -/
+`π(q)` is the answer to query `q`. -/
 abbrev ProofOracleSpec (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ) :=
   Fin ℓ →ₒ F
 
-abbrev ProofOracle (proof : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp :=
-  { spec := ProofOracleSpec F ℓ,
-    impl := fun q => pure (proof q) }
+abbrev ProofOracle (proof : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp where
+  spec := ProofOracleSpec F ℓ
+  impl := fun q => pure (proof q)
 
 abbrev PCPOracleSpec (F : Type) (ℓ : ℕ) : OracleSpec (ℕ ⊕ Fin ℓ) :=
   RandOracleSpec + ProofOracleSpec F ℓ
@@ -80,7 +93,8 @@ def PCPQueryBound {F α : Type} {ℓ : ℕ}
       | .inr _, (q, r) => (q - 1, r))
 
 @[blueprint
-  (statement := /-- A language $L \subseteq \{0,1\}^*$ is in $\PCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
+  (statement := /-- A language $L \subseteq \{0,1\}^*$ is in
+$\PCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
 if there exists a polynomial-time PCP verifier $V$
 such that for every $x \in \{0,1\}^*$,
 $V$ makes at most $q(|x|)$ queries to the proof oracle,
@@ -105,8 +119,9 @@ def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
 blueprint_comment /-- The following theorem is the main goal of this chapter. -/
 
 @[blueprint
-  (statement := /-- $\mathrm{QESAT}(\F_2) \in
-\mathrm{PCP}[\varepsilon_c = 0, \varepsilon_s = 1/2, \Sigma = \F_2, \ell = \exp(n), q = O(1), r = n^{O(1)}]$. -/)]
+  (statement := /-- \[\mathrm{QESAT}(\F_2) \in
+\mathrm{PCP}[\varepsilon_c = 0, \varepsilon_s = 1/2, \Sigma = \F_2,
+\ell = \exp(n), q = O(1), r = n^{O(1)}].\] -/)]
 theorem QESAT_exp_PCP {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (n := vars) (F := (ZMod 2)) ∈
       PCP (QESAT.size (n := vars) (F := (ZMod 2))) 0 (1/2) (ZMod 2)
@@ -118,16 +133,18 @@ and the answer is the inner product `⟨π, u⟩`. -/
 abbrev LinProofOracleSpec (F : Type) [Field F] (ℓ : ℕ) : OracleSpec (Fin ℓ → F) :=
   (Fin ℓ → F) →ₒ F
 
-abbrev LinProofOracle {F : Type} [Field F] {ℓ : ℕ} (π : Fin ℓ → F) : OracleContext (Fin ℓ → F) ProbComp :=
-  { spec := LinProofOracleSpec F ℓ,
-    impl := fun u => pure (π ⬝ᵥ u) }
+abbrev LinProofOracle {F : Type} [Field F] {ℓ : ℕ}
+    (π : Fin ℓ → F) : OracleContext (Fin ℓ → F) ProbComp where
+  spec := LinProofOracleSpec F ℓ
+  impl := fun u => pure (π ⬝ᵥ u)
 
 abbrev LPCPOracleSpec (F : Type) [Field F] (ℓ : ℕ) : OracleSpec (ℕ ⊕ (Fin ℓ → F)) :=
   RandOracleSpec + LinProofOracleSpec F ℓ
 
 @[blueprint
   (statement := /-- A \emph{LPCP verifier} is a probabilistic oracle Turing machine
-$V$ with query access to a linear function $\langle \pi,\cdot \rangle : \Sigma^{\ell(|x|)} \to \Sigma$. -/)]
+$V$ with query access to a linear function
+$\langle \pi,\cdot \rangle : \Sigma^{\ell(|x|)} \to \Sigma$. -/)]
 abbrev LPCPVerifier (α : Type) (size : α → ℕ) (F : Type) [Field F]
     (ℓ : ℕ → ℕ) : Type :=
   (x : α) → OracleComp (LPCPOracleSpec F (ℓ (size x))) Bool
@@ -151,7 +168,8 @@ def LPCPQueryBound {F α : Type} {ℓ : ℕ} [Field F]
       | .inr _, (q, r) => (q - 1, r))
 
 @[blueprint
-  (statement := /-- A language $L \subseteq \{0,1\}^*$ is in $\LPCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
+  (statement := /-- A language $L \subseteq \{0,1\}^*$ is in
+$\LPCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
 if there exists a polynomial-time LPCP verifier $V$
 such that for every $x \in \{0,1\}^*$,
 $V$ makes at most $q(|x|)$ queries to the linear proof oracle,
