@@ -7,6 +7,7 @@ import Mathlib.Analysis.Complex.Polynomial.Basic
 import Mathlib.Analysis.Fourier.FiniteAbelian.PontryaginDuality
 import Mathlib.Analysis.SpecialFunctions.Complex.CircleAddChar
 import Mathlib.FieldTheory.Finite.Trace
+import Mathlib.LinearAlgebra.Basis.SMul
 import Architect
 
 open scoped BigOperators
@@ -206,6 +207,139 @@ lemma characters_orthonormal_basis :
     simpa [AddChar.coe_complexBasis (α := Vec F Idx)] using
       (AddChar.complexBasis (α := Vec F Idx)).span_eq
   exact ⟨horth, hrange ▸ hspan⟩
+
+private lemma card_vec_pos : 0 < Fintype.card (Vec F Idx) := Fintype.card_pos
+
+private lemma fnNormSq_eq_card_inv_mul_norm_sq (g : ComplexFn F Idx) :
+    fnNormSq g = (Fintype.card (Vec F Idx) : ℝ)⁻¹ * ‖WithLp.toLp 2 g‖ ^ 2 := by
+  simp [fnNormSq, PiLp.norm_sq_eq_of_L2]
+
+private lemma sqrt_card_mul_inv_sqrt_card :
+    (((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) *
+      (Fintype.card (Vec F Idx) : ℂ)) =
+        (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) := by
+  have hsqrt0 : (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) ≠ 0 := by
+    exact_mod_cast (Real.sqrt_ne_zero'.2 (Nat.cast_pos.2 card_vec_pos))
+  field_simp [hsqrt0]
+  exact_mod_cast (Real.sq_sqrt (Nat.cast_nonneg (Fintype.card (Vec F Idx)) : (0 : ℝ) ≤ _)).symm
+
+private lemma inv_sqrt_card_sq_mul_card :
+    (((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) *
+      (((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) * (Fintype.card (Vec F Idx) : ℂ))) = 1 := by
+  have hsqrt0 : (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) ≠ 0 := by
+    exact_mod_cast (Real.sqrt_ne_zero'.2 (Nat.cast_pos.2 card_vec_pos))
+  field_simp [hsqrt0]
+  exact_mod_cast (Real.sq_sqrt (Nat.cast_nonneg (Fintype.card (Vec F Idx)) : (0 : ℝ) ≤ _)).symm
+
+private lemma toLp_charFn_inner_eq_card_mul_fnInner (g : ComplexFn F Idx) (α : Vec F Idx) :
+    inner ℂ (WithLp.toLp 2 (charFn α)) (WithLp.toLp 2 g) =
+      (Fintype.card (Vec F Idx) : ℂ) * fnInner g (charFn α) := by
+  rw [← RCLike.wInner_one_eq_inner (charFn α) g]
+  simp [RCLike.wInner, fnInner, expectation, RCLike.inner_apply]
+
+private noncomputable def normalizedCharLp (α : Vec F Idx) : PiLp 2 fun _ : Vec F Idx => ℂ :=
+  ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) • WithLp.toLp 2 (charFn α)
+
+private lemma normalizedCharLp_orthonormal :
+    Orthonormal ℂ (normalizedCharLp (F := F) (Idx := Idx)) := by
+  classical
+  rw [orthonormal_iff_ite]
+  intro α β
+  rw [normalizedCharLp, normalizedCharLp, inner_smul_left, inner_smul_right,
+    toLp_charFn_inner_eq_card_mul_fnInner]
+  by_cases h : α = β
+  · subst h
+    have horthα : fnInner (charFn α) (charFn α) = (1 : ℂ) := by
+      simpa using (characters_orthonormal_basis (F := F) (Idx := Idx)).1 α α
+    simp [horthα]
+    simpa using (inv_sqrt_card_sq_mul_card (F := F) (Idx := Idx))
+  · have horth := (characters_orthonormal_basis (F := F) (Idx := Idx)).1 β α
+    have h' : β ≠ α := by simpa [eq_comm] using h
+    simp [horth, h, h']
+
+private lemma normalizedCharLp_inner_eq_sqrt_card_mul_fnInner (g : ComplexFn F Idx)
+    (α : Vec F Idx) :
+    inner ℂ (normalizedCharLp (F := F) (Idx := Idx) α) (WithLp.toLp 2 g) =
+      (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * fnInner g (charFn α) := by
+  have hstarinv : (starRingEnd ℂ) ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) =
+      ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) := by simp
+  rw [normalizedCharLp, inner_smul_left, toLp_charFn_inner_eq_card_mul_fnInner, hstarinv]
+  calc
+    ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) *
+        ((Fintype.card (Vec F Idx) : ℂ) * fnInner g (charFn α)) =
+      ((((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) * (Fintype.card (Vec F Idx) : ℂ)) *
+        fnInner g (charFn α)) := by ring
+    _ = (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * fnInner g (charFn α) := by
+      rw [sqrt_card_mul_inv_sqrt_card]
+
+private lemma norm_sq_normalizedCharLp_inner (g : ComplexFn F Idx) (α : Vec F Idx) :
+    ‖inner ℂ (normalizedCharLp (F := F) (Idx := Idx) α) (WithLp.toLp 2 g)‖ ^ 2 =
+      (Fintype.card (Vec F Idx) : ℝ) * ‖fnInner g (charFn α)‖ ^ 2 := by
+  rw [normalizedCharLp_inner_eq_sqrt_card_mul_fnInner, norm_mul]
+  simp only [Complex.norm_real]
+  calc
+    (|√(Fintype.card (Vec F Idx) : ℝ)| * ‖fnInner g (charFn α)‖) ^ 2 =
+        |√(Fintype.card (Vec F Idx) : ℝ)| ^ 2 * ‖fnInner g (charFn α)‖ ^ 2 := by ring
+    _ = (√(Fintype.card (Vec F Idx) : ℝ)) ^ 2 * ‖fnInner g (charFn α)‖ ^ 2 := by
+        rw [abs_of_nonneg (Real.sqrt_nonneg _)]
+    _ = (Fintype.card (Vec F Idx) : ℝ) * ‖fnInner g (charFn α)‖ ^ 2 := by
+        rw [Real.sq_sqrt (Nat.cast_nonneg _)]
+
+private lemma toLp_charFn_span_top :
+    Submodule.span ℂ (Set.range fun α : Vec F Idx => WithLp.toLp 2 (charFn α)) = ⊤ := by
+  let e : WithLp 2 (ComplexFn F Idx) ≃ₗ[ℂ] ComplexFn F Idx :=
+    WithLp.linearEquiv 2 ℂ (ComplexFn F Idx)
+  have hspan : Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx))) = ⊤ :=
+    (characters_orthonormal_basis (F := F) (Idx := Idx)).2
+  calc
+    Submodule.span ℂ (Set.range fun α : Vec F Idx => WithLp.toLp 2 (charFn α)) =
+        (Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx)))).map e.symm.toLinearMap := by
+          change Submodule.span ℂ (Set.range (e.symm.toLinearMap ∘ charFn (F := F) (Idx := Idx))) =
+            (Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx)))).map e.symm.toLinearMap
+          rw [Set.range_comp, Submodule.span_image]
+    _ = ⊤ := by simpa [hspan]
+
+private lemma normalizedCharLp_span_top :
+    Submodule.span ℂ (Set.range (normalizedCharLp (F := F) (Idx := Idx))) = ⊤ := by
+  have hsqrt0 : (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) ≠ 0 := by
+    exact_mod_cast (Real.sqrt_ne_zero'.2 (Nat.cast_pos.2 card_vec_pos))
+  let u : Vec F Idx → ℂˣ := fun _ =>
+    Units.mk0 ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) (inv_ne_zero hsqrt0)
+  have hu : u • (fun α : Vec F Idx => WithLp.toLp 2 (charFn α)) =
+      normalizedCharLp (F := F) (Idx := Idx) := by
+    funext α
+    simp [normalizedCharLp, u]
+  rw [← hu]
+  exact Module.Basis.units_smul_span_eq_top
+    (toLp_charFn_span_top (F := F) (Idx := Idx))
+
+lemma parseval_identity (g : ComplexFn F Idx) :
+    ∑ α, ‖fourierCoeff g α‖ ^ 2 = fnNormSq g := by
+  classical
+  let b : OrthonormalBasis (Vec F Idx) ℂ (PiLp 2 fun _ : Vec F Idx => ℂ) :=
+    OrthonormalBasis.mk (normalizedCharLp_orthonormal (F := F) (Idx := Idx))
+      (normalizedCharLp_span_top (F := F) (Idx := Idx)).ge
+  have hb : ∑ α, ‖inner ℂ (b α) (WithLp.toLp 2 g)‖ ^ 2 = ‖WithLp.toLp 2 g‖ ^ 2 :=
+    OrthonormalBasis.sum_sq_norm_inner_right b (WithLp.toLp 2 g)
+  have hb' : (Fintype.card (Vec F Idx) : ℝ) * ∑ α, ‖fnInner g (charFn α)‖ ^ 2 =
+      ‖WithLp.toLp 2 g‖ ^ 2 := by
+    simpa [b, Finset.mul_sum, norm_sq_normalizedCharLp_inner] using hb
+  have hcard0 : (Fintype.card (Vec F Idx) : ℝ) ≠ 0 := by
+    exact_mod_cast card_vec_pos.ne'
+  calc
+    ∑ α, ‖fourierCoeff g α‖ ^ 2 = ∑ α, ‖fnInner g (charFn α)‖ ^ 2 := by
+      simp [fourierCoeff]
+    _ = (Fintype.card (Vec F Idx) : ℝ)⁻¹ *
+        ((Fintype.card (Vec F Idx) : ℝ) * ∑ α, ‖fnInner g (charFn α)‖ ^ 2) := by
+          field_simp [hcard0]
+    _ = (Fintype.card (Vec F Idx) : ℝ)⁻¹ * ‖WithLp.toLp 2 g‖ ^ 2 := by rw [hb']
+    _ = fnNormSq g := by rw [fnNormSq_eq_card_inv_mul_norm_sq]
+
+lemma parseval_inequality (g : ComplexFn F Idx) :
+    ∑ α, ‖fourierCoeff g α‖ ^ 2 ≤ fnNormSq g := by
+  exact le_of_eq (parseval_identity g)
+
+
 
 lemma fourier_expansion (g : ComplexFn F Idx) : True := by
   sorry
