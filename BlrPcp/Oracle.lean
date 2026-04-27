@@ -32,10 +32,10 @@ instance instEncodableZModOfNeZero (q : ℕ) [NeZero q] : Encodable (ZMod q) :=
 over a field $\F$ is a list of polynomials $p_1, \ldots, p_m \in \F[x_1, \ldots, x_n]$
 where each $p_i$ has total degree at most $2$.
 
-\[\QESAT(\F) := \{ (p_1, \ldots, p_m) \mid
+\[\QESAT(\F,n) := \{ (p_1, \ldots, p_m) \mid
   \exists a_1, \ldots, a_n \in \F, \, \forall i \in [m], \,
   p_i(a_1, \ldots, a_n) = 0 \}.\] -/)]
-abbrev QESAT : Set (List (CMvPolynomial n F)) := fun polys =>
+abbrev QESAT (F : Type) [Field F] (n : ℕ) : Set (List (CMvPolynomial n F)) := fun polys =>
   (∀ p ∈ polys, p.totalDegree ≤ 2) ∧
   ∃ (a : Fin n → F), ∀ p ∈ polys, CMvPolynomial.eval a p = 0
 
@@ -43,12 +43,13 @@ namespace QESAT
 /-- The size of a QESAT instance if it was a binary string
 TODO: the proper way would be to use this:
 https://leanprover-community.github.io/mathlib4_docs/Mathlib/Computability/Encoding.html -/
-def size (polys : List (CMvPolynomial n F)) : ℕ :=
+def size (F : Type) [Field F] [Fintype F] (n : ℕ) (polys : List (CMvPolynomial n F)) :
+    ℕ :=
   polys.length * (n + 1)^2
 end QESAT
 
-blueprint_comment /-- For example, $(x + 1, xy + z) \in \QESAT(\F_2)$. -/
-example : QESAT (n := 3) (F := (ZMod 2)) [X 0 + C 1, X 0 * X 1 + X 2] := by native_decide
+blueprint_comment /-- For example, $(x + 1, xy + z) \in \QESAT(\F_2,3)$. -/
+example : QESAT (ZMod 2) 3 [X 0 + C 1, X 0 * X 1 + X 2] := by native_decide
 
 abbrev RandOracleSpec : OracleSpec ℕ :=
   unifSpec
@@ -98,7 +99,7 @@ $\PCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
 if there exists a polynomial-time PCP verifier $V$
 such that for every $x \in \{0,1\}^*$,
 $V$ makes at most $q(|x|)$ queries to the proof oracle,
-uses at most $r(n)$ bits of randomness, and the following holds:
+uses at most $r(|x|)$ bits of randomness, and the following holds:
 \begin{itemize}
   \item Completeness: If $x \in L$, then $\exists \pi \in \Sigma^{\ell(|x|)}, \,
   \Pr\left[V^\pi(x)=1 \right] \geq 1 - \varepsilon_c$.
@@ -119,12 +120,12 @@ def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
 blueprint_comment /-- The following theorem is the main goal of this chapter. -/
 
 @[blueprint
-  (statement := /-- \[\mathrm{QESAT}(\F_2) \in
+  (statement := /-- \[\mathrm{QESAT}(\F_2,n) \in
 \mathrm{PCP}[\varepsilon_c = 0, \varepsilon_s = 1/2, \Sigma = \F_2,
-\ell = \exp(n), q = O(1), r = n^{O(1)}].\] -/)]
+\ell = \exp(|x|), q = O(1), r = |x|^{O(1)}].\] -/)]
 theorem QESAT_exp_PCP {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
-    QESAT (n := vars) (F := (ZMod 2)) ∈
-      PCP (QESAT.size (n := vars) (F := (ZMod 2))) 0 (1/2) (ZMod 2)
+    QESAT (ZMod 2) vars ∈
+      PCP (QESAT.size (ZMod 2) vars) 0 (1/2) (ZMod 2)
         (fun n => 2 ^ n) (fun _ => q) r.eval := by
   sorry
 
@@ -173,7 +174,7 @@ $\LPCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
 if there exists a polynomial-time LPCP verifier $V$
 such that for every $x \in \{0,1\}^*$,
 $V$ makes at most $q(|x|)$ queries to the linear proof oracle,
-uses at most $r(n)$ bits of randomness, and the following holds:
+uses at most $r(|x|)$ bits of randomness, and the following holds:
 \begin{itemize}
   \item Completeness: If $x \in L$, then $\exists \pi \in \Sigma^{\ell(|x|)}, \,
   \Pr\left[V^{\langle \pi, \cdot \rangle}(x)=1 \right] \geq 1 - \varepsilon_c$.
@@ -191,7 +192,7 @@ def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     (x ∉ L → ∀ π : Fin (ℓ (size x)) → F,
       Pr[= true | simulateQ (RandOracle.impl + (LinProofOracle π).impl) (V x)] ≤ ε_s) }
 
-abbrev LINEQ (m n : ℕ) (F : Type) [Field F] :
+abbrev LINEQ (F : Type) (m n : ℕ) [Field F] :
     Set (Matrix (Fin m) (Fin n) F × (Fin m → F)) :=
   { (M, c) | ∃ b, M *ᵥ b = c }
 
@@ -415,13 +416,13 @@ def sampleRandomVector (m n : ℕ) (F : Type) [Field F] [Fintype F]
       (.inl (Fintype.card (Fin m → F) - 1))
     pure (decodeUniformFin (Fin m → F) i)
 
-def verifier {m n : ℕ} [Encodable F]
-    (x : Matrix (Fin m) (Fin n) F × (Fin m → F)) :
-    OracleComp (LPCPOracleSpec F n) Bool := do
-  let r ← sampleRandomVector m n F
-  let u : Fin n → F := x.1ᵀ *ᵥ r
-  let y ← OracleComp.query (spec := LPCPOracleSpec F n) (.inr u)
-  pure (y = x.2 ⬝ᵥ r)
+def verifier {m n : ℕ} [Encodable F] :
+    LPCPVerifier (Matrix (Fin m) (Fin n) F × (Fin m → F)) size F (fun _ => n) :=
+  fun x => do
+    let r ← sampleRandomVector m n F
+    let u : Fin n → F := x.1ᵀ *ᵥ r
+    let y ← OracleComp.query (spec := LPCPOracleSpec F n) (.inr u)
+    pure (y = x.2 ⬝ᵥ r)
 
 omit [Field F] [DecidableEq F] [Inhabited F] [SampleableType F] in
 lemma randomVector_card_clog_le (m : ℕ) :

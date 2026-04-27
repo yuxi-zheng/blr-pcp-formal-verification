@@ -16,4 +16,5 @@ QESAT_exp_PCP
 LPCPVerifier
 LPCP
 LINEQ
+LINEQ.verifier
 LINEQ_LPCP
