@@ -52,6 +52,80 @@ For every $\alpha,\beta\in\bbF_q^n$,
 Equivalently, $\bbE_x[\chi_\alpha(x)]=0$ for $\alpha\ne 0$ and equals $1$ for $\alpha=0$.
 \end{lemma}
 
+\begin{proof}
+First observe that for every $\alpha,\beta\in\bbF_q^n$ and every $x\in\bbF_q^n$,
+\[
+    \chi_\alpha(x)\overline{\chi_\beta(x)}
+    =
+    \omega_p^{\Tr(\inner{\alpha}{x})}
+    \omega_p^{-\Tr(\inner{\beta}{x})}
+    =
+    \omega_p^{\Tr(\inner{\alpha-\beta}{x})}
+    =
+    \chi_{\alpha-\beta}(x),
+\]
+where we used the $\bbF_p$-linearity of the trace map.
+
+If $\alpha=\beta$, then $\alpha-\beta=0$, so $\chi_{\alpha-\beta}(x)=1$ for every
+$x\in\bbF_q^n$. Hence
+\[
+    \bbE_{x\in\bbF_q^n}\left[\chi_\alpha(x)\overline{\chi_\beta(x)}\right]
+    =
+    \bbE_{x\in\bbF_q^n}[1]
+    =
+    1.
+\]
+
+Now suppose $\alpha\ne\beta$. Let $\gamma:=\alpha-\beta$. Then $\gamma\ne 0$, so there exists
+an index $j$ such that $\gamma_j\ne 0$. Fix all coordinates of $x$ except $x_j$. For the fixed
+remaining coordinates, the map
+\[
+    x_j\mapsto \inner{\gamma}{x}
+\]
+has the form
+\[
+    x_j\mapsto \gamma_j x_j + c
+\]
+for some constant $c\in\bbF_q$. Since $\gamma_j\ne 0$, multiplication by $\gamma_j$ is a
+bijection on $\bbF_q$, and therefore the affine map $x_j\mapsto \gamma_jx_j+c$ is also a
+bijection on $\bbF_q$. Thus, as $x_j$ ranges uniformly over $\bbF_q$, the value
+$\inner{\gamma}{x}$ also ranges uniformly over $\bbF_q$. Averaging first over $x_j$ and then
+over the remaining coordinates gives
+\[
+    \bbE_{x\in\bbF_q^n}\left[\chi_\gamma(x)\right]
+    =
+    \bbE_{t\in\bbF_q}\left[\omega_p^{\Tr(t)}\right].
+\]
+
+It remains to show that this last average is zero. The trace map
+$\Tr:\bbF_q\to\bbF_p$ is a nonzero $\bbF_p$-linear map, so every fiber of $\Tr$ has the same
+cardinality. Since $\abs{\bbF_q}=q$ and $\abs{\bbF_p}=p$, each fiber has cardinality $q/p$.
+Therefore
+\begin{align*}
+    \bbE_{t\in\bbF_q}\left[\omega_p^{\Tr(t)}\right]
+    &=
+    \frac{1}{q}\sum_{t\in\bbF_q}\omega_p^{\Tr(t)} \\
+    &=
+    \frac{1}{q}\sum_{r\in\bbF_p}
+        \sum_{\substack{t\in\bbF_q\\ \Tr(t)=r}}
+        \omega_p^r \\
+    &=
+    \frac{1}{q}\sum_{r\in\bbF_p}\frac{q}{p}\omega_p^r \\
+    &=
+    \frac{1}{p}\sum_{r\in\bbF_p}\omega_p^r \\
+    &=0,
+\end{align*}
+because the sum of all $p$-th roots of unity is zero. Hence, if $\alpha\ne\beta$, then
+\[
+    \bbE_{x\in\bbF_q^n}\left[\chi_\alpha(x)\overline{\chi_\beta(x)}\right]
+    =
+    0.
+\]
+
+Combining the two cases proves the stated orthogonality relation. The equivalent formulation
+follows by taking $\beta=0$.
+\end{proof}
+
 \begin{lemma}[Fourier inversion and Parseval]
 \label{lem:fourier-inversion-parseval}
 For every function $h:\bbF_q^n\to\bbC$,
