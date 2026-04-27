@@ -186,21 +186,8 @@ lemma dotProduct_transpose_mulVec_eq {m n : ℕ}
     (M : Matrix (Fin m) (Fin n) F) (b : Fin n → F) (c r : Fin m → F)
     (h : M *ᵥ b = c) :
     b ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r := by
-  rw [← h, Matrix.mulVec_transpose]
-  rw [dotProduct_comm b (r ᵥ* M)]
-  rw [← Matrix.dotProduct_mulVec r M b]
-  rw [dotProduct_comm r (M *ᵥ b)]
-
-omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma dotProduct_sub_right {m : ℕ} (a b c : Fin m → F) :
-    a ⬝ᵥ (b - c) = a ⬝ᵥ b - a ⬝ᵥ c := by
-  simp [dotProduct, sub_eq_add_neg, mul_add, Finset.sum_add_distrib,
-    Finset.sum_neg_distrib]
-
-omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma sub_dotProduct {m : ℕ} (a b c : Fin m → F) :
-    (a - b) ⬝ᵥ c = a ⬝ᵥ c - b ⬝ᵥ c := by
-  simp [dotProduct, sub_mul, Finset.sum_sub_distrib]
+  rw [← h, Matrix.mulVec_transpose, dotProduct_comm b (r ᵥ* M),
+    ← Matrix.dotProduct_mulVec r M b, dotProduct_comm r (M *ᵥ b)]
 
 omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
 lemma dotProduct_eq_add_sum_erase {m : ℕ} (a b : Fin m → F) (k : Fin m) :
@@ -235,8 +222,7 @@ lemma normalizeLinearForm_left_inv {m : ℕ} {a : Fin m → F} {k : Fin m}
           ∑ j ∈ (Finset.univ.erase k), a j * r j := by
       refine Finset.sum_congr rfl ?_
       intro j hj
-      have hjk : j ≠ k := (Finset.mem_erase.mp hj).1
-      simp [normalizeLinearForm, hjk]
+      simp [normalizeLinearForm, (Finset.mem_erase.mp hj).1]
     simp only [normalizeLinearFormInv]
     rw [hsum]
     simp only [normalizeLinearForm]
@@ -261,8 +247,7 @@ lemma normalizeLinearForm_right_inv {m : ℕ} {a : Fin m → F} {k : Fin m}
           ∑ j ∈ (Finset.univ.erase k), a j * r j := by
       refine Finset.sum_congr rfl ?_
       intro j hj
-      have hjk : j ≠ k := (Finset.mem_erase.mp hj).1
-      simp [normalizeLinearFormInv, hjk]
+      simp [normalizeLinearFormInv, (Finset.mem_erase.mp hj).1]
     simp only [normalizeLinearForm]
     rw [dotProduct_eq_add_sum_erase (a := a)
       (b := normalizeLinearFormInv (F := F) a k r) (k := k)]
@@ -345,11 +330,7 @@ lemma linear_form_uniform_prob_mul_card_le_one {m : ℕ} {a : Fin m → F}
         ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] *
       (Fintype.card F : ENNReal) ≤ 1 := by
   obtain ⟨k, hk⟩ : ∃ k, a k ≠ 0 := by
-    by_contra h
-    apply ha
-    funext k
-    exact by
-      simpa using not_exists.mp h k
+    simpa [funext_iff] using ha
   let T : (Fin m → F) → (Fin m → F) := normalizeLinearForm (F := F) a k
   have hprob :
       Pr[fun r : Fin m → F => a ⬝ᵥ r = 0 |
@@ -371,50 +352,40 @@ lemma linear_form_uniform_prob_mul_card_le_one {m : ℕ} {a : Fin m → F}
               (f := T) (q := fun r : Fin m → F => r k = 0)).symm
       _ = Pr[fun r : Fin m → F => r k = 0 |
               ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] := by
-            have hdist :
-                evalDist (T <$> ($ᵗ (Fin m → F) : ProbComp (Fin m → F))) =
-                  evalDist ($ᵗ (Fin m → F) : ProbComp (Fin m → F)) := by
-              exact evalDist_map_bijective_uniform_cross
+            simp [probEvent_def, evalDist_map_bijective_uniform_cross
                 (α := Fin m → F) (β := Fin m → F) T
-                (normalizeLinearForm_bijective (F := F) hk)
-            simp [probEvent_def, hdist]
+                (normalizeLinearForm_bijective (F := F) hk)]
   rw [hprob]
   exact uniform_coordinate_zero_prob_mul_card_le_one (F := F) k
 
+lemma card_sub_one_add_one (α : Type) [Fintype α] [Nonempty α] :
+    Fintype.card α - 1 + 1 = Fintype.card α := by
+  have h : 0 < Fintype.card α := Fintype.card_pos
+  omega
+
 def decodeUniformFin (α : Type) [Fintype α] [Encodable α] [Nonempty α] :
     Fin (Fintype.card α - 1 + 1) → α :=
-  fun i => (Encodable.fintypeEquivFin (α := α)).symm (Fin.cast (by
-    have h : 0 < Fintype.card α := Fintype.card_pos
-    omega) i)
+  fun i => (Encodable.fintypeEquivFin (α := α)).symm
+    (Fin.cast (card_sub_one_add_one α) i)
 
 lemma decodeUniformFin_bijective (α : Type) [Fintype α] [Encodable α] [Nonempty α] :
     Function.Bijective (decodeUniformFin α) := by
-  constructor
-  · intro i j hij
-    apply Fin.ext
-    have h :=
-      congrArg (Encodable.fintypeEquivFin (α := α)) hij
-    exact congrArg Fin.val (by simpa [decodeUniformFin] using h)
-  · intro a
-    refine ⟨Fin.cast (by
-      have h : 0 < Fintype.card α := Fintype.card_pos
-      omega) ((Encodable.fintypeEquivFin (α := α)) a), ?_⟩
-    simp [decodeUniformFin]
+  simpa [decodeUniformFin] using
+    ((Encodable.fintypeEquivFin (α := α)).symm.bijective.comp
+      (finCongr (card_sub_one_add_one α)).bijective)
 
 lemma probEvent_decodeUniformFin (α : Type) [Fintype α] [Encodable α] [Nonempty α]
     [SampleableType α] (p : α → Prop) :
-    Pr[p | decodeUniformFin α <$>
+    Pr[p ∘ decodeUniformFin α |
         ($ᵗ Fin (Fintype.card α - 1 + 1) : ProbComp (Fin (Fintype.card α - 1 + 1)))] =
       Pr[p | ($ᵗ α : ProbComp α)] := by
-  have hdist :
-      evalDist (decodeUniformFin α <$>
-          ($ᵗ Fin (Fintype.card α - 1 + 1) :
-            ProbComp (Fin (Fintype.card α - 1 + 1)))) =
-        evalDist ($ᵗ α : ProbComp α) := by
-    exact evalDist_map_bijective_uniform_cross
+  rw [← probEvent_map
+    (mx := ($ᵗ Fin (Fintype.card α - 1 + 1) :
+      ProbComp (Fin (Fintype.card α - 1 + 1))))
+    (f := decodeUniformFin α) (q := p)]
+  simp [probEvent_def, evalDist_map_bijective_uniform_cross
       (α := Fin (Fintype.card α - 1 + 1)) (β := α)
-      (decodeUniformFin α) (decodeUniformFin_bijective α)
-  simp [probEvent_def, hdist]
+      (decodeUniformFin α) (decodeUniformFin_bijective α)]
 
 def sampleRandomVector (m n : ℕ) (F : Type) [Field F] [Fintype F]
     [Encodable F] [DecidableEq F] [Inhabited F] :
@@ -439,11 +410,12 @@ lemma randomVector_card_clog_le (m : ℕ) :
     Nat.clog 2 (Fintype.card (Fin m → F)) ≤
       m * Nat.clog 2 (Fintype.card F) := by
   rw [Fintype.card_pi_const]
-  have hcard : Fintype.card F ≤ 2 ^ Nat.clog 2 (Fintype.card F) :=
-    Nat.le_pow_clog (by decide) _
-  have hpow := Nat.pow_le_pow_left hcard m
-  rw [← Nat.pow_mul, Nat.mul_comm] at hpow
-  exact Nat.clog_le_of_le_pow hpow
+  exact Nat.clog_le_of_le_pow <| by
+    have hpow := Nat.pow_le_pow_left
+      (show Fintype.card F ≤ 2 ^ Nat.clog 2 (Fintype.card F) from
+        Nat.le_pow_clog (by decide) _) m
+    rw [← Nat.pow_mul, Nat.mul_comm] at hpow
+    exact hpow
 
 omit [SampleableType F] in
 lemma verifier_queryBound {m n : ℕ} [Encodable F]
@@ -451,15 +423,10 @@ lemma verifier_queryBound {m n : ℕ} [Encodable F]
     LPCPQueryBound (verifier (F := F) x) 1 (m * Nat.clog 2 (Fintype.card F)) := by
   by_cases hm : m = 0
   · simp [verifier, sampleRandomVector, LPCPQueryBound, hm]
-  · have hmpos : 0 < m := Nat.pos_of_ne_zero hm
-    have hcardSample :
-        Fintype.card (Fin m → F) - 1 + 1 = Fintype.card (Fin m → F) := by
-      have hpos : 0 < Fintype.card (Fin m → F) := Fintype.card_pos
-      omega
-    have hbits :
+  · have hbits :
         Nat.clog 2 (Fintype.card (Fin m → F) - 1 + 1) ≤
           m * Nat.clog 2 (Fintype.card F) := by
-      rw [hcardSample]
+      rw [card_sub_one_add_one (Fin m → F)]
       exact randomVector_card_clog_le (F := F) m
     simp only [verifier, sampleRandomVector, LPCPQueryBound, hm, ↓reduceDIte]
     simp only [bind_assoc, pure_bind]
@@ -474,89 +441,39 @@ theorem LINEQ_LPCP {m n : ℕ} :
       (fun _ => n) (fun _ => 1) (fun _ => m * Nat.clog 2 (Fintype.card F)) := by
   letI : Encodable F := Encodable.ofCountable F
   refine ⟨LINEQ.verifier (F := F), 0, ?_⟩
-  intro x
-  refine ⟨by simp [LRunsInTime], LINEQ.verifier_queryBound (F := F) x, ?_, ?_⟩
-  · intro hx
-    rcases x with ⟨M, c⟩
-    rcases hx with ⟨b, hb⟩
-    refine ⟨b, ?_⟩
-    simp [LINEQ.verifier, LINEQ.sampleRandomVector, LINEQ.dotProduct_transpose_mulVec_eq,
-      hb]
+  rintro ⟨M, c⟩
+  refine ⟨by simp [LRunsInTime], LINEQ.verifier_queryBound (F := F) (M, c), ?_, ?_⟩
+  · rintro ⟨b, hb⟩
+    exact ⟨b, by
+      simp [LINEQ.verifier, LINEQ.sampleRandomVector,
+        LINEQ.dotProduct_transpose_mulVec_eq, hb]⟩
   · intro hx π
-    rcases x with ⟨M, c⟩
     by_cases hm : m = 0
     · exfalso
       apply hx
       refine ⟨π, ?_⟩
       ext i
       exact Fin.elim0 (hm ▸ i)
-    · have hd : M *ᵥ π - c ≠ 0 := by
-        intro h
-        apply hx
-        exact ⟨π, sub_eq_zero.mp h⟩
-      have hbound :
-          Pr[fun r : Fin m → F => (M *ᵥ π - c) ⬝ᵥ r = 0 |
-              ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] *
-            (Fintype.card F : ENNReal) ≤ 1 :=
-        LINEQ.linear_form_uniform_prob_mul_card_le_one (F := F) hd
+    · have hd : M *ᵥ π - c ≠ 0 := fun h => hx ⟨π, sub_eq_zero.mp h⟩
       simp [LINEQ.verifier, LINEQ.sampleRandomVector, hm]
       rw [← probEvent_eq_eq_probOutput]
       rw [probEvent_map]
+      let accept : (Fin m → F) → Prop := fun r =>
+        decide (π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r) = true
       change
-        Pr[fun a : Fin (Fintype.card (Fin m → F) - 1 + 1) =>
-            decide (π ⬝ᵥ (Mᵀ *ᵥ LINEQ.decodeUniformFin (Fin m → F) a) =
-              c ⬝ᵥ LINEQ.decodeUniformFin (Fin m → F) a) = true |
+        Pr[accept ∘ LINEQ.decodeUniformFin (Fin m → F) |
           ($ᵗ Fin (Fintype.card (Fin m → F) - 1 + 1) :
             ProbComp (Fin (Fintype.card (Fin m → F) - 1 + 1)))] *
           (Fintype.card F : ENNReal) ≤ 1
-      have hdecode :
-          Pr[fun a : Fin (Fintype.card (Fin m → F) - 1 + 1) =>
-              decide (π ⬝ᵥ (Mᵀ *ᵥ LINEQ.decodeUniformFin (Fin m → F) a) =
-                c ⬝ᵥ LINEQ.decodeUniformFin (Fin m → F) a) = true |
-            ($ᵗ Fin (Fintype.card (Fin m → F) - 1 + 1) :
-              ProbComp (Fin (Fintype.card (Fin m → F) - 1 + 1)))] =
-            Pr[fun r : Fin m → F =>
-              decide (π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r) = true |
-              ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] := by
-        calc
-          Pr[fun a : Fin (Fintype.card (Fin m → F) - 1 + 1) =>
-              decide (π ⬝ᵥ (Mᵀ *ᵥ LINEQ.decodeUniformFin (Fin m → F) a) =
-                c ⬝ᵥ LINEQ.decodeUniformFin (Fin m → F) a) = true |
-            ($ᵗ Fin (Fintype.card (Fin m → F) - 1 + 1) :
-              ProbComp (Fin (Fintype.card (Fin m → F) - 1 + 1)))]
-              = Pr[fun r : Fin m → F =>
-                  decide (π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r) = true |
-                LINEQ.decodeUniformFin (Fin m → F) <$>
-                  ($ᵗ Fin (Fintype.card (Fin m → F) - 1 + 1) :
-                    ProbComp (Fin (Fintype.card (Fin m → F) - 1 + 1)))] := by
-                simp [Function.comp_def]
-          _ = Pr[fun r : Fin m → F =>
-                  decide (π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r) = true |
-                ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] := by
-                exact LINEQ.probEvent_decodeUniformFin (Fin m → F)
-                  (fun r : Fin m → F =>
-                    decide (π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r) = true)
-      rw [hdecode]
-      have hevent :
-          Pr[fun r : Fin m → F => decide (π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r) = true |
+      rw [LINEQ.probEvent_decodeUniformFin (Fin m → F) accept]
+      rw [show
+          Pr[accept |
               ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] =
             Pr[fun r : Fin m → F => (M *ᵥ π - c) ⬝ᵥ r = 0 |
-              ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] := by
+              ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] by
         apply probEvent_ext
         intro r _hr
-        have htranspose :
-            π ⬝ᵥ (Mᵀ *ᵥ r) = (M *ᵥ π) ⬝ᵥ r :=
-          LINEQ.dotProduct_transpose_mulVec_eq (F := F) M π (M *ᵥ π) r rfl
-        constructor
-        · intro h
-          rw [LINEQ.sub_dotProduct]
-          rw [← htranspose]
-          exact sub_eq_zero.mpr (of_decide_eq_true h)
-        · intro h
-          rw [LINEQ.sub_dotProduct] at h
-          have h' : π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r := by
-            rw [htranspose]
-            exact sub_eq_zero.mp h
-          exact decide_eq_true h'
-      rw [hevent]
-      exact hbound
+        dsimp [accept]
+        simp [LINEQ.dotProduct_transpose_mulVec_eq (F := F) M π (M *ᵥ π) r rfl,
+          sub_eq_zero]]
+      exact LINEQ.linear_form_uniform_prob_mul_card_le_one (F := F) hd
