@@ -10,7 +10,8 @@ groupFourierTransform
 gowers_hatami
 gowers_hatami
 QESAT
-PCPProver
 PCPVerifier
 PCP
 QESAT_exp_PCP
+LPCPVerifier
+LPCP
