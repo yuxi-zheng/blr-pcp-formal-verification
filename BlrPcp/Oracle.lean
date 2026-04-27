@@ -27,14 +27,6 @@ variable {n : ℕ} {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F
 instance instEncodableZModOfNeZero (q : ℕ) [NeZero q] : Encodable (ZMod q) :=
   Encodable.ofEquiv (Fin q) (ZMod.finEquiv q).symm
 
-@[blueprint
-  (statement := /-- A system of $m$ quadratic equations in $n$ variables
-over a field $\F$ is a list of polynomials $p_1, \ldots, p_m \in \F[x_1, \ldots, x_n]$
-where each $p_i$ has total degree at most $2$.
-
-\[\QESAT(\F,n) := \{ (p_1, \ldots, p_m) \mid
-  \exists a_1, \ldots, a_n \in \F, \, \forall i \in [m], \,
-  p_i(a_1, \ldots, a_n) = 0 \}.\] -/)]
 abbrev QESAT (F : Type) [Field F] (n : ℕ) : Set (List (CMvPolynomial n F)) := fun polys =>
   (∀ p ∈ polys, p.totalDegree ≤ 2) ∧
   ∃ (a : Fin n → F), ∀ p ∈ polys, CMvPolynomial.eval a p = 0
@@ -48,7 +40,6 @@ def size (F : Type) [Field F] [Fintype F] (n : ℕ) (polys : List (CMvPolynomial
   polys.length * (n + 1)^2
 end QESAT
 
-blueprint_comment /-- For example, $(x + 1, xy + z) \in \QESAT(\F_2,3)$. -/
 example : QESAT (ZMod 2) 3 [X 0 + C 1, X 0 * X 1 + X 2] := by native_decide
 
 abbrev RandOracleSpec : OracleSpec ℕ :=
@@ -70,9 +61,6 @@ abbrev ProofOracle (proof : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp wh
 abbrev PCPOracleSpec (F : Type) (ℓ : ℕ) : OracleSpec (ℕ ⊕ Fin ℓ) :=
   RandOracleSpec + ProofOracleSpec F ℓ
 
-@[blueprint
-  (statement := /-- A \emph{PCP verifier} is a probabilistic oracle Turing machine
-$V$ with query access to a function $\pi : [\ell (|x|)] \to \Sigma$. -/)]
 abbrev PCPVerifier (α : Type) (size : α → ℕ) (F : Type) (ℓ : ℕ → ℕ) : Type :=
   (x : α) → OracleComp (PCPOracleSpec F (ℓ (size x))) Bool
 
@@ -93,19 +81,6 @@ def PCPQueryBound {F α : Type} {ℓ : ℕ}
       | .inl n, (q, r) => (q, r - Nat.clog 2 (n + 1))
       | .inr _, (q, r) => (q - 1, r))
 
-@[blueprint
-  (statement := /-- A language $L \subseteq \{0,1\}^*$ is in
-$\PCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
-if there exists a polynomial-time PCP verifier $V$
-such that for every $x \in \{0,1\}^*$,
-$V$ makes at most $q(|x|)$ queries to the proof oracle,
-uses at most $r(|x|)$ bits of randomness, and the following holds:
-\begin{itemize}
-  \item Completeness: If $x \in L$, then $\exists \pi \in \Sigma^{\ell(|x|)}, \,
-  \Pr\left[V^\pi(x)=1 \right] \geq 1 - \varepsilon_c$.
-  \item Soundness: If $x \notin L$, then $\forall \widetilde{\pi} \in \Sigma^{\ell(|x|)},\,
-  \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
-\end{itemize}-/)]
 def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     [Fintype F] [DecidableEq F] [Inhabited F]
     (ℓ q r : ℕ → ℕ) : Set (Set α) :=
@@ -117,12 +92,6 @@ def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     (x ∉ L → ∀ π : Fin (ℓ (size x)) → F,
       Pr[= true | simulateQ (RandOracle.impl + (ProofOracle π).impl) (V x)] ≤ ε_s) }
 
-blueprint_comment /-- The following theorem is the main goal of this chapter. -/
-
-@[blueprint
-  (statement := /-- \[\mathrm{QESAT}(\F_2,n) \in
-\mathrm{PCP}[\varepsilon_c = 0, \varepsilon_s = 1/2, \Sigma = \F_2,
-\ell = \exp(|x|), q = O(1), r = |x|^{O(1)}].\] -/)]
 theorem QESAT_exp_PCP {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (ZMod 2) vars ∈
       PCP (QESAT.size (ZMod 2) vars) 0 (1/2) (ZMod 2)
@@ -142,10 +111,6 @@ abbrev LinProofOracle {F : Type} [Field F] {ℓ : ℕ}
 abbrev LPCPOracleSpec (F : Type) [Field F] (ℓ : ℕ) : OracleSpec (ℕ ⊕ (Fin ℓ → F)) :=
   RandOracleSpec + LinProofOracleSpec F ℓ
 
-@[blueprint
-  (statement := /-- A \emph{LPCP verifier} is a probabilistic oracle Turing machine
-$V$ with query access to a linear function
-$\langle \pi,\cdot \rangle : \Sigma^{\ell(|x|)} \to \Sigma$. -/)]
 abbrev LPCPVerifier (α : Type) (size : α → ℕ) (F : Type) [Field F]
     (ℓ : ℕ → ℕ) : Type :=
   (x : α) → OracleComp (LPCPOracleSpec F (ℓ (size x))) Bool
@@ -168,19 +133,6 @@ def LPCPQueryBound {F α : Type} {ℓ : ℕ} [Field F]
       | .inl n, (q, r) => (q, r - Nat.clog 2 (n + 1))
       | .inr _, (q, r) => (q - 1, r))
 
-@[blueprint
-  (statement := /-- A language $L \subseteq \{0,1\}^*$ is in
-$\LPCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
-if there exists a polynomial-time LPCP verifier $V$
-such that for every $x \in \{0,1\}^*$,
-$V$ makes at most $q(|x|)$ queries to the linear proof oracle,
-uses at most $r(|x|)$ bits of randomness, and the following holds:
-\begin{itemize}
-  \item Completeness: If $x \in L$, then $\exists \pi \in \Sigma^{\ell(|x|)}, \,
-  \Pr\left[V^{\langle \pi, \cdot \rangle}(x)=1 \right] \geq 1 - \varepsilon_c$.
-  \item Soundness: If $x \notin L$, then $\forall \widetilde{\pi} \in \Sigma^{\ell(|x|)},\,
-  \Pr\left[V^{\langle \widetilde{\pi}, \cdot \rangle}(x)=1 \right] \leq \varepsilon_s$.
-\end{itemize}-/)]
 def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     [Field F] [Fintype F] [DecidableEq F] [Inhabited F]
     (ℓ q r : ℕ → ℕ) : Set (Set α) :=

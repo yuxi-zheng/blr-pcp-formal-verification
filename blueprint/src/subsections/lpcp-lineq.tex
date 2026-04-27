@@ -1,6 +1,6 @@
 \begin{definition}\label{LINEQ}\lean{LINEQ}\leanok
 For a field \(\F\) and parameters \(m, n \in \N\), we define the language
-\[\LINEQ(\F,m,n) := \{ (M \in \F^{m\times n},c \in \F^{m}) \mid \exists b\in \F^n, \, Mb = c \}.\]
+\[\LINEQ(\F,m,n) := \{ (M, c) \in \F^{m\times n} \times \F^{m} \mid \exists b\in \F^n, \, Mb = c \}.\]
 \end{definition}
 \begin{definition}\label{LINEQ.verifier}\lean{LINEQ.verifier}\uses{LPCPVerifier}\leanok
 Let \(V_{\LINEQ(\F,m,n)}^{\langle b, \cdot \rangle } (M,c)\) be the LPCP verifier defined as follows:
