@@ -100,7 +100,7 @@ TODO:
 \begin{definition}[Regular representation]\label{RegularRep}\lean{regularRep}\uses{UnitaryRep}
     Let $R: G \rightarrow \mathbb{C}[G]$ be a regular representation where $\{\ket{g}, g\in G\}$ forms a basis of \(\mathbb{C}[G]\). The representation is given by
     \be
-    R(d) \ket{g} = \ket{xg}.
+    R(x) \ket{g} = \ket{xg}.
     \ee
     
 \end{definition}
@@ -206,3 +206,79 @@ Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d
     \end{enumerate}
     Both ingredients follow from the key identity over the regular representation in \equref{eq:regular_repr_characterr}.
 \end{sproof}
+
+\begin{theorem}[Gowers-Hatami-2]\label{gowers-hatami-2}\lean{gowers_hatami}
+  \uses{UnitarySigmaError, approx-representation, sigma_proximity_iff}
+Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(\rho: G \rightarrow U(\mathcal{H})\) an \((\varepsilon, \sigma)\)-representation of \(G\) on space $\mathcal{H}=\mathbb{C}^{d}$. 
+Then there exists an isometry \(V: \mathcal{H} \rightarrow \mathcal{H}^\prime\) to a different space $\mathcal{H}^\prime$, 
+and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
+\be
+\mathbb{E}_{x \in G}\left\|\rho(x)-V^{*} \rho^\prime(x) V\right\|_{\sigma}^{2} \leq 2 \varepsilon.
+\ee 
+\end{theorem}
+
+\begin{proof}
+    A different proof of the Gowers-Hatami theorem is given in M. de la Salle's notes~\cite{de_la_Salle}.
+    Here $\mathcal{H}^\prime = L(G, \mathcal{H})$ is the space of functions $f: G \to \mathcal{H}$.
+    % with inner product $\langle f, g\rangle = \EE_{x \in G} \langle f(x), g(x)\rangle$.
+    The isometry is given by the action of the approximate representation on a state $u\in \mathcal{H}$ as
+    \bea
+    &V:& \mathcal{H} \to L(G, \mathcal{H}), \\
+    & V(u):& G \to \mathcal{H}, \quad x \mapsto \rho(x)(u), \forall x \in G.
+    \eea
+
+    The inverse map $V^*$ is given by the group average
+    \bea
+    &V^*:& L(G, \mathcal{H}) \to \mathcal{H}, \\
+    &V^*(f)& = \EE_{x \in G} \left[ \rho^*(x) f(x) \right].
+    \eea
+
+    The exact representation is given by the right regular representation on $L(G, \mathcal{H})$:
+    \bea
+    &\rho^\prime:& G \to \End(L(G, \mathcal{H})), \\
+    &(\rho^\prime(x)f)(y)& = f(yx), \quad \forall x,y \in G.
+    \eea
+
+    $V$ is an isometry because
+    \be
+    V^* V(u) = \EE_{x \in G} \left[ \rho^*(x) \rho(x)(u) \right] = u.
+    \ee
+
+    The isometry ``averages'' over group multiplication because
+    \bea\label{eq:isometry_average} 
+    V^* \rho^\prime(x) V(u) & = & \EE_{y \in G} \left[ \rho^*(y) (\rho^\prime(x)\rho(y))(u) \right] \\
+    & = & \EE_{y \in G} \left[ \rho^*(y) (\rho(yx)(u)) \right].\nonumber
+    \eea
+
+    The rest of the proof follows by expanding the $\sigma$-norm, bounding the norm of $\EE_{x \in G} V^* \rho^\prime(x) V$ and applying the definition of $(\varepsilon, \sigma)$-representation.
+     In particular, we have 
+     \bea
+        & &\EE_{x \in G}\left\|\rho(x)-V^{*} \rho^\prime(x) V\right\|_{\sigma}^{2} \\ 
+        &= & \EE_{x \in G} \| \rho(x) \|_\sigma^2 + \EE_{x \in G} \|V^* \rho^\prime(x) V\|_\sigma^2 - 2 \EE_{x \in G} \Re \langle \rho(x), V^* \rho^\prime(x) V\rangle_\sigma \nonumber
+    \eea        
+
+    Because $\rho$ is unitary, $\EE_{x \in G} \| \rho(x) \|_\sigma^2 = 1$.
+    For the second term, since $\rho^\prime$ is unitary and $V$ is an isometry, 
+    \bea
+    && \EE_{x \in G} \|V^* \rho^\prime(x) V\|_\sigma^2  \\ 
+    & = & \EE_{x \in G} \Tr\left[V^* \rho^{\prime *}(x) V V^* \rho^\prime(x) V \sigma\right] \nonumber \\ 
+    & = & \EE_{x, y, z \in G} \Tr\left[\rho^*(yx)\rho(y) \rho^*(z) \rho(zx) \sigma\right] \nonumber
+    \eea
+    Because $\rho$ is unitary the product $U(x, y, z) := \rho^*(yx)\rho(y) \rho^*(z) \rho(zx)$ is again a unitary operator, the above expression is upper bounded by Holder's inequality as
+    \bea \label{eq:isometry_unitary_bound}
+    && \EE_{x, y, z \in G} \Tr\left[U(x, y, z) \sigma\right] \\ \nonumber
+    & \le & \EE_{x, y, z \in G} \|U(x, y, z)\|_\infty \|\sigma\|_1 = 1. 
+    \eea
+
+    Finally, using the isometry average property in Eq.~\ref{eq:isometry_average} and the definition of $(\varepsilon, \sigma)$-representation, we have
+    \bea \label{eq:inner_product_bound}
+    && \EE_{x \in G} \Re \langle \rho(x), V^* \rho^\prime(x) V\rangle_\sigma, \\ \nonumber
+    & = & \EE_{x,y \in G} \Re \langle \rho(x), \rho^*(y) \rho(yx) \rangle_\sigma, \\ \nonumber
+    &\ge & 1 - \varepsilon. 
+    \eea
+    Therefore using the bounds in Eq.~\ref{eq:isometry_unitary_bound} and Eq.~\ref{eq:inner_product_bound}, we have
+    \be
+        \EE_{x \in G}\left\|\rho(x)-V^{*} \rho^\prime(x) V\right\|_{\sigma}^{2} \le  2 - 2(1 - \varepsilon) = 2\varepsilon.
+    \ee
+    This completes the proof.
+\end{proof}
