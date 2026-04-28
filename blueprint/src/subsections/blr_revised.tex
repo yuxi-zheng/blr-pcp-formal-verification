@@ -143,88 +143,107 @@ $\sum_{\alpha\in\bbF_q^n}\abs{\widehat h(\alpha)}^2=1$.
 \end{lemma}
 
 \begin{proof}
-We use the character basis of the additive group \(F^{\mathrm{Idx}}\). For
-each \(\alpha \in F^{\mathrm{Idx}}\), let \(\chi_\alpha\) denote the additive
-character
+By Lemma~1.1.4, the additive characters
 \[
-    \chi_\alpha(x)
-    =
-    \omega_p^{\operatorname{Tr}(\langle \alpha,x\rangle)} .
+    \{\chi_\alpha : \alpha \in \mathbb F_q^n\}
 \]
-By the orthogonality of additive characters,
+are orthonormal with respect to the inner product
 \[
-    \langle \chi_\alpha,\chi_\beta\rangle
+    \langle h_1,h_2\rangle
     =
-    \mathbb E_x\!\left[\chi_\alpha(x)\overline{\chi_\beta(x)}\right]
-    =
-    \begin{cases}
-    1, & \alpha=\beta,\\
-    0, & \alpha\neq \beta.
-    \end{cases}
+    \mathbb E_{x\in \mathbb F_q^n}
+    \left[h_1(x)\overline{h_2(x)}\right].
 \]
 Moreover, these characters span the vector space of all complex-valued
-functions on \(F^{\mathrm{Idx}}\). Hence
-\(\{\chi_\alpha : \alpha \in F^{\mathrm{Idx}}\}\) is an orthonormal basis with
-respect to the inner product
+functions on \(\mathbb F_q^n\). Indeed, there are exactly \(q^n\) characters,
+and the space of functions \(\mathbb F_q^n\to\mathbb C\) has dimension \(q^n\).
+Since the characters are nonzero and pairwise orthogonal, they are linearly
+independent. Hence they form an orthonormal basis.
+
+Therefore every function \(h:\mathbb F_q^n\to\mathbb C\) has a unique expansion
+in this basis:
 \[
-    \langle g,h\rangle
+    h
     =
-    \mathbb E_x\!\left[g(x)\overline{h(x)}\right].
+    \sum_{\alpha\in\mathbb F_q^n}
+        c_\alpha \chi_\alpha
+\]
+for some coefficients \(c_\alpha\in\mathbb C\). Taking the inner product of
+both sides with \(\chi_\beta\), we obtain
+\[
+    \langle h,\chi_\beta\rangle
+    =
+    \sum_{\alpha\in\mathbb F_q^n}
+        c_\alpha \langle \chi_\alpha,\chi_\beta\rangle .
+\]
+By orthonormality, all terms in the sum vanish except the term
+\(\alpha=\beta\), and \(\langle \chi_\beta,\chi_\beta\rangle=1\). Hence
+\[
+    \langle h,\chi_\beta\rangle = c_\beta .
+\]
+By definition of the Fourier coefficient,
+\[
+    \widehat h(\beta)=\langle h,\chi_\beta\rangle .
+\]
+Thus \(c_\beta=\widehat h(\beta)\) for every
+\(\beta\in\mathbb F_q^n\). Therefore
+\[
+    h
+    =
+    \sum_{\alpha\in\mathbb F_q^n}
+        \widehat h(\alpha)\chi_\alpha .
+\]
+Evaluating this identity at \(x\in\mathbb F_q^n\) gives the Fourier inversion
+formula
+\[
+    h(x)
+    =
+    \sum_{\alpha\in\mathbb F_q^n}
+        \widehat h(\alpha)\chi_\alpha(x).
 \]
 
-Therefore every \(g : F^{\mathrm{Idx}}\to \mathbb C\) admits a unique expansion
-\[
-    g
-    =
-    \sum_{\alpha \in F^{\mathrm{Idx}}} c_\alpha \chi_\alpha .
-\]
-Taking the inner product with \(\chi_\beta\) gives
-\[
-    \langle g,\chi_\beta\rangle
-    =
-    \sum_{\alpha \in F^{\mathrm{Idx}}}
-        c_\alpha \langle \chi_\alpha,\chi_\beta\rangle
-    =
-    c_\beta .
-\]
-By definition, \(\widehat g(\beta)=\langle g,\chi_\beta\rangle\). Hence
-\(c_\beta=\widehat g(\beta)\) for every \(\beta\), and so
-\[
-    g
-    =
-    \sum_{\alpha \in F^{\mathrm{Idx}}}
-        \widehat g(\alpha)\chi_\alpha .
-\]
-Evaluating this identity at \(x\) gives the Fourier inversion formula.
-
-For Parseval's identity, use the same expansion:
+It remains to prove Parseval's identity. Using the Fourier expansion and
+orthonormality, we compute
 \[
 \begin{aligned}
-    \|g\|_2^2
-    &= \langle g,g\rangle \\
+    \mathbb E_x |h(x)|^2
+    &= \langle h,h\rangle \\
     &=
     \left\langle
-        \sum_{\alpha}\widehat g(\alpha)\chi_\alpha,
-        \sum_{\beta}\widehat g(\beta)\chi_\beta
+        \sum_{\alpha\in\mathbb F_q^n}
+            \widehat h(\alpha)\chi_\alpha,
+        \sum_{\beta\in\mathbb F_q^n}
+            \widehat h(\beta)\chi_\beta
     \right\rangle \\
     &=
-    \sum_{\alpha,\beta}
-        \widehat g(\alpha)
-        \overline{\widehat g(\beta)}
+    \sum_{\alpha,\beta\in\mathbb F_q^n}
+        \widehat h(\alpha)
+        \overline{\widehat h(\beta)}
         \langle \chi_\alpha,\chi_\beta\rangle .
 \end{aligned}
 \]
-By orthonormality, all terms with \(\alpha\neq\beta\) vanish, while
-\(\langle\chi_\alpha,\chi_\alpha\rangle=1\). Therefore
+Again, by orthonormality,
+\(\langle \chi_\alpha,\chi_\beta\rangle=0\) when \(\alpha\neq\beta\), and
+\(\langle \chi_\alpha,\chi_\alpha\rangle=1\). Hence the double sum reduces to
 \[
-    \|g\|_2^2
+    \mathbb E_x |h(x)|^2
     =
-    \sum_{\alpha}
-        \widehat g(\alpha)\overline{\widehat g(\alpha)}
+    \sum_{\alpha\in\mathbb F_q^n}
+        \widehat h(\alpha)\overline{\widehat h(\alpha)}
     =
-    \sum_{\alpha} |\widehat g(\alpha)|^2 .
+    \sum_{\alpha\in\mathbb F_q^n}
+        |\widehat h(\alpha)|^2 .
 \]
-Since \(\|g\|_2^2=\mathbb E_x |g(x)|^2\), this proves Parseval's identity.
+This proves Parseval's identity.
+
+Finally, if \(|h(x)|=1\) for every \(x\in\mathbb F_q^n\), then
+\[
+    \mathbb E_x |h(x)|^2 = \mathbb E_x 1 = 1.
+\]
+Therefore Parseval gives
+\[
+    \sum_{\alpha\in\mathbb F_q^n} |\widehat h(\alpha)|^2 = 1.
+\]
 \end{proof}
 
 \begin{definition}[Fourier expansion of a finite-field-valued function]

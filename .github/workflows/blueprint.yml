@@ -131,22 +131,32 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # This might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+          
+          # All of these are set to true by default and free a lot of space
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - name: Build Lean project
         uses: leanprover/lean-action@v1
         with:
           build: true
           lint: false
           mk_all-check: false
-          # use-github-cache: false
           build-args: :blueprint
-
-      # - name: Generate LeanArchitect files
-      #   run: ~/.elan/bin/lake build :blueprint
-
+      
       - name: Build homepage, API docs, and blueprint
         uses: leanprover-community/docgen-action@main
         with:
           blueprint: true
           homepage: home_page
-          # api-docs: true
-          api-docs: false
+          api-docs: true
