@@ -264,15 +264,16 @@ lemma randomVector_card_clog_le (m : ℕ) :
 omit [SampleableType F] in
 lemma verifier_queryBound {m n : ℕ} [Encodable F]
     (x : Matrix (Fin m) (Fin n) F × (Fin m → F)) :
-    LPCPQueryBound (verifier (F := F) x) 1 (m * Nat.clog 2 (Fintype.card F)) := by
+    QueryBound (verifier (F := F) x) 1 (m * Nat.clog 2 (Fintype.card F)) := by
   by_cases hm : m = 0
-  · simp [verifier, sampleRandomVector, LPCPQueryBound, hm]
+  · simp [verifier, sampleRandomVector, QueryBound, hm]
   · have hbits :
         Nat.clog 2 (Fintype.card (Fin m → F) - 1 + 1) ≤
           m * Nat.clog 2 (Fintype.card F) := by
       rw [card_sub_one_add_one (Fin m → F)]
       exact randomVector_card_clog_le (F := F) m
-    simp only [verifier, sampleRandomVector, LPCPQueryBound, hm, ↓reduceDIte]
+    simp only [verifier, sampleRandomVector, QueryBound, hm,
+      ↓reduceDIte]
     simp only [bind_assoc, pure_bind]
     rw [OracleComp.isQueryBound_query_bind_iff]
     exact ⟨hbits, by
@@ -287,7 +288,8 @@ theorem LINEQ_LPCP {m n : ℕ} :
   letI : Encodable F := Encodable.ofCountable F
   refine ⟨LINEQ.verifier (F := F), 0, ?_⟩
   rintro ⟨M, c⟩
-  refine ⟨by simp [LRunsInTime], LINEQ.verifier_queryBound (F := F) (M, c), ?_, ?_⟩
+  refine ⟨by simp [RunsInTime],
+    LINEQ.verifier_queryBound (F := F) (M, c), ?_, ?_⟩
   · rintro ⟨b, hb⟩
     exact ⟨b, by
       simp [LINEQ.verifier, LINEQ.sampleRandomVector,
