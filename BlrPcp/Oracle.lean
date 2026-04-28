@@ -20,23 +20,23 @@ open scoped Matrix
 instance instEncodableZModOfNeZero (q : ℕ) [NeZero q] : Encodable (ZMod q) :=
   Encodable.ofEquiv (Fin q) (ZMod.finEquiv q).symm
 
-/-- Runtime bound of an oracle computation. -/
+/-- `RunsInTime oa n` means `oa` halts in at most `n` steps. -/
 abbrev RunsInTime {ι α : Type} {spec : OracleSpec ι}
-    (_ : OracleComp spec α) (_ : ℕ) : Prop :=
+    (_oa : OracleComp spec α) (_n : ℕ) : Prop :=
   true -- TODO: look into https://api.cslib.io/docs/Cslib/Algorithms/Lean/TimeM.html
        -- or even https://github.com/Shreyas4991/Algolean
 
 /-- `QueryBound oa q r` means `oa` makes at most `q` proof queries
 and at most `r` randomness queries. -/
-abbrev QueryBound {ι α : Type} {spec : OracleSpec ι}
-    (oa : OracleComp (unifSpec + spec) α) (q r : ℕ) : Prop :=
-  OracleComp.IsQueryBound oa (q, r)
+abbrev QueryBound {ι α : Type} {proofSpec : OracleSpec ι}
+    (oa : OracleComp (unifSpec + proofSpec) α) (q r : ℕ) : Prop :=
+  OracleComp.IsQueryBound oa (r, q)
     (fun
-      | .inl n, (_, r) => Nat.clog 2 (n + 1) ≤ r
-      | .inr _, (q, _) => 0 < q)
+      | .inl n, (r, _) => Nat.clog 2 (n + 1) ≤ r
+      | .inr _, (_, q) => 0 < q)
     (fun
-      | .inl n, (q, r) => (q, r - Nat.clog 2 (n + 1))
-      | .inr _, (q, r) => (q - 1, r))
+      | .inl n, (r, q) => (r - Nat.clog 2 (n + 1), q)
+      | .inr _, (r, q) => (r, q - 1))
 
 abbrev RandOracle : OracleContext ℕ ProbComp where
   spec := unifSpec
@@ -45,12 +45,11 @@ abbrev RandOracle : OracleContext ℕ ProbComp where
 /-- A proof is represented as a function `π : [ℓ] → F`.
 `π(q)` is the answer to query `q`. -/
 abbrev ProofOracle {F : Type} {ℓ : ℕ}
-    (proof : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp where
+    (π : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp where
   spec := Fin ℓ →ₒ F
-  impl := fun q => pure (proof q)
+  impl := fun q => pure (π q)
 
-abbrev PCPOracleSpec (F : Type) (ℓ : ℕ) :
-    OracleSpec (ℕ ⊕ Fin ℓ) :=
+abbrev PCPOracleSpec (F : Type) (ℓ : ℕ) : OracleSpec (ℕ ⊕ Fin ℓ) :=
   unifSpec + (Fin ℓ →ₒ F)
 
 abbrev PCPVerifier (α : Type) (size : α → ℕ) (F : Type) (ℓ : ℕ → ℕ) : Type :=
@@ -74,12 +73,10 @@ abbrev LinProofOracle {F : Type} [Field F] {ℓ : ℕ}
   spec := (Fin ℓ → F) →ₒ F
   impl := fun u => pure (π ⬝ᵥ u)
 
-abbrev LPCPOracleSpec (F : Type) [Field F] (ℓ : ℕ) :
-    OracleSpec (ℕ ⊕ (Fin ℓ → F)) :=
+abbrev LPCPOracleSpec (F : Type) [Field F] (ℓ : ℕ) : OracleSpec (ℕ ⊕ (Fin ℓ → F)) :=
   unifSpec + ((Fin ℓ → F) →ₒ F)
 
-abbrev LPCPVerifier (α : Type) (size : α → ℕ) (F : Type) [Field F]
-    (ℓ : ℕ → ℕ) : Type :=
+abbrev LPCPVerifier (α : Type) (size : α → ℕ) (F : Type) [Field F] (ℓ : ℕ → ℕ) : Type :=
   (x : α) → OracleComp (LPCPOracleSpec F (ℓ (size x))) Bool
 
 def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)

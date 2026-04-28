@@ -27,7 +27,6 @@ end QESAT
 
 example : QESAT (ZMod 2) 3 [X 0 + C 1, X 0 * X 1 + X 2] := by native_decide
 
-@[blueprint]
 theorem QESAT_exp_PCP {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (ZMod 2) vars ∈
       PCP (QESAT.size (ZMod 2) vars) 0 (1 / 2) (ZMod 2)
