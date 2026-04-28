@@ -252,6 +252,73 @@ Consequently, for every $u,v\in\bbF_q$,
     = \frac{1}{q}\sum_{c\in\bbF_q}\omega_p^{\Tr(c(u-v))}.
 \]
 \end{lemma}
+\begin{proof}
+Let
+\[
+    \psi(z) := \omega_p^{\Tr(z)}
+\]
+be the standard additive character of \(\bbF_q\). We prove that, for every
+\(t\in \bbF_q\),
+\[
+    \ind[t=0]
+    =
+    \frac{1}{q}\sum_{c\in\bbF_q}\psi(ct).
+\]
+The desired statement follows by taking \(t=u-v\).
+
+If \(t=0\), then \(ct=0\) for every \(c\in\bbF_q\), so
+\[
+    \frac{1}{q}\sum_{c\in\bbF_q}\psi(ct)
+    =
+    \frac{1}{q}\sum_{c\in\bbF_q}1
+    =
+    1.
+\]
+
+Now suppose \(t\neq 0\). Then multiplication by \(t\) is a bijection
+\(\bbF_q\to\bbF_q\), so
+\[
+    \sum_{c\in\bbF_q}\psi(ct)
+    =
+    \sum_{z\in\bbF_q}\psi(z).
+\]
+We claim that the latter sum is \(0\). Let
+\[
+    S:=\sum_{z\in\bbF_q}\psi(z).
+\]
+Since \(\Tr:\bbF_q\to\bbF_p\) is a nonzero \(\bbF_p\)-linear map, it is
+surjective. Hence there exists \(a\in\bbF_q\) such that \(\Tr(a)=1\).
+Using the bijection \(z\mapsto z+a\), we get
+\[
+    S
+    =
+    \sum_{z\in\bbF_q}\psi(z+a)
+    =
+    \sum_{z\in\bbF_q}\omega_p^{\Tr(z+a)}
+    =
+    \sum_{z\in\bbF_q}\omega_p^{\Tr(z)}\omega_p^{\Tr(a)}
+    =
+    \omega_p S.
+\]
+Since \(\omega_p\neq 1\), this implies \(S=0\). Therefore, when
+\(t\neq 0\),
+\[
+    \frac{1}{q}\sum_{c\in\bbF_q}\psi(ct)=0.
+\]
+
+Combining the two cases gives
+\[
+    \ind[t=0]
+    =
+    \frac{1}{q}\sum_{c\in\bbF_q}\omega_p^{\Tr(ct)}.
+\]
+Substituting \(t=u-v\), we obtain
+\[
+    \ind[u=v]
+    =
+    \frac{1}{q}\sum_{c\in\bbF_q}\omega_p^{\Tr(c(u-v))}.
+\]
+\end{proof}
 
 \begin{definition}[Relative Hamming distance]
 \label{def:relative-hamming-distance}
