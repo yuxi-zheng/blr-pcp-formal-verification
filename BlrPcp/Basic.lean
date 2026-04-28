@@ -24,21 +24,61 @@ abbrev Vec (F : Type*) (Idx : Type*) := Idx → F
 abbrev ScalarFn (F : Type*) (Idx : Type*) := Vec F Idx → F
 abbrev ComplexFn (F : Type*) (Idx : Type*) := Vec F Idx → Complex
 
+/-- The linear scalar function `ℓ_a(x) = ∑ i, a i * x i`. -/
+def linearFn (a : Vec F Idx) : ScalarFn F Idx :=
+  fun x => ∑ i, a i * x i
+
 def IsLinear (f : ScalarFn F Idx) : Prop :=
-  ∃ a : Vec F Idx, ∀ x, f x = ∑ i, a i * x i
+  ∃ a : Vec F Idx, ∀ x, f x = linearFn a x
 
 def LinearSet : Set (ScalarFn F Idx) := {f | IsLinear f}
+
+/-- The real-valued indicator of membership in the set of linear scalar functions. -/
+noncomputable def linearSetIndicator (f : ScalarFn F Idx) : Real := by
+  classical
+  exact if f ∈ LinearSet (F := F) (Idx := Idx) then 1 else 0
 
 def BLRAcceptsAt (f : ScalarFn F Idx) (a b : F) (x y : Vec F Idx) : Prop :=
   a * f x + b * f y = f (fun i => a * x i + b * y i)
 
-axiom acceptanceProbabilityBLR : ScalarFn F Idx → Real
+/-- The nonzero field elements used as BLR scalar samples. -/
+def nonzeroScalars : Finset F :=
+  Finset.univ.filter fun a => a ≠ 0
+
+/-- The uniform acceptance probability of the finite-field BLR test:
+`a,b` are sampled uniformly from `F \ {0}` and `x,y` from `F^Idx`. -/
+noncomputable def acceptanceProbabilityBLR (f : ScalarFn F Idx) : Real := by
+  classical
+  exact
+    ((nonzeroScalars (F := F)).card : Real)⁻¹ *
+      ((nonzeroScalars (F := F)).card : Real)⁻¹ *
+        (Fintype.card (Vec F Idx) : Real)⁻¹ *
+          (Fintype.card (Vec F Idx) : Real)⁻¹ *
+            ∑ a ∈ (nonzeroScalars (F := F)), ∑ b ∈ (nonzeroScalars (F := F)),
+              ∑ x : Vec F Idx, ∑ y : Vec F Idx,
+                if BLRAcceptsAt f a b x y then (1 : Real) else 0
 
 noncomputable def rejectionProbabilityBLR (f : ScalarFn F Idx) : Real :=
   1 - acceptanceProbabilityBLR f
 
-axiom distance : ScalarFn F Idx → ScalarFn F Idx → Real
-axiom distanceToLinear : ScalarFn F Idx → Real
+/-- The relative Hamming distance between two scalar functions, i.e. the
+uniform probability that they disagree on a point of `F^Idx`. -/
+noncomputable def distance (f g : ScalarFn F Idx) : Real :=
+  (Fintype.card (Vec F Idx) : Real)⁻¹ *
+    ∑ x : Vec F Idx, if f x ≠ g x then (1 : Real) else 0
+
+/-- The distance from a scalar function to linearity, namely the minimum of
+`distance f g` over all `g ∈ LinearSet`. -/
+noncomputable def distanceToLinear (f : ScalarFn F Idx) : Real := by
+  classical
+  let linearFns : Finset (ScalarFn F Idx) :=
+    Finset.univ.filter fun g => g ∈ LinearSet (F := F) (Idx := Idx)
+  have hlinearFns_nonempty : linearFns.Nonempty := by
+    refine ⟨linearFn (F := F) (Idx := Idx) 0, ?_⟩
+    simp only [linearFns, Finset.mem_filter, Finset.mem_univ, true_and, LinearSet,
+      Set.mem_setOf_eq]
+    exact ⟨0, fun x => rfl⟩
+  exact linearFns.inf' hlinearFns_nonempty fun g => distance f g
 
 /-- The standard bilinear pairing on `F^Idx`. -/
 def dotProduct (a x : Vec F Idx) : F :=
@@ -250,10 +290,10 @@ private lemma normalizedCharLp_orthonormal :
   by_cases h : α = β
   · subst h
     have horthα : fnInner (charFn α) (charFn α) = (1 : ℂ) := by
-      simpa using (characters_orthonormal_basis (F := F) (Idx := Idx)).1 α α
+      simpa using (characters_orthogonal_basis (F := F) (Idx := Idx)).1 α α
     simp [horthα]
     simpa using (inv_sqrt_card_sq_mul_card (F := F) (Idx := Idx))
-  · have horth := (characters_orthonormal_basis (F := F) (Idx := Idx)).1 β α
+  · have horth := (characters_orthogonal_basis (F := F) (Idx := Idx)).1 β α
     have h' : β ≠ α := by simpa [eq_comm] using h
     simp [horth, h, h']
 
@@ -290,7 +330,7 @@ private lemma toLp_charFn_span_top :
   let e : WithLp 2 (ComplexFn F Idx) ≃ₗ[ℂ] ComplexFn F Idx :=
     WithLp.linearEquiv 2 ℂ (ComplexFn F Idx)
   have hspan : Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx))) = ⊤ :=
-    (characters_orthonormal_basis (F := F) (Idx := Idx)).2
+    (characters_orthogonal_basis (F := F) (Idx := Idx)).2
   calc
     Submodule.span ℂ (Set.range fun α : Vec F Idx => WithLp.toLp 2 (charFn α)) =
         (Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx)))).map e.symm.toLinearMap := by
@@ -335,44 +375,11 @@ lemma parseval_identity (g : ComplexFn F Idx) :
     _ = (Fintype.card (Vec F Idx) : ℝ)⁻¹ * ‖WithLp.toLp 2 g‖ ^ 2 := by rw [hb']
     _ = fnNormSq g := by rw [fnNormSq_eq_card_inv_mul_norm_sq]
 
-lemma parseval_inequality (g : ComplexFn F Idx) :
-    ∑ α, ‖fourierCoeff g α‖ ^ 2 ≤ fnNormSq g := by
-  exact le_of_eq (parseval_identity g)
-
-
-
-lemma fourier_expansion (g : ComplexFn F Idx) : True := by
-  sorry
-
-lemma parseval_plancherel (g h : ComplexFn F Idx) : True := by
-  sorry
-
-def HasFourierSet (f : ScalarFn F Idx) : Prop := True
-
-lemma distance_formula_via_fourier_sets (f g : ScalarFn F Idx) : True := by
-  sorry
-
-
-lemma distance_to_linearity_formula (f : ScalarFn F Idx) : True := by
-  sorry
-
-lemma spectral_lower_bound (f : ScalarFn F Idx) :
-    distanceToLinear f ≤ rejectionProbabilityBLR f := by
-  sorry
-
-lemma improved_analysis_finite_fields (f : ScalarFn F Idx) :
-    distanceToLinear f ≤ rejectionProbabilityBLR f := by
-  exact spectral_lower_bound f
-
-lemma almost_linear_of_high_acceptance (f : ScalarFn F Idx) {ε : Real}
-    (h : 1 - ε ≤ acceptanceProbabilityBLR f) :
-    distanceToLinear f ≤ ε := by
-  have hmain : distanceToLinear f ≤ rejectionProbabilityBLR f :=
-    improved_analysis_finite_fields f
-  dsimp [rejectionProbabilityBLR] at hmain
-  linarith
-
-lemma boolean_special_case : True := by
+/-- The finite-field BLR acceptance probability is sandwiched between
+completeness for linear functions and the soundness bound from distance to linearity. -/
+theorem blr (f : ScalarFn F Idx) :
+    linearSetIndicator f ≤ acceptanceProbabilityBLR f ∧
+      acceptanceProbabilityBLR f ≤ 1 - distanceToLinear f := by
   sorry
 
 end BlrPcp
