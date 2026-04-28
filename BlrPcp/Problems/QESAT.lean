@@ -10,9 +10,9 @@ This file defines the QESAT language and the exponential-length PCP for it.
 
 open CPoly CMvPolynomial
 
-abbrev QESAT (F : Type) [Field F] (n : ℕ) : Set (List (CMvPolynomial n F)) := fun polys =>
-  (∀ p ∈ polys, p.totalDegree ≤ 2) ∧
-  ∃ (a : Fin n → F), ∀ p ∈ polys, CMvPolynomial.eval a p = 0
+abbrev QESAT (F : Type) [Field F] (n : ℕ) : Set (List (CMvPolynomial n F)) :=
+  fun polys => (∀ p ∈ polys, p.totalDegree ≤ 2) ∧
+    ∃ (a : Fin n → F), ∀ p ∈ polys, CMvPolynomial.eval a p = 0
 
 namespace QESAT
 

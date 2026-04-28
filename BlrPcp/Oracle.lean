@@ -7,7 +7,7 @@ import VCVio.OracleComp.QueryTracking.QueryBound
 /-!
 # Oracle computations
 
-This file defines PCPs and LPCPs in terms of oracle computations.
+This file defines the BLR test, PCPs and LPCPs in terms of oracle computations.
 
 ## Main declarations
 
@@ -27,7 +27,7 @@ abbrev RunsInTime {ι α : Type} {spec : OracleSpec ι}
        -- or even https://github.com/Shreyas4991/Algolean
 
 /-- `QueryBound oa q r` means `oa` makes at most `q` proof queries
-and at most `r` randomness queries. -/
+and at most `r` bits of randomness. -/
 abbrev QueryBound {ι α : Type} {proofSpec : OracleSpec ι}
     (oa : OracleComp (unifSpec + proofSpec) α) (q r : ℕ) : Prop :=
   OracleComp.IsQueryBound oa (r, q)
@@ -38,22 +38,25 @@ abbrev QueryBound {ι α : Type} {proofSpec : OracleSpec ι}
       | .inl n, (r, q) => (r - Nat.clog 2 (n + 1), q)
       | .inr _, (r, q) => (r, q - 1))
 
-abbrev RandOracle : OracleContext ℕ ProbComp where
+/-- A randomness oracle. -/
+abbrev rand : OracleContext ℕ ProbComp where
   spec := unifSpec
   impl := fun n => $ᵗ Fin (n + 1)
 
+namespace PCP
 /-- A proof is represented as a function `π : [ℓ] → F`.
 `π(q)` is the answer to query `q`. -/
-abbrev ProofOracle {F : Type} {ℓ : ℕ}
+abbrev proof {F : Type} {ℓ : ℕ}
     (π : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp where
   spec := Fin ℓ →ₒ F
-  impl := fun q => pure (π q)
+  impl := fun q => return π q
 
-abbrev PCPOracleSpec (F : Type) (ℓ : ℕ) : OracleSpec (ℕ ⊕ Fin ℓ) :=
+abbrev spec (F : Type) (ℓ : ℕ) : OracleSpec (ℕ ⊕ Fin ℓ) :=
   unifSpec + (Fin ℓ →ₒ F)
+end PCP
 
 abbrev PCPVerifier (α : Type) (size : α → ℕ) (F : Type) (ℓ : ℕ → ℕ) : Type :=
-  (x : α) → OracleComp (PCPOracleSpec F (ℓ (size x))) Bool
+  (x : α) → OracleComp (PCP.spec F (ℓ (size x))) Bool
 
 def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     [Fintype F] [DecidableEq F] [Inhabited F]
@@ -62,22 +65,24 @@ def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     RunsInTime (V x) (t.eval (size x)) ∧
     QueryBound (V x) (q (size x)) (r (size x)) ∧
     (x ∈ L → ∃ π : Fin (ℓ (size x)) → F,
-      Pr[= true | simulateQ (RandOracle.impl + (ProofOracle π).impl) (V x)] ≥ 1 - ε_c) ∧
+      Pr[= true | simulateQ (rand.impl + (PCP.proof π).impl) (V x)] ≥ 1 - ε_c) ∧
     (x ∉ L → ∀ π : Fin (ℓ (size x)) → F,
-      Pr[= true | simulateQ (RandOracle.impl + (ProofOracle π).impl) (V x)] ≤ ε_s) }
+      Pr[= true | simulateQ (rand.impl + (PCP.proof π).impl) (V x)] ≤ ε_s) }
 
+namespace LPCP
 /-- A linear-query proof: a query is a vector `u`,
 and the answer is the inner product `⟨π, u⟩`. -/
-abbrev LinProofOracle {F : Type} [Field F] {ℓ : ℕ}
+abbrev proof {F : Type} [Field F] {ℓ : ℕ}
     (π : Fin ℓ → F) : OracleContext (Fin ℓ → F) ProbComp where
   spec := (Fin ℓ → F) →ₒ F
-  impl := fun u => pure (π ⬝ᵥ u)
+  impl := fun u => return π ⬝ᵥ u
 
-abbrev LPCPOracleSpec (F : Type) [Field F] (ℓ : ℕ) : OracleSpec (ℕ ⊕ (Fin ℓ → F)) :=
+abbrev spec (F : Type) (ℓ : ℕ) : OracleSpec (ℕ ⊕ (Fin ℓ → F)) :=
   unifSpec + ((Fin ℓ → F) →ₒ F)
+end LPCP
 
 abbrev LPCPVerifier (α : Type) (size : α → ℕ) (F : Type) [Field F] (ℓ : ℕ → ℕ) : Type :=
-  (x : α) → OracleComp (LPCPOracleSpec F (ℓ (size x))) Bool
+  (x : α) → OracleComp (LPCP.spec F (ℓ (size x))) Bool
 
 def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     [Field F] [Fintype F] [DecidableEq F] [Inhabited F]
@@ -86,6 +91,6 @@ def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     RunsInTime (V x) (t.eval (size x)) ∧
     QueryBound (V x) (q (size x)) (r (size x)) ∧
     (x ∈ L → ∃ π : Fin (ℓ (size x)) → F,
-      Pr[= true | simulateQ (RandOracle.impl + (LinProofOracle π).impl) (V x)] ≥ 1 - ε_c) ∧
+      Pr[= true | simulateQ (rand.impl + (LPCP.proof π).impl) (V x)] ≥ 1 - ε_c) ∧
     (x ∉ L → ∀ π : Fin (ℓ (size x)) → F,
-      Pr[= true | simulateQ (RandOracle.impl + (LinProofOracle π).impl) (V x)] ≤ ε_s) }
+      Pr[= true | simulateQ (rand.impl + (LPCP.proof π).impl) (V x)] ≤ ε_s) }

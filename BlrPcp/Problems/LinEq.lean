@@ -232,21 +232,20 @@ lemma probEvent_decodeUniformFin (α : Type) [Fintype α] [Encodable α] [Nonemp
 
 def sampleRandomVector (m n : ℕ) (F : Type) [Field F] [Fintype F]
     [Encodable F] [DecidableEq F] [Inhabited F] :
-    OracleComp (LPCPOracleSpec F n) (Fin m → F) :=
+    OracleComp (LPCP.spec F n) (Fin m → F) :=
   if _ : m = 0 then
     pure default
   else do
-    let i ← OracleComp.query (spec := LPCPOracleSpec F n)
+    let i ← query (spec := LPCP.spec F n)
       (.inl (Fintype.card (Fin m → F) - 1))
     pure (decodeUniformFin (Fin m → F) i)
 
-@[blueprint]
 def verifier {m n : ℕ} [Encodable F] :
     LPCPVerifier (Matrix (Fin m) (Fin n) F × (Fin m → F)) size F (fun _ => n) :=
   fun x => do
     let r ← sampleRandomVector m n F
     let u : Fin n → F := x.1ᵀ *ᵥ r
-    let y ← OracleComp.query (spec := LPCPOracleSpec F n) (.inr u)
+    let y ← query (spec := LPCP.spec F n) (.inr u)
     pure (y = x.2 ⬝ᵥ r)
 
 omit [Field F] [DecidableEq F] [Inhabited F] [SampleableType F] in
