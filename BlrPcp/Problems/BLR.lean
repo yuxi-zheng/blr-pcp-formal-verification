@@ -482,3 +482,14 @@ theorem BLR_soundness {F : Type} {n : ℕ}
         (BLR.verifier (F := F) (n := n))] := by
   rw [blrSoundnessCompEqAnalytical f]
   exact blrSoundnessAnalytical f
+
+/-- Completeness of `BLR.verifier`: linear functions are accepted with probability one. -/
+theorem BLR_completeness {F : Type} {n : ℕ}
+    [Field F] [DecidableEq F] [Fintype F] [Nonempty (Fin n)]
+    [SampleableType F] [SampleableType Fˣ]
+    {f : (Fin n → F) → F}
+    (hf : f ∈ BlrPcp.LinearSet (F := F) (Idx := Fin n)) :
+    Pr[= true | simulateQ ((BLR.rand F).impl + fun x => (return f x : ProbComp F))
+      (BLR.verifier (F := F) (n := n))] = 1 := by
+  rw [blrVerifier_acceptanceProbability]
+  simp [acceptanceProbabilityBLR, BlrPcp.blr_completeness (F := F) (Idx := Fin n) hf]
