@@ -88,6 +88,7 @@ lemma queryBound_bind {ρ ι α β : Type} {randSpec : OracleSpec ρ}
           exact queryBound_mono (ih u (hoa.2 u)) (by omega) (by omega)
 
 namespace PCP
+
 /-- A proof is represented as a function `π : [ℓ] → F`.
 `π(q)` is the answer to query `q`. -/
 abbrev proofSpec (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ) :=
@@ -100,6 +101,7 @@ abbrev proof {F : Type} {ℓ : ℕ}
 
 abbrev spec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ Fin ℓ) :=
   randSpec F + proofSpec F ℓ
+
 end PCP
 
 abbrev PCPVerifier (α : Type) (size : α → ℕ) (F : Type) (ℓ : ℕ → ℕ) : Type :=
@@ -119,6 +121,7 @@ def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
       Pr[= true | simulateQ ((rand F).impl + (PCP.proof π).impl) (V x)] ≤ ε_s) }
 
 namespace LPCP
+
 /-- A linear-query proof: a query is a vector `u`,
 and the answer is the inner product `⟨π, u⟩`. -/
 abbrev proofSpec (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ → F) :=
@@ -131,6 +134,7 @@ abbrev proof {F : Type} [Field F] {ℓ : ℕ}
 
 abbrev spec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ (Fin ℓ → F)) :=
   randSpec F + proofSpec F ℓ
+
 end LPCP
 
 abbrev LPCPVerifier (α : Type) (size : α → ℕ) (F : Type) [Field F] (ℓ : ℕ → ℕ) : Type :=
