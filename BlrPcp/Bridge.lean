@@ -26,14 +26,16 @@ def BLRAcceptsAt {F : Type} [Add F] {n : ℕ}
 noncomputable def acceptanceProbabilityBLR {F : Type} [Field F] [Fintype F] [DecidableEq F] {n : ℕ}
     (f : (Fin n → F) → F) : ENNReal := by
   classical
-  exact ((Finset.univ.filter fun xy : (Fin n → F) × (Fin n → F) =>
-      BLRAcceptsAt f xy.1 xy.2).card : ENNReal) *
-    (Fintype.card ((Fin n → F) × (Fin n → F)) : ENNReal)⁻¹
+  exact ∑ x : Fin n → F, ∑ y : Fin n → F,
+    (Fintype.card (Fin n → F) : ENNReal)⁻¹ *
+      (Fintype.card (Fin n → F) : ENNReal)⁻¹ *
+        if BLRAcceptsAt f x y then 1 else 0
 
 noncomputable def rejectionProbabilityBLR {F : Type} [Field F] [Fintype F] [DecidableEq F] {n : ℕ}
     (f : (Fin n → F) → F) : ENNReal :=
   1 - acceptanceProbabilityBLR f
 
 theorem blrSoundnessAnalytical {F : Type} [Field F] [Fintype F] [DecidableEq F] {n : ℕ}
-    (f : (Fin n → F) → F) : rejectionProbabilityBLR f ≥ distanceToLin f := by
+    (hF : Nat.Prime (Fintype.card F)) (f : (Fin n → F) → F) :
+    distanceToLin f ≤ 2 * rejectionProbabilityBLR f := by
   sorry

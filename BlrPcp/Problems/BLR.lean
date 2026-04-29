@@ -84,20 +84,135 @@ theorem BLR_query_complexity1 {F : Type} [Field F] [DecidableEq F] {n : ℕ} :
       queryBound_bind (BLR.sampleVector_queryBound F n) fun y =>
         hProof x y
 
-/-- If `F` has prime cardinality, then the basic BLR test (without sampling a,b ∈ 𝔽ˣ)
-has same rejection probability on `f` as `rejectionProbabilityBLR f`. -/
+lemma probOutput_finCons_map_eq {m : Type _ → Type _} [Monad m] [LawfulMonad m]
+    [HasEvalSPMF m] {F : Type} [DecidableEq F] {n : ℕ}
+    (mx : m (Fin n → F)) (x : Fin (n + 1) → F) :
+    Pr[= x | (Fin.cons (x 0)) <$> mx] = Pr[= Fin.tail x | mx] := by
+  rw [show x = Fin.cons (x 0) (Fin.tail x) from (Fin.cons_self_tail x).symm]
+  exact probOutput_map_injective mx
+    (Fin.cons_right_injective (α := fun _ => F) (x 0)) (Fin.tail x)
+
+lemma probOutput_finCons_map_ne {m : Type _ → Type _} [Monad m] [LawfulMonad m]
+    [HasEvalSPMF m] {F : Type} [DecidableEq F] [Fintype F] {n : ℕ}
+    (mx : m (Fin n → F)) (x : Fin (n + 1) → F) {a : F}
+    (ha : a ≠ x 0) :
+    Pr[= x | (Fin.cons a) <$> mx] = 0 := by
+  rw [probOutput_map_eq_sum_fintype_ite]
+  have hfalse : ∀ y : Fin n → F, x ≠ Fin.cons a y := by
+    intro y hxy
+    apply ha
+    simpa using (congrFun hxy 0).symm
+  simp [hfalse]
+
+lemma probOutput_simulateQ_BLR_sampleVectorAux {F : Type}
+    [Nonempty F] [DecidableEq F] [Fintype F] [SampleableType F]
+    (m n : ℕ) (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp)
+    (x : Fin m → F) :
+    Pr[= x |
+      simulateQ ((rand F).impl + impl)
+        (Fin.mOfFn m fun _ =>
+          (liftM (query (spec := BLR.spec F n) (.inl ())) :
+            OracleComp (BLR.spec F n) F))] =
+      (Fintype.card (Fin m → F) : ENNReal)⁻¹ := by
+  induction m with
+  | zero =>
+      have hx : x = Fin.elim0 := by
+        funext i
+        exact Fin.elim0 i
+      subst hx
+      simp [Fin.mOfFn]
+  | succ m ih =>
+      simp only [Fin.mOfFn, simulateQ_bind, simulateQ_query, OracleQuery.cont_query,
+        id_map, OracleQuery.input_query]
+      rw [probOutput_bind_eq_tsum, tsum_fintype]
+      rw [Finset.sum_eq_single (x 0)]
+      · change Pr[= x 0 | ($ᵗ F : ProbComp F)] *
+            Pr[= x |
+              (Fin.cons (x 0)) <$>
+                simulateQ ((rand F).impl + impl)
+                  (Fin.mOfFn m fun _ =>
+                    (liftM (query (spec := BLR.spec F n) (.inl ())) :
+                      OracleComp (BLR.spec F n) F))] = _
+        rw [probOutput_uniformSample, probOutput_finCons_map_eq, ih]
+        rw [Fintype.card_fun, Fintype.card_fin, Fintype.card_fun, Fintype.card_fin]
+        rw [Nat.pow_succ]
+        simp only [Nat.cast_mul, Nat.cast_pow]
+        rw [ENNReal.mul_inv]
+        · rw [mul_comm]
+        · left
+          exact_mod_cast pow_ne_zero m (Fintype.card_ne_zero (α := F))
+        · left
+          simp
+      · intro a _ ha
+        change Pr[= a | ($ᵗ F : ProbComp F)] *
+            Pr[= x |
+              (Fin.cons a) <$>
+                simulateQ ((rand F).impl + impl)
+                  (Fin.mOfFn m fun _ =>
+                    (liftM (query (spec := BLR.spec F n) (.inl ())) :
+                      OracleComp (BLR.spec F n) F))] = 0
+        rw [probOutput_finCons_map_ne _ x ha]
+        simp
+      · intro h
+        simp at h
+
+@[simp]
+lemma probOutput_simulateQ_BLR_sampleVector {F : Type}
+    [Nonempty F] [DecidableEq F] [Fintype F] [SampleableType F] {n : ℕ}
+    (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp) (x : Fin n → F) :
+    Pr[= x | simulateQ (((fun _ : Unit => $ᵗ F) + impl)) (BLR.sampleVector F n)] =
+      (Fintype.card (Fin n → F) : ENNReal)⁻¹ := by
+  simpa [rand, BLR.sampleVector] using
+    probOutput_simulateQ_BLR_sampleVectorAux (F := F) n n impl x
+
+lemma probOutput_true_map_simulateQ_BLR_sampleVector {F : Type}
+    [Nonempty F] [DecidableEq F] [Fintype F] [SampleableType F] {n : ℕ}
+    (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp)
+    (g : (Fin n → F) → Bool) :
+    Pr[= true | g <$> simulateQ (((fun _ : Unit => $ᵗ F) + impl)) (BLR.sampleVector F n)] =
+      ∑ y : Fin n → F,
+        (Fintype.card (Fin n → F) : ENNReal)⁻¹ * if g y = true then 1 else 0 := by
+  rw [probOutput_map_eq_sum_fintype_ite]
+  apply Finset.sum_congr rfl
+  intro y _
+  rw [probOutput_simulateQ_BLR_sampleVector (impl := impl) y]
+  by_cases hy : g y = true <;> simp [hy]
+
+lemma blrVerifier_acceptanceProbability {F : Type} {n : ℕ}
+    [Field F] [DecidableEq F] [Fintype F] [SampleableType F]
+    (f : (Fin n → F) → F) :
+    Pr[= true | simulateQ ((rand F).impl + fun x => (return f x : ProbComp F))
+      (BLR.verifier1 (F := F) (n := n))] = acceptanceProbabilityBLR f := by
+  simp only [BLR.verifier1, simulateQ_bind, simulateQ_query, OracleQuery.cont_query,
+    id_map, OracleQuery.input_query]
+  rw [probOutput_bind_eq_tsum, tsum_fintype]
+  have hProofQuery : ∀ q : Fin n → F,
+      (((fun _ : Unit => ($ᵗ F : ProbComp F)) +
+          (fun x : Fin n → F => (pure (f x) : ProbComp F))) (Sum.inr q)) =
+        (pure (f q) : ProbComp F) := by
+    intro q
+    rfl
+  simp_rw [hProofQuery]
+  simp [probOutput_true_map_simulateQ_BLR_sampleVector, acceptanceProbabilityBLR,
+    BLRAcceptsAt, mul_assoc, mul_comm]
+
+/-- The basic BLR test has the same rejection probability on `f` as
+`rejectionProbabilityBLR f`. -/
 theorem blrSoundnessCompEqAnalytical1 {F : Type} {n : ℕ}
     [Field F] [DecidableEq F] [Fintype F] [SampleableType F]
-    (hF : Nat.Prime (Fintype.card F)) (f : (Fin n → F) → F) :
+    (f : (Fin n → F) → F) :
     Pr[= false | simulateQ ((rand F).impl + fun x => (return f x : ProbComp F))
       (BLR.verifier1 (F := F) (n := n))] =
       rejectionProbabilityBLR f := by
-  sorry
+  rw [probOutput_false_eq_sub]
+  simp [blrVerifier_acceptanceProbability (F := F) (n := n) f, rejectionProbabilityBLR]
 
 /-- Soundness of `BLR.verifier1` for finite fields of prime cardinality. -/
 theorem BLR_soundness1 {F : Type} {n : ℕ}
     [Field F] [DecidableEq F] [Fintype F] [SampleableType F]
     (hF : Nat.Prime (Fintype.card F)) (f : (Fin n → F) → F) :
-    Pr[= false | simulateQ ((rand F).impl + fun x => (return f x : ProbComp F))
-      (BLR.verifier1 (F := F) (n := n))] ≥ distanceToLin f := by
-  sorry
+    distanceToLin f ≤ 2 *
+      Pr[= false | simulateQ ((rand F).impl + fun x => (return f x : ProbComp F))
+        (BLR.verifier1 (F := F) (n := n))] := by
+  rw [blrSoundnessCompEqAnalytical1 f]
+  exact blrSoundnessAnalytical hF f
