@@ -7,6 +7,13 @@ import Mathlib.Algebra.MvPolynomial.SchwartzZippel
 
 This file defines the LINEQ language, its executable LPCP verifier, and the
 linear PCP theorem for LINEQ.
+
+## Main declarations
+
+- `LINEQ`: the language of satisfiable linear systems `M *ᵥ b = c`.
+- `LINEQ.size`: the binary-size proxy for LINEQ instances.
+- `LINEQ.verifier`: the LPCP verifier for LINEQ.
+- `LINEQ_LPCP`: LINEQ has a one-query LPCP verifier with soundness `1 / |F|`.
 -/
 
 open OracleComp
@@ -201,91 +208,102 @@ lemma linear_form_uniform_prob_mul_card_le_one {m : ℕ} {a : Fin m → F}
   rw [hprob]
   exact uniform_coordinate_zero_prob_mul_card_le_one (F := F) k
 
-lemma card_sub_one_add_one (α : Type) [Fintype α] [Nonempty α] :
-    Fintype.card α - 1 + 1 = Fintype.card α := by
-  have h : 0 < Fintype.card α := Fintype.card_pos
-  omega
+def vectorEquiv (F : Type) (m : ℕ) : Vector F m ≃ (Fin m → F) where
+  toFun := fun v i => v.get i
+  invFun := Vector.ofFn
+  left_inv := fun v => by
+    ext i
+    simp only [Vector.ofFn, Vector.get, Fin.val_cast, Vector.getElem_toArray, Vector.getElem_mk,
+      Array.getElem_ofFn]
+  right_inv := fun f => by
+    funext i
+    simp only [Vector.get, Vector.ofFn, Fin.val_cast, Array.getElem_ofFn, Fin.eta]
 
-def decodeUniformFin (α : Type) [Fintype α] [Encodable α] [Nonempty α] :
-    Fin (Fintype.card α - 1 + 1) → α :=
-  fun i => (Encodable.fintypeEquivFin (α := α)).symm
-    (Fin.cast (card_sub_one_add_one α) i)
+def sampleRandomVectorAux (F : Type) : (m n : ℕ) →
+    OracleComp (LPCP.spec F n) (Vector F m)
+  | 0, _ => pure #v[]
+  | m + 1, n => Vector.push <$> sampleRandomVectorAux F m n <*>
+      query (spec := LPCP.spec F n) (.inl ())
 
-lemma decodeUniformFin_bijective (α : Type) [Fintype α] [Encodable α] [Nonempty α] :
-    Function.Bijective (decodeUniformFin α) := by
-  simpa [decodeUniformFin] using
-    ((Encodable.fintypeEquivFin (α := α)).symm.bijective.comp
-      (finCongr (card_sub_one_add_one α)).bijective)
+def sampleRandomVector (m n : ℕ) (F : Type) :
+    OracleComp (LPCP.spec F n) (Fin m → F) :=
+  vectorEquiv F m <$> sampleRandomVectorAux F m n
 
-lemma probEvent_decodeUniformFin (α : Type) [Fintype α] [Encodable α] [Nonempty α]
-    [SampleableType α] (p : α → Prop) :
-    Pr[p ∘ decodeUniformFin α |
-        ($ᵗ Fin (Fintype.card α - 1 + 1) : ProbComp (Fin (Fintype.card α - 1 + 1)))] =
-      Pr[p | ($ᵗ α : ProbComp α)] := by
-  rw [← probEvent_map
-    (mx := ($ᵗ Fin (Fintype.card α - 1 + 1) :
-      ProbComp (Fin (Fintype.card α - 1 + 1))))
-    (f := decodeUniformFin α) (q := p)]
-  simp [probEvent_def, evalDist_map_bijective_uniform_cross
-      (α := Fin (Fintype.card α - 1 + 1)) (β := α)
-      (decodeUniformFin α) (decodeUniformFin_bijective α)]
+omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] in
+lemma simulateQ_sampleRandomVectorAux (m n : ℕ)
+    (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp) :
+    simulateQ ((rand F).impl + impl) (sampleRandomVectorAux F m n) =
+      ($ᵗ Vector F m : ProbComp (Vector F m)) := by
+  induction m with
+  | zero =>
+      rfl
+  | succ m ih =>
+      simp only [sampleRandomVectorAux, simulateQ_seq, simulateQ_map, simulateQ_query,
+        OracleQuery.cont_query, id_map, OracleQuery.input_query]
+      change Vector.push <$> simulateQ ((rand F).impl + impl) (sampleRandomVectorAux F m n) <*>
+          ($ᵗ F) = (instSampleableTypeVector F (m + 1)).selectElem
+      rw [ih]
+      rfl
 
-def sampleRandomVector (m n : ℕ) (F : Type) [Field F] [Fintype F]
-    [Encodable F] [DecidableEq F] [Inhabited F] :
-    OracleComp (LPCPOracleSpec F n) (Fin m → F) :=
-  if _ : m = 0 then
-    pure default
-  else do
-    let i ← OracleComp.query (spec := LPCPOracleSpec F n)
-      (.inl (Fintype.card (Fin m → F) - 1))
-    pure (decodeUniformFin (Fin m → F) i)
+omit [Field F] [Fintype F] [Inhabited F] in
+lemma simulateQ_sampleRandomVector (m n : ℕ)
+    (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp) :
+    simulateQ ((rand F).impl + impl) (sampleRandomVector m n F) =
+      ($ᵗ (Fin m → F) : ProbComp (Fin m → F)) := by
+  simp only [sampleRandomVector, simulateQ_map]
+  change vectorEquiv F m <$> simulateQ ((rand F).impl + impl) (sampleRandomVectorAux F m n) =
+    (instSampleableTypeFinFunc (n := m) (α := F)).selectElem
+  rw [simulateQ_sampleRandomVectorAux (F := F) m n impl]
+  simp [instSampleableTypeFinFunc, vectorEquiv, SampleableType.ofEquiv, uniformSample]
 
-@[blueprint]
-def verifier {m n : ℕ} [Encodable F] :
+def verifier {m n : ℕ} :
     LPCPVerifier (Matrix (Fin m) (Fin n) F × (Fin m → F)) size F (fun _ => n) :=
   fun x => do
     let r ← sampleRandomVector m n F
     let u : Fin n → F := x.1ᵀ *ᵥ r
-    let y ← OracleComp.query (spec := LPCPOracleSpec F n) (.inr u)
+    let y ← query (spec := LPCP.spec F n) (.inr u)
     pure (y = x.2 ⬝ᵥ r)
 
-omit [Field F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma randomVector_card_clog_le (m : ℕ) :
-    Nat.clog 2 (Fintype.card (Fin m → F)) ≤
-      m * Nat.clog 2 (Fintype.card F) := by
-  rw [Fintype.card_pi_const]
-  exact Nat.clog_le_of_le_pow <| by
-    have hpow := Nat.pow_le_pow_left
-      (show Fintype.card F ≤ 2 ^ Nat.clog 2 (Fintype.card F) from
-        Nat.le_pow_clog (by decide) _) m
-    rw [← Nat.pow_mul, Nat.mul_comm] at hpow
-    exact hpow
+omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+lemma sampleRandomVectorAux_queryBound (m n : ℕ) :
+    QueryBound (sampleRandomVectorAux F m n) 0 m := by
+  induction m with
+  | zero =>
+      simp [sampleRandomVectorAux, QueryBound]
+  | succ m ih =>
+      simpa [sampleRandomVectorAux, seq_eq_bind_map, Nat.add_comm, Nat.add_left_comm,
+        Nat.add_assoc] using
+        queryBound_bind ih fun _ => by
+          simp [QueryBound]
 
-omit [SampleableType F] in
-lemma verifier_queryBound {m n : ℕ} [Encodable F]
+omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+lemma sampleRandomVector_queryBound (m n : ℕ) :
+    QueryBound (sampleRandomVector m n F) 0 m := by
+  simpa [sampleRandomVector] using sampleRandomVectorAux_queryBound (F := F) m n
+
+omit [Inhabited F] [SampleableType F] in
+lemma verifier_queryBound {m n : ℕ}
     (x : Matrix (Fin m) (Fin n) F × (Fin m → F)) :
-    QueryBound (verifier (F := F) x) 1 (m * Nat.clog 2 (Fintype.card F)) := by
-  by_cases hm : m = 0
-  · simp [verifier, sampleRandomVector, QueryBound, hm]
-  · have hbits :
-        Nat.clog 2 (Fintype.card (Fin m → F) - 1 + 1) ≤
-          m * Nat.clog 2 (Fintype.card F) := by
-      rw [card_sub_one_add_one (Fin m → F)]
-      exact randomVector_card_clog_le (F := F) m
-    simp only [verifier, sampleRandomVector, QueryBound, hm,
-      ↓reduceDIte]
-    simp only [bind_assoc, pure_bind]
+    QueryBound (verifier (F := F) x) 1 m := by
+  have hQuery : ∀ r : Fin m → F,
+      QueryBound
+        (do
+          let y ←
+            (liftM (query (spec := LPCP.spec F n) (.inr (x.1ᵀ *ᵥ r))) :
+              OracleComp (LPCP.spec F n) F)
+          pure (decide (y = x.2 ⬝ᵥ r))) 1 0 := by
+    intro r
+    simp only [QueryBound]
     rw [OracleComp.isQueryBound_query_bind_iff]
-    exact ⟨hbits, by
-      intro a
-      simp [map_eq_bind_pure_comp, OracleComp.isQueryBound_query_bind_iff]⟩
+    exact ⟨by simp, fun _ => trivial⟩
+  simpa [verifier] using
+    queryBound_bind (sampleRandomVector_queryBound (F := F) m n) hQuery
 
 end LINEQ
 
 theorem LINEQ_LPCP {m n : ℕ} :
     LINEQ m n (F := F) ∈ LPCP (LINEQ.size) 0 (1 / (Fintype.card F)) F
-      (fun _ => n) (fun _ => 1) (fun _ => m * Nat.clog 2 (Fintype.card F)) := by
-  letI : Encodable F := Encodable.ofCountable F
+      (fun _ => n) (fun _ => 1) (fun _ => m) := by
   refine ⟨LINEQ.verifier (F := F), 0, ?_⟩
   rintro ⟨M, c⟩
   refine ⟨by simp [RunsInTime],
@@ -302,17 +320,15 @@ theorem LINEQ_LPCP {m n : ℕ} :
       ext i
       exact Fin.elim0 (hm ▸ i)
     · have hd : M *ᵥ π - c ≠ 0 := fun h => hx ⟨π, sub_eq_zero.mp h⟩
-      simp [LINEQ.verifier, LINEQ.sampleRandomVector, hm]
+      simp [LINEQ.verifier]
       rw [← probEvent_eq_eq_probOutput]
       rw [probEvent_map]
       let accept : (Fin m → F) → Prop := fun r =>
         decide (π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r) = true
+      rw [LINEQ.simulateQ_sampleRandomVector (F := F) m n (LPCP.proof π).impl]
       change
-        Pr[accept ∘ LINEQ.decodeUniformFin (Fin m → F) |
-          ($ᵗ Fin (Fintype.card (Fin m → F) - 1 + 1) :
-            ProbComp (Fin (Fintype.card (Fin m → F) - 1 + 1)))] *
+        Pr[accept | ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] *
           (Fintype.card F : ENNReal) ≤ 1
-      rw [LINEQ.probEvent_decodeUniformFin (Fin m → F) accept]
       rw [show
           Pr[accept |
               ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] =
