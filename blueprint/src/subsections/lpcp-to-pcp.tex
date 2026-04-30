@@ -1,0 +1,20 @@
+\begin{lemma}
+\uses{LPCP,PCP}
+\label{LPCP_to_PCP_ZMod2}
+\lean{LPCP_to_PCP_ZMod2}
+\leanok
+\[
+\LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r] \subseteq
+\PCP\left[
+\varepsilon_c,\
+\varepsilon_s'=\max\{7/8,\varepsilon_s+1/100\},
+\Sigma'=\F_{2},\
+\ell'=2^{\ell},\
+q'=3+2\lceil\log100q\rceil q,\
+r'=r+(2+\lceil\log100q\rceil)\ell
+\right].
+\]
+\end{lemma}
+\begin{proof}\uses{LINEQ_LPCP}
+TODO
+\end{proof}
