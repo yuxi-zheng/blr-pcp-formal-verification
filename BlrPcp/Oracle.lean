@@ -11,7 +11,9 @@ This file defines the BLR test, PCPs and LPCPs in terms of oracle computations.
 
 ## Main declarations
 
-- `PCP`, `LPCP`: PCP and linear PCP language classes with query and randomness bounds.
+- `rand`: the specification and implementation of a randomness oracle that samples from a type `F`.
+- `PCPVerifier`, `LPCPVerifier`: the type of PCP and LPCP verifiers.
+- `PCP`, `LPCP`: PCP and LPCP complexity classes with query and randomness bounds.
 -/
 
 open OracleComp

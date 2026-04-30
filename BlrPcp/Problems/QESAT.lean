@@ -6,6 +6,12 @@ import CompPoly.Multivariate.CMvPolynomial
 # Quadratic equation satisfiability
 
 This file defines the QESAT language and the exponential-length PCP for it.
+
+## Main declarations
+
+- `QESAT`: the language of quadratic equation satisfiability instances.
+- `QESAT.size`: the binary-size proxy for QESAT instances.
+- `QESAT_exp_PCP`: QESAT over `ZMod 2` has an exponential-length PCP.
 -/
 
 open CPoly CMvPolynomial

@@ -7,6 +7,13 @@ import Mathlib.Algebra.MvPolynomial.SchwartzZippel
 
 This file defines the LINEQ language, its executable LPCP verifier, and the
 linear PCP theorem for LINEQ.
+
+## Main declarations
+
+- `LINEQ`: the language of satisfiable linear systems `M *ᵥ b = c`.
+- `LINEQ.size`: the binary-size proxy for LINEQ instances.
+- `LINEQ.verifier`: the LPCP verifier for LINEQ.
+- `LINEQ_LPCP`: LINEQ has a one-query LPCP verifier with soundness `1 / |F|`.
 -/
 
 open OracleComp
