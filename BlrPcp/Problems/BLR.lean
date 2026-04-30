@@ -592,6 +592,10 @@ private lemma zmod2_unit_coe (a : (ZMod 2)ˣ) : (a : ZMod 2) = 1 := by
   have hval : (a : ZMod 2).val = 1 := by omega
   exact (ZMod.val_eq_one (by norm_num) _).mp hval
 
+private instance : Unique (ZMod 2)ˣ where
+  default := 1
+  uniq a := Units.ext (zmod2_unit_coe a)
+
 /-- The additive BLR verifier accepts with the uniform probability over `x,y ∈ F^n`. -/
 theorem blrBasicVerifier_acceptanceProbability_sum {F : Type} {n : ℕ}
     [Add F] [DecidableEq F] [Fintype F] [Nonempty F] [SampleableType F]
@@ -615,7 +619,7 @@ theorem blrBasicVerifier_acceptanceProbability_sum {F : Type} {n : ℕ}
 /-- Over `ZMod 2`, the additive BLR verifier has the same acceptance probability
 as the scalar-sampling finite-field BLR verifier. -/
 theorem blrBasicVerifier_acceptanceProbability_eq_verifier_ZMod2 {n : ℕ}
-    [SampleableType (ZMod 2)] [SampleableType (ZMod 2)ˣ]
+    [SampleableType (ZMod 2)]
     (f : (Fin n → ZMod 2) → ZMod 2) :
     Pr[= true | simulateQ ((rand (ZMod 2)).impl +
         fun x => (return f x : ProbComp (ZMod 2)))
@@ -630,7 +634,7 @@ theorem blrBasicVerifier_acceptanceProbability_eq_verifier_ZMod2 {n : ℕ}
 /-- Over `ZMod 2`, the additive BLR verifier has the same rejection probability
 as the scalar-sampling finite-field BLR verifier. -/
 theorem blrBasicVerifier_rejectionProbability_eq_verifier_ZMod2 {n : ℕ}
-    [SampleableType (ZMod 2)] [SampleableType (ZMod 2)ˣ]
+    [SampleableType (ZMod 2)]
     (f : (Fin n → ZMod 2) → ZMod 2) :
     Pr[= false | simulateQ ((rand (ZMod 2)).impl +
         fun x => (return f x : ProbComp (ZMod 2)))
@@ -696,7 +700,7 @@ theorem BLR_completeness {F : Type} {n : ℕ}
 /-- Over `ZMod 2`, completeness transfers from the scalar-sampling BLR verifier to
 the additive basic verifier. -/
 theorem BLR_basic_completeness_ZMod2 {n : ℕ}
-    [Nonempty (Fin n)] [SampleableType (ZMod 2)] [SampleableType (ZMod 2)ˣ]
+    [Nonempty (Fin n)] [SampleableType (ZMod 2)]
     {f : (Fin n → ZMod 2) → ZMod 2}
     (hf : f ∈ BlrPcp.LinearSet (F := ZMod 2) (Idx := Fin n)) :
     Pr[= true | simulateQ ((rand (ZMod 2)).impl +
@@ -708,7 +712,7 @@ theorem BLR_basic_completeness_ZMod2 {n : ℕ}
 /-- Over `ZMod 2`, soundness transfers from the scalar-sampling BLR verifier to
 the additive basic verifier. -/
 theorem BLR_basic_soundness_ZMod2 {n : ℕ}
-    [Nonempty (Fin n)] [SampleableType (ZMod 2)] [SampleableType (ZMod 2)ˣ]
+    [Nonempty (Fin n)] [SampleableType (ZMod 2)]
     (f : (Fin n → ZMod 2) → ZMod 2) :
     distanceToLin f ≤
       Pr[= false | simulateQ ((rand (ZMod 2)).impl +
