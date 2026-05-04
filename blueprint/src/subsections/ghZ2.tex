@@ -1,0 +1,156 @@
+\section{Gowers-Hatami for classical BLR}
+
+In classical BLR, the mapping is from a field $\mathbb{F}_2^n$. 
+First let us relate the BLR test to the notion of approximate representation.
+
+\begin{proposition}[BLR test induces an approximate representation]\label{lem:blr-approx-rep}
+Let $f:\mathbb{Z}_2^n\to \mathbb{Z}_2$ satisfy
+\[
+\Pr_{x,y}[f(x)+f(y)=f(x+y)] \ge 1-\epsilon.
+\]
+Define $F:\mathbb{Z}_2^n\to \{\pm1\}$ by $F(x)=(-1)^{f(x)}$. Then
+\[
+\mathbb{E}_{x,y}\big|F(x)F(y)-F(x+y)\big|^2 \le 4\epsilon,
+\]
+so $F$ is an $(2\epsilon,1)$-approximate representation.
+\end{proposition}
+
+\begin{proof}
+    First observe that for all $x,y\in G$,
+    \[
+    F(x)F(y) = (-1)^{f(x)+f(y)}.
+    \]
+    Hence
+    \[
+    F(x)F(y)=F(x+y) \quad \Longleftrightarrow \quad f(x)+f(y)=f(x+y)\ (\mathrm{mod}\ 2).
+    \]
+
+    Define the indicator of BLR success:
+    \[
+    \mathbf{1}_{\mathrm{good}}(x,y) := \mathbf{1}[f(x)+f(y)=f(x+y)].
+    \]
+    Then
+    \[
+    \Pr_{x,y}[\mathbf{1}_{\mathrm{good}}=1] \ge 1-\epsilon.
+    \]
+
+    Now compute the squared error. Since $F(x)\in\{\pm1\}$,
+    \[
+    |F(x)F(y)-F(x+y)|^2 =
+    \begin{cases}
+    0 & \text{if } F(x)F(y)=F(x+y),\\
+    4 & \text{otherwise}.
+    \end{cases}
+    \]
+
+    Taking expectation over $(x,y)$,
+    \begin{align*}
+    \mathbb{E}_{x,y}|F(x)F(y)-F(x+y)|^2
+    &= 4 \Pr_{x,y}[F(x)F(y)\neq F(x+y)] \\
+    &= 4 \Pr_{x,y}[f(x)+f(y)\neq f(x+y)] \\
+    &\le 4\epsilon.
+    \end{align*}
+\end{proof}
+
+The Gowers-Hatami theorem can be applied to show that if a function $f: \mathbb{Z}_2^n \to \mathbb{F}_2$ passes the BLR linearity test with high probability, 
+then there exists a linear function $\ell: \mathbb{F}_2^n \to \mathbb{F}_2$ that is close to $f$ in terms of Hamming distance $\delta(f, \ell)$ defined in Def.~\ref{def:relative-hamming-distance}.
+To do this, we first need to apply the Gowers-Hatami theorem to the approximate representation $F(x)=(-1)^{f(x)}$ given by Proposition~\ref{lem:blr-approx-rep}.
+
+\begin{corollary}[Gowers-Hatami Correlation for BLR]\label{cor:gh-Z2}
+    Let $F: \mathbb{Z}_2^n \to U(1)$ be an $(\epsilon, \sigma)$ approximate representation. 
+    Then there exists a unit vector $v$ and an exact representation $G$ such that 
+    \be
+    \mathbb{E}_{x \in \mathbb{Z}_2^n} \Re \langle F(x), \langle v, G(x) v\rangle \rangle \geq 1 - \epsilon.
+    \ee
+    
+\end{corollary}
+
+Next, we would like to conclude from the above corollary that there exists a linear function $\ell: \mathbb{Z}_2^n \to  \mathbb{Z}_2$ such that 
+$\Pr_x[f(x) \neq \ell(x)] \leq \epsilon/2$. To do this, we need to use a fact that about the regular representation of $\mathbb{Z}_2^n$.
+
+
+% need to prove this fact
+\begin{fact}[Regular representation of $\mathbb{Z}_2^n$]
+    Let $\rho(a)$ act on $L=\{f:\mathbb{Z}_2^n\to\mathbb{C}\}$ by $(\rho(a)f)(x)=f(x+a)$. 
+    Then in the Fourier basis $\{\ket{S}\}$, we have
+    \[
+    \rho(a) = \sum_{S\subseteq[n]} \chi_S(a)\ket{S}\bra{S}.
+    \]
+\end{fact}
+
+\begin{lemma}[Gowers-Hatami implies near linearity]\label{lem:gh-linearity}
+    Let $F: \mathbb{Z}_2^n \to \mathbb{C}$ be an $(\epsilon, 1)$ approximate representation of $\mathbb{Z}_2^n$ from the BLR test 
+    such that $F(x) = (-1)^{f(x)}$ for some function $f: \mathbb{Z}_2^n \to \mathbb{Z}_2$.
+    Then there exists a linear function $\ell: \mathbb{F}_2^n \to \mathbb{F}_2$ such that the distance between $f$ and $\ell$ is bounded
+    \be
+    \delta(f, \ell) \leq \epsilon/2.
+    \ee
+\end{lemma}
+
+
+\begin{proof}
+    By Corollary~\ref{cor:gh-Z2}, there exists a representation $G$ and a unit vector $v$ such that
+    \[
+        \mathbb{E}_{x} \Re \langle F(x), \langle v, G(x)v\rangle \rangle \ge 1 - \epsilon.
+    \]
+    Using the diagonal form of $G(x)$ in the character basis,
+    \[
+        G(x) = \sum_S \chi_S(x) \ket{S}\bra{S}.
+    \]
+
+    The inner product condition can be rewritten as
+    \[
+       \sum_{S} p_S  \mathbb{E}_{x} \Re \langle F(x), \chi_S(x) \rangle \ge 1 - \epsilon,
+    \]
+        where $p_S := |\bra{v}S\rangle|^2$ and $\sum_S p_S = 1$.
+    Therefore,
+    \[
+        \sum_S p_S \widehat{F}(S) \ge 1 - \epsilon,
+    \]
+    where $\widehat{F}(S):=\mathbb{E}_x[F(x)\chi_S(x)]$ is the real-valued Fourier coefficient of $F$ at $S$.
+
+    Since $(p_S)_S$ is a probability distribution, there exists some $S^*$ such that
+    \[
+        \widehat{F}(S^*) \ge 1 - \epsilon.
+    \]
+    This means that there is a large Fourier coefficient at $S^*$.
+    Define $\ell(x)=x\cdot S^*$. Then $\chi_{S^*}(x)=(-1)^{\ell(x)}$, and
+    \[
+        \mathbb{E}_x[F(x)\chi_{S^*}(x)] = 1 - 2\Pr_x[f(x)\neq \ell(x)].
+    \]
+    Hence
+    \[
+        1 - 2\delta(f,\ell) \ge 1 - \epsilon,
+    \]
+    which implies
+    \[
+        \delta(f,\ell) \le \epsilon/2.
+    \]
+\end{proof}
+
+\begin{proposition}[Equivalence for BLR test]\label{prop:equiv_blr_z2}
+    Let $ \Pr[\BLRVerifier=0]$ denote the probability that the BLR verifier rejects a function $f: \mathbb{F}_2^n \to \mathbb{F}_2$.
+    Let $\delta(f, \lin)$ denote the distance between $f$ and the closest linear function in $\lin$.
+    Then the following statements are equivalent:
+    \begin{itemize}
+        \item If $\Pr[\BLRVerifier=0] \leq \epsilon$, then $\delta(f, \lin) \leq \epsilon$.
+        \item $\Pr[\BLRVerifier=0] \geq \delta(f, \lin)$.
+    \end{itemize}
+\end{proposition}    
+
+
+Now we provide the proof of Soundness of BLR test using the Gowers-Hatami theorem.
+\begin{proof}
+    Let $F: \mathbb{Z}_2^n \to \{-1,1\}$ be defined by $F(x)=(-1)^{f(x)}$, as given by Proposition~.\ref{lem:blr-approx-rep}.
+    $F$ is an $(2\epsilon,1)$ approximate representation of $\mathbb{Z}_2^n$.
+    Applying Gowers-Hatami theorem by Lemma.~\ref{lem:gh-linearity},
+    then there exists a linear function $\ell$ such that $\delta(f, \ell) \leq \epsilon$ so that $\delta(f,\lin)\le \epsilon$.
+
+    This proves the implication 
+    $\Pr[\BLRVerifier=0]\le \epsilon \Rightarrow \delta(f,\lin)\le \epsilon$,
+    which is equivalent to
+    \[
+        \Pr[\BLRVerifier=0]\ge \delta(f,\lin),
+    \]
+     by Proposition~\ref{prop:equiv_blr_z2}.
+\end{proof}

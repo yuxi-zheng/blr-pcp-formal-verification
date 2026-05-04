@@ -207,27 +207,31 @@ Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d
     Both ingredients follow from the key identity over the regular representation in \equref{eq:regular_repr_characterr}.
 \end{sproof}
 
-\begin{theorem}[Gowers-Hatami-2]\label{gowers-hatami-2}\lean{gowers_hatami}
-  \uses{UnitarySigmaError, approx-representation, sigma_proximity_iff}
-Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(\rho: G \rightarrow U(\mathcal{H})\) an \((\varepsilon, \sigma)\)-representation of \(G\) on space $\mathcal{H}=\mathbb{C}^{d}$. 
+Next, we will give a different proof that does not directly decompose into irreps but instead uses the action of the regular representation.
+\begin{lemma}[Gowers-Hatami-Correlation]\label{gowers-hatami-correlation}\lean{gh2_average_correlation}\uses{UnitarySigmaError, approx-representation, sigma_proximity_iff}
+Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(\rho: G \rightarrow U(\mathcal{H})\) an \((\varepsilon, \sigma)\)-representation of \(G\) on space $\mathcal{H}$. 
 Then there exists an isometry \(V: \mathcal{H} \rightarrow \mathcal{H}^\prime\) to a different space $\mathcal{H}^\prime$, 
-and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
+and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that the average correlation between $\rho$ and $\rho^\prime$ is:
 \be
-\mathbb{E}_{x \in G}\left\|\rho(x)-V^{*} \rho^\prime(x) V\right\|_{\sigma}^{2} \leq 2 \varepsilon.
-\ee 
-\end{theorem}
+\mathbb{E}_{x \in G} \Re \langle f(x), V^{*} \rho^\prime(x) V\rangle_{\sigma} \geq 1-\varepsilon,
+\ee    
+\end{lemma}
 
 \begin{proof}
-    A different proof of the Gowers-Hatami theorem is given in M. de la Salle's notes~\cite{de_la_Salle}.
     Here $\mathcal{H}^\prime = L(G, \mathcal{H})$ is the space of functions $f: G \to \mathcal{H}$.
-    % with inner product $\langle f, g\rangle = \EE_{x \in G} \langle f(x), g(x)\rangle$.
-    The isometry is given by the action of the approximate representation on a state $u\in \mathcal{H}$ as
+    
+    Let the isometry be defined by the action of the approximate representation on a state $u\in \mathcal{H}$ as
     \bea
     &V:& \mathcal{H} \to L(G, \mathcal{H}), \\
     & V(u):& G \to \mathcal{H}, \quad x \mapsto \rho(x)(u), \forall x \in G.
     \eea
 
-    The inverse map $V^*$ is given by the group average
+    The adjoint map $V^*$ is defined as the unique map such that for all $u \in \mathcal{H}$ and $g \in L(G, \mathcal{H})$,
+    \be
+    \langle V(u), g \rangle_{L(G, \mathcal{H})} = \langle u, V^*(g) \rangle_{\mathcal{H}}.
+    \ee
+
+    In particular, $V^*$ is explicitly given by the group average
     \bea
     &V^*:& L(G, \mathcal{H}) \to \mathcal{H}, \\
     &V^*(f)& = \EE_{x \in G} \left[ \rho^*(x) f(x) \right].
@@ -250,6 +254,27 @@ and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
     & = & \EE_{y \in G} \left[ \rho^*(y) (\rho(yx)(u)) \right].\nonumber
     \eea
 
+    Finally, using the isometry average property in Eq.~\ref{eq:isometry_average} and the definition of $(\varepsilon, \sigma)$-representation, we have
+    \bea \label{eq:inner_product_bound}
+    && \EE_{x \in G} \Re \langle \rho(x), V^* \rho^\prime(x) V\rangle_\sigma, \\ \nonumber
+    & = & \EE_{x,y \in G} \Re \langle \rho(x), \rho^*(y) \rho(yx) \rangle_\sigma, \\ \nonumber
+    &\ge & 1 - \varepsilon. 
+    \eea    
+\end{proof}
+
+\begin{theorem}[Gowers-Hatami-2]\label{gowers-hatami-2}\lean{gowers_hatami}
+  \uses{UnitarySigmaError, approx-representation, sigma_proximity_iff}
+Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(\rho: G \rightarrow U(\mathcal{H})\) an \((\varepsilon, \sigma)\)-representation of \(G\) on space $\mathcal{H}=\mathbb{C}^{d}$. 
+Then there exists an isometry \(V: \mathcal{H} \rightarrow \mathcal{H}^\prime\) to a different space $\mathcal{H}^\prime$, 
+and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
+\be
+\mathbb{E}_{x \in G}\left\|\rho(x)-V^{*} \rho^\prime(x) V\right\|_{\sigma}^{2} \leq 2 \varepsilon.
+\ee 
+\end{theorem}
+
+\begin{proof}
+    A different proof of the Gowers-Hatami theorem is given in M. de la Salle's notes~\cite{de_la_Salle}.
+
     The rest of the proof follows by expanding the $\sigma$-norm, bounding the norm of $\EE_{x \in G} V^* \rho^\prime(x) V$ and applying the definition of $(\varepsilon, \sigma)$-representation.
      In particular, we have 
      \bea
@@ -270,15 +295,8 @@ and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
     & \le & \EE_{x, y, z \in G} \|U(x, y, z)\|_\infty \|\sigma\|_1 = 1. 
     \eea
 
-    Finally, using the isometry average property in Eq.~\ref{eq:isometry_average} and the definition of $(\varepsilon, \sigma)$-representation, we have
-    \bea \label{eq:inner_product_bound}
-    && \EE_{x \in G} \Re \langle \rho(x), V^* \rho^\prime(x) V\rangle_\sigma, \\ \nonumber
-    & = & \EE_{x,y \in G} \Re \langle \rho(x), \rho^*(y) \rho(yx) \rangle_\sigma, \\ \nonumber
-    &\ge & 1 - \varepsilon. 
-    \eea
-    Therefore using the bounds in Eq.~\ref{eq:isometry_unitary_bound} and Eq.~\ref{eq:inner_product_bound}, we have
+    Therefore using the bounds in Eq.~\ref{eq:isometry_unitary_bound} and Eq.~\ref{eq:inner_product_bound} by applying Lemma~\ref{gowers-hatami-correlation}, we have
     \be
         \EE_{x \in G}\left\|\rho(x)-V^{*} \rho^\prime(x) V\right\|_{\sigma}^{2} \le  2 - 2(1 - \varepsilon) = 2\varepsilon.
     \ee
-    This completes the proof.
 \end{proof}
