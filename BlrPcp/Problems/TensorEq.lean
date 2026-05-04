@@ -163,6 +163,115 @@ lemma projB_honestProof {n : ℕ}
   simp only [projB, honestProof, Fin.append_right]
   rw [finProdFinEquiv.symm_apply_apply]
 
+omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+lemma row_dot_eq_bilinear_sub_tensor {n : ℕ} (a : Fin n → F)
+    (b : Fin n × Fin n → F) (s t : Fin n → F) :
+    (fun j => ∑ i, (b (i, j) - a i * a j) * s i) ⬝ᵥ t =
+      (∑ i, ∑ j, b (i, j) * (s i * t j)) - (a ⬝ᵥ s) * (a ⬝ᵥ t) := by
+  rw [← tensor_check_complete (F := F) a s t]
+  simp only [dotProduct]
+  calc
+    ∑ x, (∑ i, (b (i, x) - a i * a x) * s i) * t x
+        = ∑ x, ∑ i, ((b (i, x) - a i * a x) * s i) * t x := by
+          simp [Finset.sum_mul]
+    _ = ∑ i, ∑ x, ((b (i, x) - a i * a x) * s i) * t x := by
+          rw [Finset.sum_comm]
+    _ = (∑ i, ∑ j, b (i, j) * (s i * t j)) -
+          ∑ i, ∑ j, (a i * a j) * (s i * t j) := by
+          rw [← Finset.sum_sub_distrib]
+          refine Finset.sum_congr rfl ?_
+          intro i _
+          rw [← Finset.sum_sub_distrib]
+          refine Finset.sum_congr rfl ?_
+          intro j _
+          ring
+
+omit [Fintype F] [Inhabited F] [SampleableType F] in
+lemma accept_implies_row_dot_zero {n : ℕ} (a : Fin n → F)
+    (b : Fin n × Fin n → F) (π : Fin (n + n * n) → F) (s t : Fin n → F)
+    (hacc : decide (π ⬝ᵥ queryA s = a ⬝ᵥ s) &&
+        (decide (π ⬝ᵥ queryA t = a ⬝ᵥ t) &&
+          (decide (π ⬝ᵥ queryB s t = ∑ i, ∑ j, b (i, j) * (s i * t j)) &&
+            decide (π ⬝ᵥ queryB s t = π ⬝ᵥ queryA s * π ⬝ᵥ queryA t))) = true) :
+    (fun j => ∑ i, (b (i, j) - a i * a j) * s i) ⬝ᵥ t = 0 := by
+  simp only [Bool.and_eq_true, decide_eq_true_eq] at hacc
+  rcases hacc with ⟨hA, hA', hB, hMul⟩
+  rw [row_dot_eq_bilinear_sub_tensor (F := F) a b s t]
+  calc
+    (∑ i, ∑ j, b (i, j) * (s i * t j)) - (a ⬝ᵥ s) * (a ⬝ᵥ t)
+        = (π ⬝ᵥ queryB s t) - (π ⬝ᵥ queryA s) * (π ⬝ᵥ queryA t) := by
+          rw [hB, hA, hA']
+    _ = 0 := by rw [hMul, sub_self]
+
+lemma verifier_soundness_after_sampling {n : ℕ} (a : Fin n → F)
+    (b : Fin n × Fin n → F) (π : Fin (n + n * n) → F)
+    (hab : (a, b) ∉ TENSORQ F n) :
+    Pr[fun x => x = true | do
+      let s ← ($ᵗ (Fin n → F) : ProbComp (Fin n → F))
+      (fun t => decide (π ⬝ᵥ queryA s = a ⬝ᵥ s) &&
+          (decide (π ⬝ᵥ queryA t = a ⬝ᵥ t) &&
+            (decide (π ⬝ᵥ queryB s t = ∑ i, ∑ j, b (i, j) * (s i * t j)) &&
+              decide (π ⬝ᵥ queryB s t = π ⬝ᵥ queryA s * π ⬝ᵥ queryA t)))) <$>
+        ($ᵗ (Fin n → F) : ProbComp (Fin n → F))] ≤
+      2 / (Fintype.card F : ENNReal) := by
+  have hC : (fun p : Fin n × Fin n => b p - a p.1 * a p.2) ≠ 0 := by
+    intro hC
+    apply hab
+    funext p
+    exact sub_eq_zero.mp (by simpa using congrFun hC p)
+  obtain ⟨ij, hij⟩ : ∃ p : Fin n × Fin n, b p - a p.1 * a p.2 ≠ 0 := by
+    simpa [funext_iff] using hC
+  let col : Fin n → F := fun i => b (i, ij.2) - a i * a ij.2
+  have hcol : col ≠ 0 := by
+    intro h
+    exact hij (by simpa [col] using congrFun h ij.1)
+  have hBadS :
+      Pr[fun s : Fin n → F => ¬ col ⬝ᵥ s ≠ 0 |
+          ($ᵗ (Fin n → F) : ProbComp (Fin n → F))] ≤
+        1 / (Fintype.card F : ENNReal) := by
+    refine (ENNReal.le_div_iff_mul_le (a := _) (b := (Fintype.card F : ENNReal))
+      (c := 1)
+      (Or.inr (by simp : (1 : ENNReal) ≠ 0))
+      (Or.inr (by simp : (1 : ENNReal) ≠ ⊤))).2 ?_
+    simpa using LINEQ.linear_form_uniform_prob_mul_card_le_one (F := F) hcol
+  have hAccept := probEvent_bind_le_add
+    (mx := ($ᵗ (Fin n → F) : ProbComp (Fin n → F)))
+    (my := fun s : Fin n → F =>
+      (fun t => decide (π ⬝ᵥ queryA s = a ⬝ᵥ s) &&
+          (decide (π ⬝ᵥ queryA t = a ⬝ᵥ t) &&
+            (decide (π ⬝ᵥ queryB s t = ∑ i, ∑ j, b (i, j) * (s i * t j)) &&
+              decide (π ⬝ᵥ queryB s t = π ⬝ᵥ queryA s * π ⬝ᵥ queryA t)))) <$>
+        ($ᵗ (Fin n → F) : ProbComp (Fin n → F)))
+    (p := fun s : Fin n → F => col ⬝ᵥ s ≠ 0)
+    (q := fun y : Bool => y = false)
+    hBadS
+    (ε₂ := 1 / (Fintype.card F : ENNReal))
+    ?_
+  · have hsum :
+        1 / (Fintype.card F : ENNReal) + 1 / (Fintype.card F : ENNReal) =
+          2 / (Fintype.card F : ENNReal) := by
+        norm_num [div_eq_mul_inv, two_mul]
+    simpa [not_false_eq_true] using hAccept.trans_eq hsum
+  · intro s _hsupp hs
+    let row : Fin n → F := fun j => ∑ i, (b (i, j) - a i * a j) * s i
+    rw [probEvent_map]
+    refine (probEvent_mono (mx := ($ᵗ (Fin n → F) : ProbComp (Fin n → F)))
+      (q := fun t : Fin n → F => row ⬝ᵥ t = 0) ?_).trans ?_
+    · intro t _ ht
+      have hrowzero := accept_implies_row_dot_zero (F := F) a b π s t ?_
+      · simpa [row] using hrowzero
+      · simpa using ht
+    · have hrow : row ≠ 0 := by
+        intro hrow
+        apply hs
+        have hcoord := congrFun hrow ij.2
+        simpa [row, col, dotProduct] using hcoord
+      refine (ENNReal.le_div_iff_mul_le (a := _) (b := (Fintype.card F : ENNReal))
+        (c := 1)
+        (Or.inr (by simp : (1 : ENNReal) ≠ 0))
+        (Or.inr (by simp : (1 : ENNReal) ≠ ⊤))).2 ?_
+      exact LINEQ.linear_form_uniform_prob_mul_card_le_one (F := F) hrow
+
 end TENSORQ
 
 /-- 2/|F|: direct PIL -/
@@ -190,4 +299,4 @@ theorem TENSORQ_LPCP {n : ℕ} :
     simp [TENSORQ.verifier]
     rw [← probEvent_eq_eq_probOutput]
     rw [LINEQ.simulateQ_sampleRandomVector (F := F) n (n + n*n) (LPCP.proof π).impl]
-    sorry
+    exact TENSORQ.verifier_soundness_after_sampling (F := F) a b π hab
