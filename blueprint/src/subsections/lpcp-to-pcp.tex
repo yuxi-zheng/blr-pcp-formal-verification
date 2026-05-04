@@ -18,3 +18,20 @@ r'=r+(2+\lceil\log100q\rceil)\ell
 \begin{proof}\uses{LINEQ_LPCP}
 TODO
 \end{proof}
+
+\begin{theorem}\label{QESAT_poly_LPCP}\lean{QESAT_poly_LPCP}\uses{QESAT, LPCP}\leanok
+\[
+  \mathrm{QESAT}(\F_2,n) \in
+  \mathrm{LPCP}[
+    \varepsilon_c = 0,
+    \varepsilon_s = 3/4,
+    \Sigma = \F_2,
+    \ell = n + n^2,
+    q = 4,
+    r = |x| + 2*n
+  ].
+\]
+\end{theorem}
+\begin{proof}%\uses{} tensor stuff
+TODO
+\end{proof}
