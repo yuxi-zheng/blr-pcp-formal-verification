@@ -9,7 +9,7 @@ We write \(\mathrm{flat}(a \otimes b) \in \F^{n \cdot m}\) for the row-concatena
 
 For our purposes, we would love to test to check if $\mathrm{flat}(a \otimes a) = b$
 
-\begin{definition}\label{tensor-language}
+\begin{definition}\label{tensor-language}\lean{TENSORQ}\leanok
 For a field \(\F\) and \(n \in \N\), define the tensor test language
 \[
   \mathrm{TENSORQ}(\F, n) :=
@@ -17,7 +17,7 @@ For a field \(\F\) and \(n \in \N\), define the tensor test language
 \]
 \end{definition}
 
-\begin{theorem}\label{tensor-lpcp}\uses{tensor-product, tensor-language}
+\begin{theorem}\label{tensor-lpcp}\uses{tensor-product, tensor-language}\lean{TENSORQ_LPCP}
 For every finite field \(\F\) and \(n \in \N\),
 \[
   \mathrm{TENSORQ}(\F, n) \in
@@ -87,7 +87,7 @@ and therefore
 \end{proof}
 
 
-\begin{corollary}\label{tensor-lpcp-binary}\uses{tensor-product, tensor-language}
+\begin{corollary}\label{tensor-lpcp-binary}\uses{tensor-product, tensor-language}\lean{TENSORQ_LPCP_Zmod2}
 \[
   \mathrm{TENSORQ}(\F_2, n) \in
   \LPCP\!\left[

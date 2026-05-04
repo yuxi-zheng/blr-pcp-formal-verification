@@ -274,14 +274,9 @@ lemma verifier_soundness_after_sampling {n : ℕ} (a : Fin n → F)
 
 end TENSORQ
 
-/-- 2/|F|: direct PIL -/
-theorem TENSORQ_LPCP {n : ℕ} :
-    TENSORQ F n ∈ LPCP (TENSORQ.size) 0
-      (
-        -- (((2 * Fintype.card F - 1 : ℕ) : ENNReal) / (Fintype.card F : ENNReal) ^ 2)
-        2 / (Fintype.card F : ENNReal)
-      )
-      F
+/-- 2/|F|: direct PIL --/
+theorem TENSORQ_LPCP_weak {n : ℕ} :
+    TENSORQ F n ∈ LPCP (TENSORQ.size) 0 (2 / (Fintype.card F : ENNReal)) F
       (fun _ => n + n * n) (fun _ => 3) (fun _ => 2 * n) := by
   refine ⟨TENSORQ.verifier (F := F), 0, ?_⟩
   rintro ⟨a, b⟩
@@ -301,7 +296,13 @@ theorem TENSORQ_LPCP {n : ℕ} :
     rw [LINEQ.simulateQ_sampleRandomVector (F := F) n (n + n*n) (LPCP.proof π).impl]
     exact TENSORQ.verifier_soundness_after_sampling (F := F) a b π hab
 
+/-- 2/|F| - 1/|F|^2: apply PIL twice --/
+theorem TENSORQ_LPCP {n : ℕ} :
+    TENSORQ F n ∈ LPCP (TENSORQ.size) 0 (((2 * Fintype.card F - 1 : ℕ) : ENNReal) / (Fintype.card F : ENNReal) ^ 2) F
+      (fun _ => n + n * n) (fun _ => 3) (fun _ => 2 * n) := by
+    sorry
 
 theorem TENSORQ_LPCP_Zmod2 {n : ℕ} :
     TENSORQ (ZMod 2) n ∈ LPCP (TENSORQ.size) 0 (3 / 4) (ZMod 2)
-      (fun _ => n + n^2) (fun _ => 3) (fun _ => 2 * n) := sorry
+      (fun _ => n + n^2) (fun _ => 3) (fun _ => 2 * n) :=
+    sorry
