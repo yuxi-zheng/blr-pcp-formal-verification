@@ -12,7 +12,7 @@ This file defines the QESAT language and the exponential-length PCP for it.
 
 - `QESAT`: the language of quadratic equation satisfiability instances.
 - `QESAT.size`: the binary-size proxy for QESAT instances.
-- `QESAT_exp_LPCP`: QESAT over `ZMod 2` has an exponential-length LPCP.
+- `QESAT_poly_LPCP`: QESAT over `ZMod 2` has an exponential-length LPCP.
 - `LPCP_to_PCP_ZMod2`: the conversion lemma from LPCP to PCP for `ZMod 2`.
 - `QESAT_exp_PCP`: QESAT over `ZMod 2` has an exponential-length PCP.
 -/
@@ -208,7 +208,7 @@ private lemma seven_eighths_pow_six_le_half : ((7 / 8 : ℝ≥0∞) ^ 6) ≤ 1 /
   · rw [ENNReal.toReal_pow, ENNReal.toReal_div, ENNReal.toReal_div]
     norm_num
 
-theorem QESAT_exp_LPCP {vars : ℕ} :
+theorem QESAT_poly_LPCP {vars : ℕ} :
     QESAT (ZMod 2) vars ∈
       LPCP (QESAT.size (ZMod 2) vars) 0 (3 / 4) (ZMod 2)
         (fun _ => vars + vars ^ 2) (fun _ => 4) (fun n => n + 2 * vars) := by
@@ -234,7 +234,7 @@ theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polyno
   refine ⟨q', r', ?_⟩
   have hConverted := (LPCP_to_PCP_ZMod2 (QESAT.size (ZMod 2) vars)
     0 (3 / 4) (fun _ => vars + vars ^ 2) (fun _ => 4) (fun n => n + 2 * vars))
-      (QESAT_exp_LPCP (vars := vars))
+      (QESAT_poly_LPCP (vars := vars))
   rw [QESAT.soundness_before_repetition] at hConverted
   rcases hConverted with ⟨V₀, t, hV₀⟩
   let V : PCPVerifier (List (CMvPolynomial vars (ZMod 2))) (QESAT.size (ZMod 2) vars)
