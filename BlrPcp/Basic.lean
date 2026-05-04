@@ -13,8 +13,6 @@ import Architect
 
 open scoped BigOperators
 
-open scoped BigOperators
-
 namespace BlrPcp
 
 variable {F Idx : Type*}
@@ -83,6 +81,7 @@ private noncomputable def linearFunctionsFinset : Finset (ScalarFn F Idx) := by
   classical
   exact Finset.univ.filter fun g => g ∈ LinearSet (F := F) (Idx := Idx)
 
+omit [Nonempty Idx] in
 private lemma linearFunctionsFinset_nonempty :
     (linearFunctionsFinset (F := F) (Idx := Idx)).Nonempty := by
   refine ⟨linearFn (F := F) (Idx := Idx) 0, ?_⟩
@@ -100,7 +99,7 @@ noncomputable def distanceToLinear (f : ScalarFn F Idx) : Real := by
 
 section BLRPointwise
 
-omit [Fintype F] [DecidableEq F] [DecidableEq Idx]
+omit [Fintype F] [DecidableEq F] [DecidableEq Idx] [Nonempty Idx]
 
 /-- A linear function passes the BLR check for every choice of randomness. -/
 lemma BLRAcceptsAt_linearFn (α : Vec F Idx) (a b : F) (x y : Vec F Idx) :
@@ -120,6 +119,7 @@ lemma BLRAcceptsAt_of_mem_linearSet {f : ScalarFn F Idx}
 
 end BLRPointwise
 
+omit [Nonempty Idx] in
 /-- Completeness of the finite-field BLR verifier: linear functions are accepted
 with probability one. -/
 lemma blr_completeness {f : ScalarFn F Idx}
@@ -210,6 +210,7 @@ scoped macro_rules
       | _ => Lean.Macro.throwUnsupported
 
 
+omit [Fintype F] [DecidableEq F] [Nonempty Idx] in
 private lemma dotProduct_single (a : Vec F Idx) (i : Idx) (t : F) :
     dotProduct a (Pi.single i t) = a i * t := by
   classical
@@ -220,6 +221,7 @@ private lemma dotProduct_single (a : Vec F Idx) (i : Idx) (t : F) :
   · intro hi
     simp at hi
 
+omit [Fintype F] [DecidableEq F] [Nonempty Idx] in
 private lemma dotProduct_single_left (x : Vec F Idx) (i : Idx) (t : F) :
     dotProduct (Pi.single i t) x = t * x i := by
   classical
@@ -230,6 +232,7 @@ private lemma dotProduct_single_left (x : Vec F Idx) (i : Idx) (t : F) :
   · intro hi
     simp at hi
 
+omit [Fintype F] [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 private lemma dotProduct_sub_left (a b x : Vec F Idx) :
     dotProduct (a - b) x = dotProduct a x - dotProduct b x := by
   simp [dotProduct, sub_mul, Finset.sum_sub_distrib]
@@ -246,6 +249,7 @@ private noncomputable def dotProductLeftAddMonoidHom (x : Vec F Idx) : Vec F Idx
   map_add' a b := by
     simp [dotProduct, add_mul, Finset.sum_add_distrib]
 
+omit [Fintype F] [Nonempty Idx] in
 private lemma dotProductLeftAddMonoidHom_surjective {x : Vec F Idx}
     (hx : x ≠ 0) :
     Function.Surjective (dotProductLeftAddMonoidHom (F := F) (Idx := Idx) x) := by
@@ -262,6 +266,7 @@ private lemma dotProductLeftAddMonoidHom_surjective {x : Vec F Idx}
   rw [dotProduct_single_left]
   field_simp [hi]
 
+omit [Nonempty Idx] in
 private lemma dotProduct_left_fiber_card_mul_card {x : Vec F Idx}
     (hx : x ≠ 0) (t : F) :
     ((Finset.univ.filter fun a : Vec F Idx => dotProduct a x = t).card) *
@@ -300,6 +305,7 @@ private lemma dotProduct_left_fiber_card_mul_card {x : Vec F Idx}
 private def agreementCount (f : ScalarFn F Idx) (α : Vec F Idx) : ℕ :=
   (Finset.univ.filter fun x : Vec F Idx => f x = linearFn α x).card
 
+omit [Nonempty Idx] in
 private lemma sum_agreementCount_eq_sum_dotProduct_fibers (f : ScalarFn F Idx) :
     ∑ α : Vec F Idx, agreementCount f α =
       ∑ x : Vec F Idx,
@@ -321,6 +327,7 @@ private lemma sum_agreementCount_eq_sum_dotProduct_fibers (f : ScalarFn F Idx) :
         intro x _
         simp [linearFn, dotProduct, eq_comm]
 
+omit [Nonempty Idx] in
 private lemma nonzero_vec_card :
     (Finset.univ.filter fun x : Vec F Idx => x ≠ 0).card =
       Fintype.card (Vec F Idx) - 1 := by
@@ -331,8 +338,9 @@ private lemma nonzero_vec_card :
   rw [← Finset.card_erase_of_mem h0]
   congr 1
   ext x
-  simp [eq_comm]
+  simp
 
+omit [Nonempty Idx] in
 private lemma sum_agreementCount_lower (f : ScalarFn F Idx) :
     (Fintype.card (Vec F Idx) - 1) *
         (Fintype.card (Vec F Idx) / Fintype.card F) ≤
@@ -380,6 +388,7 @@ private lemma sum_agreementCount_lower (f : ScalarFn F Idx) :
     _ = ∑ α : Vec F Idx, agreementCount f α :=
         (sum_agreementCount_eq_sum_dotProduct_fibers (F := F) (Idx := Idx) f).symm
 
+omit [DecidableEq F] [Nonempty Idx] in
 private lemma card_vec_div_card_field_pos [Nonempty Idx] :
     0 < Fintype.card (Vec F Idx) / Fintype.card F := by
   classical
@@ -403,6 +412,7 @@ private lemma card_vec_div_card_field_pos [Nonempty Idx] :
   rw [hdiv]
   exact pow_pos (Nat.zero_lt_of_lt hq) _
 
+omit [DecidableEq F] [Nonempty Idx] in
 private lemma card_vec_div_card_field_lt_card_vec [Nonempty Idx] :
     Fintype.card (Vec F Idx) / Fintype.card F < Fintype.card (Vec F Idx) := by
   classical
@@ -426,6 +436,7 @@ private lemma card_vec_div_card_field_lt_card_vec [Nonempty Idx] :
   rw [hdiv]
   exact Nat.pow_lt_pow_right hq (Nat.pred_lt hm.ne')
 
+omit [Nonempty Idx] in
 private lemma exists_agreementCount_ge [Nonempty Idx] (f : ScalarFn F Idx) :
     ∃ α : Vec F Idx,
       Fintype.card (Vec F Idx) / Fintype.card F ≤ agreementCount f α := by
@@ -512,6 +523,7 @@ lemma character_sum_indicator_eq (u v : F) :
       simpa [ψt] using hsumψ
     simp [huv, hsum_zero]
 
+omit [DecidableEq F] [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
 private lemma phaseLift_mul_star (f g : ScalarFn F Idx) (c : F) (x : Vec F Idx) :
     phaseLift f c x * star (phaseLift g c x) =
       baseChar (F := F) (c * (f x - g x)) := by
@@ -532,6 +544,7 @@ private lemma phaseLift_mul_star (f g : ScalarFn F Idx) (c : F) (x : Vec F Idx) 
     _ = ψ (c * (f x - g x)) := by rw [mul_sub]
     _ = baseChar (F := F) (c * (f x - g x)) := rfl
 
+omit [DecidableEq F] [Nonempty Idx] in
 private lemma fnInner_phaseLift_eq_character_average (f g : ScalarFn F Idx) (c : F) :
     fnInner (phaseLift f c) (phaseLift g c) =
       (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
@@ -544,9 +557,11 @@ private lemma fnInner_phaseLift_eq_character_average (f g : ScalarFn F Idx) (c :
 private noncomputable def charAddChar (a : Vec F Idx) : AddChar (Vec F Idx) ℂ :=
   (baseChar (F := F)).compAddMonoidHom (dotProductAddMonoidHom (F := F) (Idx := Idx) a)
 
+omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 @[simp] private lemma charAddChar_apply (a x : Vec F Idx) :
     charAddChar (F := F) (Idx := Idx) a x = charFn a x := rfl
 
+omit [Nonempty Idx] in
 private lemma charAddChar_injective :
     Function.Injective (charAddChar (F := F) (Idx := Idx)) := by
   classical
@@ -579,6 +594,7 @@ private lemma charAddChar_injective :
   exact ht this
 
 
+omit [Nonempty Idx] in
 lemma characters_orthogonal_basis :
     (∀ α β : Vec F Idx, ⟪charFn α, charFn β⟫ = if α = β then 1 else 0) ∧
       Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx))) = ⊤ := by
@@ -611,6 +627,7 @@ lemma characters_orthogonal_basis :
       (AddChar.complexBasis (α := Vec F Idx)).span_eq
   exact ⟨horth, hrange ▸ hspan⟩
 
+omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 /-- The `c`-phase of the linear function `ℓ_α` is the character `χ_{cα}`. -/
 lemma phaseLift_linearFn (α : Vec F Idx) (c : F) :
     phaseLift (linearFn α) c = charFn (fun i => c * α i) := by
@@ -618,6 +635,7 @@ lemma phaseLift_linearFn (α : Vec F Idx) (c : F) :
   funext x
   simp [phaseLift, charFn, linearFn, dotProduct, Finset.mul_sum, mul_assoc]
 
+omit [Nonempty Idx] in
 /-- Fourier expansion of a linear function: the `c`-phase of `ℓ_α` has a
 single Fourier coefficient, at `cα`. -/
 lemma fourierCoeff_phaseLift_linearFn (α β : Vec F Idx) (c : F) :
@@ -627,12 +645,15 @@ lemma fourierCoeff_phaseLift_linearFn (α β : Vec F Idx) (c : F) :
   simpa [fourierCoeff, eq_comm] using
     (characters_orthogonal_basis (F := F) (Idx := Idx)).1 (fun i => c * α i) β
 
+omit [DecidableEq F] [Nonempty Idx] in
 private lemma card_vec_pos : 0 < Fintype.card (Vec F Idx) := Fintype.card_pos
 
+omit [Field F] [DecidableEq F] [Nonempty Idx] in
 private lemma fnNormSq_eq_card_inv_mul_norm_sq (g : ComplexFn F Idx) :
     fnNormSq g = (Fintype.card (Vec F Idx) : ℝ)⁻¹ * ‖WithLp.toLp 2 g‖ ^ 2 := by
   simp [fnNormSq, PiLp.norm_sq_eq_of_L2]
 
+omit [DecidableEq F] [Nonempty Idx] in
 private lemma sqrt_card_mul_inv_sqrt_card :
     (((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) *
       (Fintype.card (Vec F Idx) : ℂ)) =
@@ -642,6 +663,7 @@ private lemma sqrt_card_mul_inv_sqrt_card :
   field_simp [hsqrt0]
   exact_mod_cast (Real.sq_sqrt (Nat.cast_nonneg (Fintype.card (Vec F Idx)) : (0 : ℝ) ≤ _)).symm
 
+omit [Field F] [DecidableEq F] [Nonempty Idx] in
 private lemma sqrt_card_mul_sqrt_card :
     (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) *
       (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) =
@@ -650,12 +672,14 @@ private lemma sqrt_card_mul_sqrt_card :
   exact_mod_cast (Real.sq_sqrt
     (Nat.cast_nonneg (Fintype.card (Vec F Idx)) : (0 : ℝ) ≤ _))
 
+omit [Field F] [DecidableEq F] [Nonempty Idx] in
 private lemma sqrt_card_mul_sqrt_card_mul (z : ℂ) :
     (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) *
       ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * z) =
         (Fintype.card (Vec F Idx) : ℂ) * z := by
   rw [← mul_assoc, sqrt_card_mul_sqrt_card]
 
+omit [DecidableEq F] [Nonempty Idx] in
 private lemma inv_sqrt_card_sq_mul_card :
     (((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) *
       (((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)⁻¹) * (Fintype.card (Vec F Idx) : ℂ))) = 1 := by
@@ -664,12 +688,14 @@ private lemma inv_sqrt_card_sq_mul_card :
   field_simp [hsqrt0]
   exact_mod_cast (Real.sq_sqrt (Nat.cast_nonneg (Fintype.card (Vec F Idx)) : (0 : ℝ) ≤ _)).symm
 
+omit [DecidableEq F] in
 private lemma toLp_charFn_inner_eq_card_mul_fnInner (g : ComplexFn F Idx) (α : Vec F Idx) :
     inner ℂ (WithLp.toLp 2 (charFn α)) (WithLp.toLp 2 g) =
       (Fintype.card (Vec F Idx) : ℂ) * fnInner g (charFn α) := by
   rw [← RCLike.wInner_one_eq_inner (charFn α) g]
   simp [RCLike.wInner, fnInner, expectation, RCLike.inner_apply]
 
+omit [DecidableEq F] in
 private lemma toLp_inner_eq_card_mul_fnInner (f g : ComplexFn F Idx) :
     inner ℂ (WithLp.toLp 2 g) (WithLp.toLp 2 f) =
       (Fintype.card (Vec F Idx) : ℂ) * fnInner f g := by
@@ -696,6 +722,7 @@ private lemma normalizedCharLp_orthonormal :
     have h' : β ≠ α := by simpa [eq_comm] using h
     simp [horth, h, h']
 
+omit [DecidableEq F] in
 private lemma normalizedCharLp_inner_eq_sqrt_card_mul_fnInner (g : ComplexFn F Idx)
     (α : Vec F Idx) :
     inner ℂ (normalizedCharLp (F := F) (Idx := Idx) α) (WithLp.toLp 2 g) =
@@ -711,6 +738,7 @@ private lemma normalizedCharLp_inner_eq_sqrt_card_mul_fnInner (g : ComplexFn F I
     _ = (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * fnInner g (charFn α) := by
       rw [sqrt_card_mul_inv_sqrt_card]
 
+omit [DecidableEq F] in
 private lemma toLp_inner_normalizedCharLp_eq_sqrt_card_mul_star_fnInner (g : ComplexFn F Idx)
     (α : Vec F Idx) :
     inner ℂ (WithLp.toLp 2 g) (normalizedCharLp (F := F) (Idx := Idx) α) =
@@ -725,6 +753,7 @@ private lemma toLp_inner_normalizedCharLp_eq_sqrt_card_mul_star_fnInner (g : Com
     _ = (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * star (fnInner g (charFn α)) := by
           simp
 
+omit [DecidableEq F] in
 private lemma norm_sq_normalizedCharLp_inner (g : ComplexFn F Idx) (α : Vec F Idx) :
     ‖inner ℂ (normalizedCharLp (F := F) (Idx := Idx) α) (WithLp.toLp 2 g)‖ ^ 2 =
       (Fintype.card (Vec F Idx) : ℝ) * ‖fnInner g (charFn α)‖ ^ 2 := by
@@ -738,6 +767,7 @@ private lemma norm_sq_normalizedCharLp_inner (g : ComplexFn F Idx) (α : Vec F I
     _ = (Fintype.card (Vec F Idx) : ℝ) * ‖fnInner g (charFn α)‖ ^ 2 := by
         rw [Real.sq_sqrt (Nat.cast_nonneg _)]
 
+omit [Nonempty Idx] in
 private lemma toLp_charFn_span_top :
     Submodule.span ℂ (Set.range fun α : Vec F Idx => WithLp.toLp 2 (charFn α)) = ⊤ := by
   let e : WithLp 2 (ComplexFn F Idx) ≃ₗ[ℂ] ComplexFn F Idx :=
@@ -750,8 +780,9 @@ private lemma toLp_charFn_span_top :
           change Submodule.span ℂ (Set.range (e.symm.toLinearMap ∘ charFn (F := F) (Idx := Idx))) =
             (Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx)))).map e.symm.toLinearMap
           rw [Set.range_comp, Submodule.span_image]
-    _ = ⊤ := by simpa [hspan]
+    _ = ⊤ := by simp [hspan]
 
+omit [Nonempty Idx] in
 private lemma normalizedCharLp_span_top :
     Submodule.span ℂ (Set.range (normalizedCharLp (F := F) (Idx := Idx))) = ⊤ := by
   have hsqrt0 : (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) ≠ 0 := by
@@ -867,10 +898,12 @@ lemma fourier_inversion (g : ComplexFn F Idx) (x : Vec F Idx) :
         exact_mod_cast (Real.sqrt_ne_zero'.2 (Nat.cast_pos.2 card_vec_pos))
       field_simp [hsqrt0]
 
+omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 private lemma charFn_eq_baseChar (α : Vec F Idx) (x : Vec F Idx) :
     charFn α x = baseChar (F := F) ⟪α, x⟫ᵥ := by
   rfl
 
+omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 private lemma charFn_add_apply (α β : Vec F Idx) (x : Vec F Idx) :
     charFn (α + β) x = charFn α x * charFn β x := by
   classical
@@ -878,31 +911,35 @@ private lemma charFn_add_apply (α β : Vec F Idx) (x : Vec F Idx) :
   rw [dotProduct, dotProduct, dotProduct]
   simp [add_mul, Finset.sum_add_distrib, AddChar.map_add_eq_mul]
 
+omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 private lemma charFn_zero_apply (x : Vec F Idx) :
     charFn (F := F) (Idx := Idx) 0 x = 1 := by
   simp [charFn_eq_baseChar, dotProduct]
 
+omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 private lemma charFn_mul_arg_apply (γ : Vec F Idx) (a : F) (x : Vec F Idx) :
     charFn γ (fun i => a * x i) = charFn (fun i => a * γ i) x := by
   classical
   rw [charFn_eq_baseChar, charFn_eq_baseChar]
   congr 1
-  simp [dotProduct, mul_assoc, mul_left_comm, mul_comm]
+  simp [dotProduct, mul_left_comm, mul_comm]
 
+omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 private lemma charFn_add_arg_apply (γ : Vec F Idx) (a b : F) (x y : Vec F Idx) :
     charFn γ (fun i => a * x i + b * y i) =
       charFn (fun i => a * γ i) x * charFn (fun i => b * γ i) y := by
   classical
   rw [charFn_eq_baseChar, charFn_eq_baseChar, charFn_eq_baseChar]
-  congr 1
-  simp [dotProduct, mul_add, Finset.sum_add_distrib, mul_assoc, mul_left_comm, mul_comm,
+  simp [dotProduct, mul_add, Finset.sum_add_distrib, mul_left_comm, mul_comm,
     AddChar.map_add_eq_mul]
 
+omit [Nonempty Idx] in
 private lemma expectation_charFn (α : Vec F Idx) :
     expectation (charFn α) = if α = 0 then 1 else 0 := by
   have h := (characters_orthogonal_basis (F := F) (Idx := Idx)).1 α 0
   simpa [fnInner, expectation, charFn_zero_apply] using h
 
+omit [Nonempty Idx] in
 private lemma charFn_mul_expectation (α β : Vec F Idx) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
       ∑ x : Vec F Idx, charFn α x * charFn β x =
@@ -915,6 +952,7 @@ private lemma charFn_mul_expectation (α β : Vec F Idx) :
         simp [expectation, charFn_add_apply]
     _ = if α + β = 0 then 1 else 0 := expectation_charFn (α + β)
 
+omit [Nonempty Idx] in
 private lemma fourier_sum_mul_char_average (A : Vec F Idx → ℂ) (β : Vec F Idx) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
       ∑ x : Vec F Idx, (∑ α : Vec F Idx, A α * charFn α x) * charFn β x =
@@ -948,6 +986,7 @@ private lemma fourier_sum_mul_char_average (A : Vec F Idx → ℂ) (β : Vec F I
         · intro hnot
           simp at hnot
 
+omit [Field F] [DecidableEq F] [Nonempty Idx] in
 private lemma double_vec_average_left_factor (A : Vec F Idx → ℂ)
     (K : Vec F Idx → Vec F Idx → ℂ) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
@@ -989,6 +1028,7 @@ private lemma double_vec_average_left_factor (A : Vec F Idx → ℂ)
               ∑ y : Vec F Idx, K x y) := by
               rw [Finset.mul_sum, Finset.mul_sum]
 
+omit [Nonempty Idx] in
 private lemma y_average_fourier_char_product (B C : Vec F Idx → ℂ) (a b : F)
     (x : Vec F Idx) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
@@ -1044,6 +1084,7 @@ private lemma y_average_fourier_char_product (B C : Vec F Idx → ℂ) (a b : F)
           simp
         rw [hγ]
 
+omit [Nonempty Idx] in
 private lemma x_average_fourier_char_product (A B C : Vec F Idx → ℂ) (a b : F) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
       ∑ x : Vec F Idx,
@@ -1097,6 +1138,7 @@ private lemma x_average_fourier_char_product (A B C : Vec F Idx → ℂ) (a b : 
         rw [haγ]
         ring
 
+omit [Nonempty Idx] in
 private lemma triple_char_average (A B C : Vec F Idx → ℂ) (a b : F) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
       (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
@@ -1300,6 +1342,7 @@ private lemma distance_eq_one_sub_agreement_real (f g : ScalarFn F Idx) :
         ∑ x : Vec F Idx, (if f x = g x then (1 : Real) else 0) := by
         simp [Finset.sum_sub_distrib, mul_sub]
 
+omit [Nonempty Idx] in
 private lemma agreement_sum_linearFn_eq_count (f : ScalarFn F Idx) (α : Vec F Idx) :
     (∑ x : Vec F Idx, (if f x = linearFn α x then (1 : Real) else 0)) =
       (agreementCount f α : Real) := by
@@ -1340,6 +1383,7 @@ private noncomputable def blrPhaseTerm (f : ScalarFn F Idx) (a b c : F)
   phaseLift f (c * a) x * phaseLift f (c * b) y *
     phaseLift f (-c) (fun i => a * x i + b * y i)
 
+omit [DecidableEq F] [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
 private lemma blrPhaseTerm_eq_baseChar (f : ScalarFn F Idx) (a b c : F)
     (x y : Vec F Idx) :
     blrPhaseTerm f a b c x y =
@@ -1362,6 +1406,7 @@ private lemma blrPhaseTerm_eq_baseChar (f : ScalarFn F Idx) (a b c : F)
     _ = baseChar (F := F)
         (c * (a * f x + b * f y - f (fun i => a * x i + b * y i))) := rfl
 
+omit [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
 private lemma BLRAcceptsAt_indicator_eq_phase_sum (f : ScalarFn F Idx)
     (a b : F) (x y : Vec F Idx) :
     (if a * f x + b * f y = f (fun i => a * x i + b * y i) then (1 : ℂ) else 0) =
@@ -1409,12 +1454,14 @@ private noncomputable def phaseLinearCoeff (f : ScalarFn F Idx) (d : F)
     (η : Vec F Idx) : ℂ :=
   (phaseLift f d)̂(fun i => d * η i)
 
+omit [Nonempty Idx] in
 private lemma linearFourierScore_eq_phaseLinearCoeff (f : ScalarFn F Idx)
     (η : Vec F Idx) :
     linearFourierScore f η =
       ∑ d ∈ (nonzeroScalars (F := F)), phaseLinearCoeff f d η := by
   rfl
 
+omit [Fintype F] [DecidableEq F] [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
 private lemma vec_mul_left_bijective (d : F) (hd : d ≠ 0) :
     Function.Bijective (fun η : Vec F Idx => fun i => d * η i) := by
   constructor
@@ -1424,14 +1471,16 @@ private lemma vec_mul_left_bijective (d : F) (hd : d ≠ 0) :
   · intro η
     refine ⟨fun i => d⁻¹ * η i, ?_⟩
     ext i
-    simp [hd, mul_assoc]
+    simp [hd]
 
+omit [DecidableEq F] [Nonempty Idx] in
 private lemma sum_vec_mul_left (d : F) (hd : d ≠ 0)
     (H : Vec F Idx → ℂ) :
     ∑ η : Vec F Idx, H (fun i => d * η i) =
       ∑ η : Vec F Idx, H η := by
   exact (vec_mul_left_bijective (F := F) (Idx := Idx) d hd).sum_comp H
 
+omit [DecidableEq F] [Nonempty Idx] in
 private lemma sum_vec_mul_left_real (d : F) (hd : d ≠ 0)
     (H : Vec F Idx → ℝ) :
     ∑ η : Vec F Idx, H (fun i => d * η i) =
@@ -1466,6 +1515,7 @@ private lemma sum_nonzero_neg (H : F → ℂ) :
   · intro c _
     rfl
 
+omit [DecidableEq F] [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
 private lemma phaseLift_norm (f : ScalarFn F Idx) (c : F) (x : Vec F Idx) :
     ‖phaseLift f c x‖ = 1 := by
   classical
@@ -1477,6 +1527,7 @@ private lemma phaseLift_norm (f : ScalarFn F Idx) (c : F) (x : Vec F Idx) :
   rw [hphase]
   exact AddChar.norm_apply ψ (c * f x)
 
+omit [DecidableEq F] in
 private lemma fnNormSq_phaseLift (f : ScalarFn F Idx) (c : F) :
     fnNormSq (phaseLift f c) = 1 := by
   classical
@@ -1497,6 +1548,7 @@ private lemma sum_norm_sq_phaseLinearCoeff (f : ScalarFn F Idx) {c : F}
         parseval_identity (F := F) (Idx := Idx) (phaseLift f c)
     _ = 1 := fnNormSq_phaseLift (F := F) (Idx := Idx) f c
 
+omit [Nonempty Idx] in
 private lemma norm_sq_linearFourierScore_le_card_mul_sum_norm_sq
     (f : ScalarFn F Idx) (α : Vec F Idx) :
     ‖linearFourierScore f α‖ ^ 2 ≤
@@ -1610,7 +1662,7 @@ private lemma xy_average_one_add_blrPhaseTerm_sum (f : ScalarFn F Idx)
         (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
           ∑ x : Vec F Idx, ∑ y : Vec F Idx,
             ∑ c ∈ (nonzeroScalars (F := F)), blrPhaseTerm f a b c x y := by
-        simp [Finset.sum_add_distrib, mul_add, Finset.mul_sum, hvec, mul_assoc]
+        simp [Finset.sum_add_distrib, mul_add, Finset.mul_sum, mul_assoc]
     _ = 1 + ∑ c ∈ (nonzeroScalars (F := F)),
         ((Fintype.card (Vec F Idx) : ℂ)⁻¹ *
           (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
@@ -1696,6 +1748,7 @@ private lemma ab_sum_xy_average_one_add_blrPhaseTerm_sum (f : ScalarFn F Idx) :
         intro b _
         rw [xy_average_one_add_blrPhaseTerm_sum]
 
+omit [Nonempty Idx] in
 private lemma ab_average_one_add_phase_triple_sum (f : ScalarFn F Idx) :
     ((nonzeroScalars (F := F)).card : ℂ)⁻¹ *
       ((nonzeroScalars (F := F)).card : ℂ)⁻¹ *
@@ -1735,7 +1788,7 @@ private lemma ab_average_one_add_phase_triple_sum (f : ScalarFn F Idx) :
     _ = 1 + (nz.card : ℂ)⁻¹ ^ 2 *
         ∑ a ∈ nz, ∑ b ∈ nz, P a b := by
         simp [P, Finset.sum_add_distrib, Finset.mul_sum, mul_add, hnz, pow_two,
-          mul_assoc, mul_left_comm, mul_comm]
+          mul_assoc, mul_comm]
     _ = 1 + ((nonzeroScalars (F := F)).card : ℂ)⁻¹ ^ 2 *
         ∑ a ∈ (nonzeroScalars (F := F)), ∑ b ∈ (nonzeroScalars (F := F)),
           ∑ c ∈ (nonzeroScalars (F := F)), ∑ η : Vec F Idx,
@@ -1744,6 +1797,7 @@ private lemma ab_average_one_add_phase_triple_sum (f : ScalarFn F Idx) :
                 phaseLinearCoeff f (-c) η := by
         rfl
 
+omit [Nonempty Idx] in
 private lemma scalar_phase_triple_sum_fixed (f : ScalarFn F Idx) (η : Vec F Idx) :
     (∑ a ∈ (nonzeroScalars (F := F)), ∑ b ∈ (nonzeroScalars (F := F)),
       ∑ c ∈ (nonzeroScalars (F := F)),
@@ -1781,7 +1835,7 @@ private lemma scalar_phase_triple_sum_fixed (f : ScalarFn F Idx) (η : Vec F Idx
         calc
           (∑ a ∈ nz, ∑ b ∈ nz, L (c * a) * L (c * b) * L (-c)) =
             (∑ a ∈ nz, L (c * a)) * (∑ b ∈ nz, L (c * b)) * L (-c) := by
-              simp [Finset.sum_mul, Finset.mul_sum, mul_assoc, mul_left_comm, mul_comm]
+              simp [Finset.mul_sum, mul_assoc, mul_comm]
           _ = (∑ d ∈ nz, L d) * (∑ e ∈ nz, L e) * L (-c) := by
               rw [sum_nonzero_mul_left (F := F) c hc0 L]
     _ = (∑ d ∈ nz, L d) ^ 3 := by
@@ -1801,6 +1855,7 @@ private lemma scalar_phase_triple_sum_fixed (f : ScalarFn F Idx) (η : Vec F Idx
     _ = (linearFourierScore f η) ^ 3 := by
         rw [hscore]
 
+omit [Nonempty Idx] in
 private lemma scalar_phase_triple_sum (f : ScalarFn F Idx) :
     (∑ a ∈ (nonzeroScalars (F := F)), ∑ b ∈ (nonzeroScalars (F := F)),
       ∑ c ∈ (nonzeroScalars (F := F)), ∑ η : Vec F Idx,
@@ -1980,7 +2035,7 @@ lemma distance_linearFn_fourier_real (f : ScalarFn F Idx) (α : Vec F Idx) :
   have h := congrArg Complex.re (distance_linearFn_fourier (F := F) (Idx := Idx) f α)
   simpa [linearFourierScoreReal] using h
 
-omit [Field F] in
+omit [Field F] [Nonempty Idx] in
 private lemma distance_nonneg (f g : ScalarFn F Idx) : 0 ≤ distance f g := by
   classical
   unfold distance
@@ -2004,12 +2059,13 @@ private lemma distance_le_one (f g : ScalarFn F Idx) : distance f g ≤ 1 := by
     _ = 1 := by
       simp
 
-omit [Field F] in
+omit [Field F] [Nonempty Idx] in
 private lemma distance_congr_right {f g h : ScalarFn F Idx} (hgh : ∀ x, g x = h x) :
     distance f g = distance f h := by
   classical
   simp [distance, hgh]
 
+omit [Nonempty Idx] in
 private lemma distanceToLinear_eq_inf_linearFn (f : ScalarFn F Idx) :
     distanceToLinear f =
       (Finset.univ.inf' (Finset.univ_nonempty : (Finset.univ : Finset (Vec F Idx)).Nonempty)
@@ -2134,6 +2190,7 @@ private lemma linearFourierScoreReal_eq_card_mul_agreement_ratio_sub_one
   rw [agreement_sum_linearFn_eq_count]
   ring
 
+omit [DecidableEq F] in
 private lemma card_vec_eq_card_field_mul_div :
     Fintype.card (Vec F Idx) =
       Fintype.card F * (Fintype.card (Vec F Idx) / Fintype.card F) := by
@@ -2364,6 +2421,7 @@ theorem finite_field_blr_soundness (f : ScalarFn F Idx) :
           rw [distanceToLinear_fourier (F := F) (Idx := Idx) f]
           simp [M, coeffs, score]
 
+omit [Nonempty Idx] in
 private lemma acceptanceProbabilityBLR_nonneg (f : ScalarFn F Idx) :
     0 ≤ acceptanceProbabilityBLR f := by
   classical
