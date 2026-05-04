@@ -16,6 +16,9 @@ PCP
 QESAT_exp_PCP
 LPCPVerifier
 LPCP
+BLR.basicVerifier
+BLR_basic_completeness_ZMod2
+BLR_basic_soundness_ZMod2
 LINEQ
 LINEQ.verifier
 LINEQ_LPCP

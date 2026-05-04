@@ -77,7 +77,8 @@ def basicSampleField {F : Type} {n : ℕ} : OracleComp (LPCP.spec F n) F :=
 def basicSampleVector (F : Type) (n : ℕ) : OracleComp (LPCP.spec F n) (Fin n → F) :=
   Fin.mOfFn n fun _ => basicSampleField (F := F)
 
-/-- The additive BLR verifier, using only the standard field-valued randomness oracle. -/
+/-- The additive BLR verifier, using only the standard field-valued randomness oracle.
+NOTE: the oracle spec is the same as for LPCP, but the its need not be (the function is not necessarily linear). -/
 def basicVerifier {F : Type} [Add F] [DecidableEq F] {n : ℕ} :
     OracleComp (LPCP.spec F n) Bool := do
   let x : Fin n → F ← basicSampleVector F n

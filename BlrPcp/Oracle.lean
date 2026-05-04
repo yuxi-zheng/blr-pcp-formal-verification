@@ -91,11 +91,11 @@ lemma queryBound_bind {ρ ι α β : Type} {randSpec : OracleSpec ρ}
 
 namespace PCP
 
-/-- A proof is represented as a function `π : [ℓ] → F`.
-`π(q)` is the answer to query `q`. -/
 abbrev proofSpec (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ) :=
   Fin ℓ →ₒ F
 
+/-- A proof is represented as a function `π : [ℓ] → F`.
+`π(q)` is the answer to query `q`. -/
 abbrev proof {F : Type} {ℓ : ℕ}
     (π : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp where
   spec := proofSpec F ℓ
@@ -124,11 +124,11 @@ def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
 
 namespace LPCP
 
-/-- A linear-query proof: a query is a vector `u`,
-and the answer is the inner product `⟨π, u⟩`. -/
 abbrev proofSpec (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ → F) :=
   (Fin ℓ → F) →ₒ F
 
+/-- A linear-query proof: a query is a vector `u`,
+and the answer is the inner product `⟨π, u⟩`. -/
 abbrev proof {F : Type} [Field F] {ℓ : ℕ}
     (π : Fin ℓ → F) : OracleContext (Fin ℓ → F) ProbComp where
   spec := proofSpec F ℓ
