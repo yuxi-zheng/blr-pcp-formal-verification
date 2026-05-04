@@ -142,7 +142,7 @@ end LPCP
 abbrev LPCPVerifier (α : Type) (size : α → ℕ) (F : Type) [Field F] (ℓ : ℕ → ℕ) : Type :=
   (x : α) → OracleComp (LPCP.spec F (ℓ (size x))) Bool
 
-/-- The complexity class PCP. Note that we use a randomness oracle that samples elements from `F`
+/-- The complexity class LPCP. Note that we use a randomness oracle that samples elements from `F`
 and not `{0,1}`. To recover the bit randomness compleixty, we need to multiply `r` by `log |F|`.-/
 def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F]
