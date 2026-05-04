@@ -300,3 +300,8 @@ theorem TENSORQ_LPCP {n : ℕ} :
     rw [← probEvent_eq_eq_probOutput]
     rw [LINEQ.simulateQ_sampleRandomVector (F := F) n (n + n*n) (LPCP.proof π).impl]
     exact TENSORQ.verifier_soundness_after_sampling (F := F) a b π hab
+
+
+theorem TENSORQ_LPCP_Zmod2 {n : ℕ} :
+    TENSORQ (ZMod 2) n ∈ LPCP (TENSORQ.size) 0 (3 / 4) (ZMod 2)
+      (fun _ => n + n^2) (fun _ => 3) (fun _ => 2 * n) := sorry
