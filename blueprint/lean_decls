@@ -20,3 +20,4 @@ LINEQ
 LINEQ.verifier
 LINEQ_LPCP
 LPCP_to_PCP_ZMod2
+QESAT_poly_LPCP
