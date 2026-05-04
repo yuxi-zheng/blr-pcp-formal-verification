@@ -3,9 +3,6 @@
 ## Python venv
 venv/
 .venv/
-## Codex
-.codex
-.codex/
 ## Lake
 .lake/*
 .cache/*
@@ -41,3 +38,7 @@ venv/
 *.synctex.gz(busy)
 *.pdfsync
 scripts/build_blueprint.sh
+## Dev
+.vscode/
+.claude/
+.codex/
