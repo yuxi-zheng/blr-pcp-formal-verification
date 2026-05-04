@@ -208,7 +208,7 @@ Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d
 \end{sproof}
 
 Next, we will give a different proof that does not directly decompose into irreps but instead uses the action of the regular representation.
-\begin{lemma}[Gowers-Hatami-Correlation]\label{gowers-hatami-correlation}\lean{gh2_average_correlation}\uses{UnitarySigmaError, approx-representation, sigma_proximity_iff}
+\begin{lemma}[Gowers-Hatami-Correlation]\label{gowers-hatami-correlation}\lean{gh2_average_correlation}\uses{approx-representation}
 Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(\rho: G \rightarrow U(\mathcal{H})\) an \((\varepsilon, \sigma)\)-representation of \(G\) on space $\mathcal{H}$. 
 Then there exists an isometry \(V: \mathcal{H} \rightarrow \mathcal{H}^\prime\) to a different space $\mathcal{H}^\prime$, 
 and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that the average correlation between $\rho$ and $\rho^\prime$ is:
@@ -263,7 +263,7 @@ and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
 \end{proof}
 
 \begin{theorem}[Gowers-Hatami-2]\label{gowers-hatami-2}\lean{gowers_hatami}
-  \uses{UnitarySigmaError, approx-representation, sigma_proximity_iff}
+  \uses{UnitarySigmaError, approx-representation, gowers-hatami-correlation}
 Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(\rho: G \rightarrow U(\mathcal{H})\) an \((\varepsilon, \sigma)\)-representation of \(G\) on space $\mathcal{H}=\mathbb{C}^{d}$. 
 Then there exists an isometry \(V: \mathcal{H} \rightarrow \mathcal{H}^\prime\) to a different space $\mathcal{H}^\prime$, 
 and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that

@@ -129,28 +129,41 @@ $\Pr_x[f(x) \neq \ell(x)] \leq \epsilon/2$. To do this, we need to use a fact th
 \end{proof}
 
 \begin{proposition}[Equivalence for BLR test]\label{prop:equiv_blr_z2}
-    Let $ \Pr[\BLRVerifier=0]$ denote the probability that the BLR verifier rejects a function $f: \mathbb{F}_2^n \to \mathbb{F}_2$.
-    Let $\delta(f, \lin)$ denote the distance between $f$ and the closest linear function in $\lin$.
+    Let $ \Pr[V_{\text{BLR}}^f=0]$ denote the probability that the BLR verifier rejects a function $f: \mathbb{F}_2^n \to \mathbb{F}_2$.
+    Let $\delta(f, \mathcal{LIN})$ denote the distance between $f$ and the closest linear function in $\mathcal{LIN}$.
     Then the following statements are equivalent:
     \begin{itemize}
-        \item If $\Pr[\BLRVerifier=0] \leq \epsilon$, then $\delta(f, \lin) \leq \epsilon$.
-        \item $\Pr[\BLRVerifier=0] \geq \delta(f, \lin)$.
+        \item If $\Pr[V_{\text{BLR}}^f=0] \leq \epsilon$, then $\delta(f, \mathcal{LIN}) \leq \epsilon$.
+        \item $\Pr[V_{\text{BLR}}^f=0] \geq \delta(f, \mathcal{LIN})$.
     \end{itemize}
 \end{proposition}    
 
 
 Now we provide the proof of Soundness of BLR test using the Gowers-Hatami theorem.
+
+\begin{theorem}[Soundness of the $Z_2$ BLR]
+\label{thm:z2-blr-soundness}
+For every function $f:\mathbb{F}_2^n\to\mathbb{F}_2$,
+\[
+    \Pr[V_{\text{BLR}}^f=0] \ge \delta(f,\mathcal{LIN}).
+\]
+Equivalently,
+\[
+    \Pr[V_{\text{BLR}}^f=1] \le 1-\delta(f,\mathcal{LIN}).
+\]
+\end{theorem}
+
 \begin{proof}
     Let $F: \mathbb{Z}_2^n \to \{-1,1\}$ be defined by $F(x)=(-1)^{f(x)}$, as given by Proposition~.\ref{lem:blr-approx-rep}.
     $F$ is an $(2\epsilon,1)$ approximate representation of $\mathbb{Z}_2^n$.
     Applying Gowers-Hatami theorem by Lemma.~\ref{lem:gh-linearity},
-    then there exists a linear function $\ell$ such that $\delta(f, \ell) \leq \epsilon$ so that $\delta(f,\lin)\le \epsilon$.
+    then there exists a linear function $\ell$ such that $\delta(f, \ell) \leq \epsilon$ so that $\delta(f,\mathcal{LIN})\le \epsilon$.
 
     This proves the implication 
-    $\Pr[\BLRVerifier=0]\le \epsilon \Rightarrow \delta(f,\lin)\le \epsilon$,
+    $\Pr[V_{\text{BLR}}^f=0]\le \epsilon \Rightarrow \delta(f,\mathcal{LIN})\le \epsilon$,
     which is equivalent to
     \[
-        \Pr[\BLRVerifier=0]\ge \delta(f,\lin),
+        \Pr[V_{\text{BLR}}^f=0]\ge \delta(f,\mathcal{LIN}),
     \]
      by Proposition~\ref{prop:equiv_blr_z2}.
 \end{proof}

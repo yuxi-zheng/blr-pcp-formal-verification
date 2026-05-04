@@ -5,3 +5,4 @@ import BlrPcp.Problems.QESAT
 import BlrPcp.Problems.LinEq
 import BlrPcp.Problems.BLR
 import BlrPcp.GowersHatami
+import BlrPcp.GhZ2
