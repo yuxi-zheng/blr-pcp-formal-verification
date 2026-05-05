@@ -8,6 +8,8 @@ import VCVio.OracleComp.Constructions.Replicate
 
 This file defines the QESAT language and the exponential-length PCP for it.
 
+Unless stated otherwise, all definitions and lemmas are for F = Z/2.
+
 ## Main declarations
 
 - `QESAT`: the language of quadratic equation satisfiability instances.
@@ -36,8 +38,7 @@ namespace QESAT
 TODO: the proper way would be to use this:
 https://leanprover-community.github.io/mathlib4_docs/Mathlib/Computability/Encoding.html -/
 def size {n : ℕ} (polys : List (CMvPolynomial n F)) :
-    ℕ :=
-  polys.length * (n + 1)^2
+    ℕ :=  polys.length * (n + 1)^2
 
 private lemma length_eq_zero_of_not_pow_le {vars : ℕ}
     (x : List (CMvPolynomial vars (ZMod 2)))
@@ -221,7 +222,7 @@ private lemma seven_eighths_pow_six_le_half : ((7 / 8 : ℝ≥0∞) ^ 6) ≤ 1 /
 
 theorem QESAT_poly_LPCP {vars : ℕ} :
     QESAT (ZMod 2) vars ∈
-      LPCP (QESAT.size (ZMod 2) vars) 0 (3 / 4) (ZMod 2)
+      LPCP (QESAT.size) 0 (3 / 4) (ZMod 2)
         (fun _ => vars + vars ^ 2) (fun _ => 4) (fun n => n + 2 * vars) := by
   sorry
 
@@ -236,35 +237,35 @@ theorem LPCP_to_PCP_ZMod2 {α : Type} (size : α → ℕ)
 
 theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (ZMod 2) vars ∈
-      PCP (QESAT.size (ZMod 2) vars) 0 (7 / 8) (ZMod 2)
+      PCP (QESAT.size) 0 (7 / 8) (ZMod 2)
         (fun n => 2 ^ n) (fun _ => q) r.eval := by
   let q' := 3 + 2 * Nat.clog 2 (100 * 4) * 4
   let c := 2 + Nat.clog 2 (100 * 4)
   let r' : Polynomial ℕ :=
     Polynomial.X + Polynomial.C (2 * vars) + Polynomial.C c * Polynomial.C (vars + vars ^ 2)
   refine ⟨q', r', ?_⟩
-  have hConverted := (LPCP_to_PCP_ZMod2 (QESAT.size (ZMod 2) vars)
+  have hConverted := (LPCP_to_PCP_ZMod2 (QESAT.size)
     0 (3 / 4) (fun _ => vars + vars ^ 2) (fun _ => 4) (fun n => n + 2 * vars))
       (QESAT_poly_LPCP (vars := vars))
   rw [QESAT.soundness_before_repetition] at hConverted
   rcases hConverted with ⟨V₀, t, hV₀⟩
-  let V : PCPVerifier (List (CMvPolynomial vars (ZMod 2))) (QESAT.size (ZMod 2) vars)
+  let V : PCPVerifier (List (CMvPolynomial vars (ZMod 2))) (QESAT.size)
       (ZMod 2) (fun n => 2 ^ n) := fun x =>
-    if hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size (ZMod 2) vars x) then
+    if hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x) then
       simulateQ (PCP.padImpl (ZMod 2) hlen) (V₀ x)
     else pure true
   refine ⟨V, t, fun x => ?_⟩
   rcases hV₀ x with ⟨_, hQuery, hComplete, hSound⟩
   refine ⟨by simp [RunsInTime], ?_, ?_, ?_⟩
-  · by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size (ZMod 2) vars x)
+  · by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)
     · simp only [V, hlen, ↓reduceDIte]
       simpa [q', r', c, Polynomial.eval_add, Polynomial.eval_mul] using
         PCP.queryBound_simulateQ_padImpl hlen hQuery
     · simp [V, hlen, QueryBound]
   · intro hxL
-    by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size (ZMod 2) vars x)
+    by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)
     · rcases hComplete hxL with ⟨π₀, hπ₀⟩
-      let π₁ : Fin (2 ^ QESAT.size (ZMod 2) vars x) → ZMod 2 := fun j =>
+      let π₁ : Fin (2 ^ QESAT.size x) → ZMod 2 := fun j =>
         if hj : j.val < 2 ^ (vars + vars ^ 2) then π₀ ⟨j.val, hj⟩ else default
       refine ⟨π₁, ?_⟩
       have hπ : ∀ i, π₁ (Fin.castLE hlen i) = π₀ i := by
@@ -276,7 +277,7 @@ theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polyno
     · refine ⟨fun _ => default, ?_⟩
       simp [V, hlen]
   · intro hxNot π₁
-    by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size (ZMod 2) vars x)
+    by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)
     · let π₀ : Fin (2 ^ (vars + vars ^ 2)) → ZMod 2 := fun i => π₁ (Fin.castLE hlen i)
       have hπ : ∀ i, π₁ (Fin.castLE hlen i) = π₀ i := by
         intro i
@@ -289,11 +290,11 @@ theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polyno
 
 theorem QESAT_exp_PCP {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (ZMod 2) vars ∈
-      PCP (QESAT.size (ZMod 2) vars) 0 (1 / 2) (ZMod 2)
+      PCP (QESAT.size) 0 (1 / 2) (ZMod 2)
         (fun n => 2 ^ n) (fun _ => q) r.eval := by
   rcases QESAT_exp_PCP_before_repetition (vars := vars) with ⟨q₀, r₀, hBefore⟩
   rcases hBefore with ⟨V₀, t, hV₀⟩
-  let V : PCPVerifier (List (CMvPolynomial vars (ZMod 2))) (QESAT.size (ZMod 2) vars)
+  let V : PCPVerifier (List (CMvPolynomial vars (ZMod 2))) (QESAT.size)
       (ZMod 2) (fun n => 2 ^ n) := fun x => do
     let xs ← OracleComp.replicate 6 (V₀ x)
     pure (xs.all id)
