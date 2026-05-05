@@ -17,6 +17,9 @@ This file defines the QESAT language and the exponential-length PCP for it.
 - `QESAT_exp_PCP`: QESAT over `ZMod 2` has an exponential-length PCP.
 -/
 
+variable {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F]
+    [SampleableType F]
+
 open CPoly CMvPolynomial
 open OracleComp
 open scoped ENNReal
@@ -32,17 +35,17 @@ namespace QESAT
 /-- The size of a QESAT instance if it was a binary string
 TODO: the proper way would be to use this:
 https://leanprover-community.github.io/mathlib4_docs/Mathlib/Computability/Encoding.html -/
-def size (F : Type) [Field F] [Fintype F] (n : ℕ) (polys : List (CMvPolynomial n F)) :
+def size {n : ℕ} (polys : List (CMvPolynomial n F)) :
     ℕ :=
   polys.length * (n + 1)^2
 
 private lemma length_eq_zero_of_not_pow_le {vars : ℕ}
     (x : List (CMvPolynomial vars (ZMod 2)))
-    (hlen : ¬2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size (ZMod 2) vars x)) :
+    (hlen : ¬2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)) :
     x.length = 0 := by
   by_contra hx
   have hpos : 0 < x.length := Nat.pos_of_ne_zero hx
-  have hpow : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size (ZMod 2) vars x) := by
+  have hpow : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x) := by
     unfold QESAT.size
     apply Nat.pow_le_pow_right
     · norm_num
@@ -71,6 +74,14 @@ private lemma soundness_before_repetition :
       norm_num
     · exact ENNReal.div_ne_top (by simp) (by norm_num)
     · exact ENNReal.div_ne_top (by simp) (by norm_num)
+
+def verifier {m n : ℕ} :
+    LPCPVerifier (List (CMvPolynomial n F)) size F (fun _ => n + n * n) :=
+  fun x => do
+    -- create M and c from the input
+    -- sample
+    -- 4 queries
+    sorry
 
 end QESAT
 
