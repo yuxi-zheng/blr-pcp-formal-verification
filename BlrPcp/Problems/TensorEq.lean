@@ -550,5 +550,12 @@ theorem TENSORQ_LPCP {n : ℕ} :
 
 theorem TENSORQ_LPCP_Zmod2 {n : ℕ} :
     TENSORQ (ZMod 2) n ∈ LPCP (TENSORQ.size) 0 (3 / 4) (ZMod 2)
-      (fun _ => n + n^2) (fun _ => 3) (fun _ => 2 * n) :=
-    sorry
+      (fun _ => n + n^2) (fun _ => 3) (fun _ => 2 * n) := by
+  have h := TENSORQ_LPCP (F := ZMod 2) (n := n)
+  have hcard : (Fintype.card (ZMod 2) : ℕ) = 2 := ZMod.card 2
+  have hbound :
+      ((2 * Fintype.card (ZMod 2) - 1 : ℕ) : ENNReal)
+        / (Fintype.card (ZMod 2) : ENNReal) ^ 2 = 3 / 4 := by
+    rw [hcard]; norm_num
+  rw [hbound] at h
+  simpa [sq] using h
