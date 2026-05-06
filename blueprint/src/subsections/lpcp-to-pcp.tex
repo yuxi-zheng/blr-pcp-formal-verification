@@ -33,5 +33,49 @@ TODO
 \]
 \end{theorem}
 \begin{proof}%\uses{} tensor stuff
-TODO
+
+\noindent Let $(p_1, \dots, p_m)$ be an instance of $\text{QESAT}(\mathbb{F})$ with $n$ variables. \\
+The LPCP verifier expects a proof $\pi = (a, b) \in \mathbb{F}^{n+n^2}$ and works as follows:
+
+\vspace{1em}
+\noindent \textbf{Verifier} $V^{(a,b)}(p_1, \dots, p_m)$:
+\begin{enumerate}
+    \item Sample $r \gets \mathbb{F}^m$ and $s, t \gets \mathbb{F}^n$.
+    \item Define 
+    \[
+    M := \begin{bmatrix} \text{coeff}(p_1) \\ \vdots \\ \text{coeff}(p_m) \end{bmatrix} \in \mathbb{F}^{m \times (n+n^2)} 
+    \quad \text{and} \quad 
+    c := \begin{bmatrix} -\text{const}(p_1) \\ \vdots \\ -\text{const}(p_m) \end{bmatrix} \in \mathbb{F}^m.
+    \]
+    \textit{(Note: $\text{coeff}(p_i) :=$ non-constant coeffs of $p_i$, and $\text{const}(p_i) :=$ constant coeff of $p_i$)}
+    
+    \item \textit{(linear equation test)} $\rightarrow$ Query $(a,b)$ at $M^T r$ and check that $\langle a \parallel b, M^T r \rangle = \langle c, r \rangle$.
+    
+    \item \textit{(tensor test)} $\rightarrow$ Query $b$ at $\text{flat}(s \otimes t)$, $a$ at $s$ and $t$, and check that 
+    \[
+    \langle b, \text{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle.
+    \]
+\end{enumerate}
+
+\vspace{1em}
+\noindent \textbf{Completeness:} 
+Suppose $p_1(a) = \dots = p_m(a) = 0$ and set $b := \text{flat}(a \otimes a)$. \\
+Then 
+\[
+\Pr_{s,t} \left[ \langle b, \text{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle \right] = 1
+\]
+and 
+\[
+\Pr_r \left[ \langle a \parallel b, M^T r \rangle = \langle c, r \rangle \right] = 1 \quad \left(\text{since } M \begin{bmatrix} a \\ \text{flat}(a \otimes a) \end{bmatrix} = c \right).
+\]
+
+\vspace{1em}
+\noindent \textbf{Soundness:}
+Suppose $\forall a \in \mathbb{F}^n \ \exists i \in [m] \text{ s.t. } p_i(a) \neq 0$. Fix any $\pi = (a, b)$. \\
+Either:
+\begin{enumerate}
+    \item[(i)] $b \neq \text{flat}(a \otimes a) \implies$ tensor test passes w.p. $\leq \frac{2|\mathbb{F}|-1}{|\mathbb{F}|^2}$
+    \item[OR (ii)] $b = \text{flat}(a \otimes a)$ and $M \begin{bmatrix} a \\ b \end{bmatrix} \neq c \implies$ linear equation test passes w.p. $\leq \frac{1}{|\mathbb{F}|}$
+\end{enumerate}
+
 \end{proof}
