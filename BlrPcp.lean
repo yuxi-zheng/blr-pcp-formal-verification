@@ -9,3 +9,4 @@ import BlrPcp.GowersHatami_original
 import BlrPcp.GH.Background
 import BlrPcp.GH.Concrete
 import BlrPcp.GH.GowersHatami
+import BlrPcp.GH2
