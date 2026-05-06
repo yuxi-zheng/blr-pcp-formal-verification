@@ -22,9 +22,12 @@ Unless stated otherwise, all definitions and lemmas are for F = Z/2.
 - `QESAT.pcpVerifierBeforeRepetition`: the explicit computable QESAT PCP verifier before
   independent repetition.
 - `QESAT.pcpVerifier`: the explicit computable QESAT PCP verifier after independent repetition.
+- `QESAT.fastPcpVerifier`: a theorem-backed verifier with an optimized compiled implementation.
 - `QESAT.trivialPcpVerifier`: a zero-query exponential-time PCP verifier that brute-forces
   satisfiability.
 - `QESAT.pcpVerifier_correct`: completeness, soundness, and query bounds for `QESAT.pcpVerifier`.
+- `QESAT.fastPcpVerifier_correct`: completeness, soundness, and query bounds for
+  `QESAT.fastPcpVerifier`.
 - `QESAT_exp_PCP`: QESAT over `ZMod 2` has an exponential-length PCP.
 -/
 
@@ -190,6 +193,199 @@ private def polyVerifier {n : ℕ} :
       pure (hLine && hTensor)
     else
       pure false
+
+private def zmod2ToBool (x : ZMod 2) : Bool :=
+  decide (x ≠ 0)
+
+private def bxor (a b : Bool) : Bool :=
+  a != b
+
+private def bitAt (i x : ℕ) : Bool :=
+  Nat.getBit i x != 0
+
+private def bitMask (i : ℕ) : ℕ :=
+  2 ^ i
+
+private def monomialTotalDegreeFast {n : ℕ} (m : CMvMonomial n) : ℕ :=
+  (List.finRange n).foldl (fun acc i => acc + m.get i) 0
+
+private def monomialCoord? {n : ℕ} (m : CMvMonomial n) : Option ℕ :=
+  let nz := (List.finRange n).filter fun i => m.get i != 0
+  match nz with
+  | [] => none
+  | [i] =>
+      let e := m.get i
+      if (e == 1) || (e == 2) then
+        some (n + i.val * n + i.val)
+      else
+        none
+  | [i, j] =>
+      if (m.get i == 1) && (m.get j == 1) then
+        some (n + i.val * n + j.val)
+      else
+        none
+  | _ => none
+
+private def polynomialDegreeOkFast {n : ℕ} (p : CMvPolynomial n (ZMod 2)) : Bool :=
+  (Lawful.monomials p).all fun m => monomialTotalDegreeFast m ≤ 2
+
+private def polynomialRowIndex {n : ℕ} (p : CMvPolynomial n (ZMod 2)) : ℕ :=
+  (Lawful.monomials p).foldl
+    (fun acc m =>
+      if CMvPolynomial.coeff m p = 0 then
+        acc
+      else
+        match monomialCoord? m with
+        | none => acc
+        | some coord => Nat.xor acc (bitMask coord))
+    0
+
+private def polynomialTargetFast {n : ℕ} (p : CMvPolynomial n (ZMod 2)) : Bool :=
+  zmod2ToBool (CMvPolynomial.coeff 0 p)
+
+private structure FastInstance where
+  vars : ℕ
+  proofDim : ℕ
+  rows : List ℕ
+  targets : List Bool
+  degreeOk : Bool
+
+private def compileFastInstance {vars : ℕ}
+    (x : List (CMvPolynomial vars (ZMod 2))) : FastInstance where
+  vars := vars
+  proofDim := vars + vars * vars
+  rows := x.map polynomialRowIndex
+  targets := x.map polynomialTargetFast
+  degreeOk := x.all polynomialDegreeOkFast
+
+private def sampleBit {tableWidth : ℕ} :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) Bool := do
+  let b : ZMod 2 ← query (spec := PCP.spec (ZMod 2) (2 ^ tableWidth)) (.inl ())
+  pure (zmod2ToBool b)
+
+private def sampleIndexAux {tableWidth : ℕ} :
+    ℕ → ℕ → ℕ → OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) ℕ
+  | 0, _, acc => pure acc
+  | fuel + 1, shift, acc => do
+      let b ← sampleBit (tableWidth := tableWidth)
+      sampleIndexAux fuel (shift + 1) (if b then Nat.lor acc (bitMask shift) else acc)
+
+private def sampleIndex {tableWidth : ℕ} (width : ℕ) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) ℕ :=
+  sampleIndexAux width 0 0
+
+private def proofIndex (tableWidth idx : ℕ) : Fin (2 ^ tableWidth) :=
+  ⟨idx % 2 ^ tableWidth, Nat.mod_lt _ (Nat.pow_pos (by norm_num : 0 < 2))⟩
+
+private def queryProofBit {tableWidth : ℕ} (idx : ℕ) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) Bool := do
+  let y : ZMod 2 ← query (spec := PCP.spec (ZMod 2) (2 ^ tableWidth))
+    (.inr (proofIndex tableWidth idx))
+  pure (zmod2ToBool y)
+
+private def xorSelectedRows : List ℕ → ℕ → ℕ → ℕ → ℕ
+  | [], _, acc, _ => acc
+  | row :: rows, r, acc, i =>
+      xorSelectedRows rows r (if bitAt i r then Nat.xor acc row else acc) (i + 1)
+
+private def selectedTarget : List Bool → ℕ → Bool → ℕ → Bool
+  | [], _, acc, _ => acc
+  | target :: targets, r, acc, i =>
+      selectedTarget targets r (if bitAt i r then bxor acc target else acc) (i + 1)
+
+private def selfCorrectSampleFast {tableWidth : ℕ} (width u : ℕ) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) Bool := do
+  let z ← sampleIndex (tableWidth := tableWidth) width
+  let fz ← queryProofBit (tableWidth := tableWidth) z
+  let fuz ← queryProofBit (tableWidth := tableWidth) (Nat.xor u z)
+  pure (bxor fuz fz)
+
+private def selfCorrectRestFast {tableWidth : ℕ} (width u : ℕ) :
+    ℕ → Bool → OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) Bool
+  | 0, _ => pure true
+  | fuel + 1, expected => do
+      let y ← selfCorrectSampleFast (tableWidth := tableWidth) width u
+      if y == expected then
+        selfCorrectRestFast width u fuel expected
+      else
+        pure false
+
+private def selfCorrectFast {tableWidth : ℕ} (width rep u : ℕ) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) (Option Bool) :=
+  match rep with
+  | 0 => pure none
+  | fuel + 1 => do
+      let y ← selfCorrectSampleFast (tableWidth := tableWidth) width u
+      let ok ← selfCorrectRestFast (tableWidth := tableWidth) width u fuel y
+      pure (if ok then some y else none)
+
+private def blrFast {tableWidth : ℕ} (width : ℕ) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) Bool := do
+  let x ← sampleIndex (tableWidth := tableWidth) width
+  let y ← sampleIndex (tableWidth := tableWidth) width
+  let fx ← queryProofBit (tableWidth := tableWidth) x
+  let fy ← queryProofBit (tableWidth := tableWidth) y
+  let fxy ← queryProofBit (tableWidth := tableWidth) (Nat.xor x y)
+  pure (bxor fx fy == fxy)
+
+private def lineqFast {tableWidth : ℕ} (ci : FastInstance) (rep : ℕ) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) Bool := do
+  let r ← sampleIndex (tableWidth := tableWidth) ci.rows.length
+  let u := xorSelectedRows ci.rows r 0 0
+  let target := selectedTarget ci.targets r false 0
+  match ← selfCorrectFast (tableWidth := tableWidth) ci.proofDim rep u with
+  | none => pure false
+  | some y => pure (y == target)
+
+private def queryBIndex (vars s t : ℕ) : ℕ := Id.run do
+  let mut acc := 0
+  for i in List.range vars do
+    if bitAt i s then
+      for j in List.range vars do
+        if bitAt j t then
+          acc := Nat.lor acc (bitMask (vars + i * vars + j))
+  pure acc
+
+private def tensorFast {tableWidth : ℕ} (ci : FastInstance) (rep : ℕ) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) Bool := do
+  let s ← sampleIndex (tableWidth := tableWidth) ci.vars
+  let t ← sampleIndex (tableWidth := tableWidth) ci.vars
+  let yA? ← selfCorrectFast (tableWidth := tableWidth) ci.proofDim rep s
+  let yA'? ← selfCorrectFast (tableWidth := tableWidth) ci.proofDim rep t
+  let yB? ← selfCorrectFast (tableWidth := tableWidth) ci.proofDim rep (queryBIndex ci.vars s t)
+  match yA?, yA'?, yB? with
+  | some yA, some yA', some yB => pure (yB == (yA && yA'))
+  | _, _, _ => pure false
+
+private def pcpRoundFast {tableWidth : ℕ} (ci : FastInstance) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) Bool := do
+  let rep := Nat.clog 2 (100 * 4)
+  if !ci.degreeOk then
+    pure false
+  else if !(← blrFast (tableWidth := tableWidth) ci.proofDim) then
+    pure false
+  else if !(← lineqFast (tableWidth := tableWidth) ci rep) then
+    pure false
+  else
+    tensorFast (tableWidth := tableWidth) ci rep
+
+private def repeatPcpFast {tableWidth : ℕ} (ci : FastInstance) :
+    ℕ → OracleComp (PCP.spec (ZMod 2) (2 ^ tableWidth)) Bool
+  | 0 => pure true
+  | fuel + 1 => do
+      if ← pcpRoundFast (tableWidth := tableWidth) ci then
+        repeatPcpFast ci fuel
+      else
+        pure false
+
+private def pcpVerifierFastImpl {vars : ℕ} :
+    PCPVerifier (List (CMvPolynomial vars (ZMod 2))) size (ZMod 2) (fun n => 2 ^ n) :=
+  fun x =>
+    let ci := compileFastInstance x
+    if ci.proofDim ≤ size x then
+      repeatPcpFast (tableWidth := size x) ci 6
+    else
+      pure true
 
 private lemma zmod2_mul_self (x : ZMod 2) : x * x = x := by
   fin_cases x <;> norm_num
@@ -2226,6 +2422,11 @@ def pcpVerifier {vars : ℕ} :
     let xs ← OracleComp.replicate 6 (pcpVerifierBeforeRepetition (vars := vars) x)
     pure (xs.all id)
 
+@[implemented_by pcpVerifierFastImpl]
+def fastPcpVerifier {vars : ℕ} :
+    PCPVerifier (List (CMvPolynomial vars (ZMod 2))) size (ZMod 2) (fun n => 2 ^ n) :=
+  pcpVerifier
+
 /-- Brute-force decision procedure for `QESAT (ZMod 2)`.
 It checks the degree bound and then enumerates all assignments in `(ZMod 2)^vars`. -/
 def trivialAccepts {vars : ℕ} (x : List (CMvPolynomial vars (ZMod 2))) : Bool :=
@@ -2483,6 +2684,22 @@ theorem pcpVerifier_correct {vars : ℕ} :
     simp only [pcpVerifier, simulateQ_bind, simulateQ_pure]
     rw [simulateQ_replicate]
     exact (repeated_accept_le (n := 6) hBase).trans seven_eighths_pow_six_le_half
+
+theorem fastPcpVerifier_correct {vars : ℕ} :
+    ∀ x : List (CMvPolynomial vars (ZMod 2)),
+      RunsInTime (fastPcpVerifier (vars := vars) x) 0 ∧
+      QueryBound (fastPcpVerifier (vars := vars) x)
+        (6 * (3 + 2 * Nat.clog 2 (100 * 4) * 4))
+        ((Polynomial.C 6 * (Polynomial.X + Polynomial.C (2 * vars) +
+          Polynomial.C (2 + Nat.clog 2 (100 * 4) * 4) *
+            Polynomial.C (vars + vars ^ 2))).eval (size x)) ∧
+      (x ∈ QESAT (ZMod 2) vars → ∃ π : Fin (2 ^ size x) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+          (fastPcpVerifier (vars := vars) x)] ≥ 1 - (0 : ℝ≥0∞)) ∧
+      (x ∉ QESAT (ZMod 2) vars → ∀ π : Fin (2 ^ size x) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+          (fastPcpVerifier (vars := vars) x)] ≤ (1 / 2 : ℝ≥0∞)) := by
+  simpa [fastPcpVerifier] using pcpVerifier_correct (vars := vars)
 
 end QESAT
 

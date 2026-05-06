@@ -72,6 +72,11 @@ def runOracleVerifier {vars : ℕ} (x : List (CMvPolynomial vars F))
     (π : Fin (2 ^ QESAT.size x) → F) : IO Bool :=
   SysRand.runPCP π (QESAT.pcpVerifier (vars := vars) x)
 
+/-- Runner for the proof-backed verifier with the optimized compiled implementation. -/
+def runOracleFastVerifier {vars : ℕ} (x : List (CMvPolynomial vars F))
+    (π : Fin (2 ^ QESAT.size x) → F) : IO Bool :=
+  SysRand.runPCPBuffered π (QESAT.fastPcpVerifier (vars := vars) x)
+
 def runOracleTrivialVerifier {vars : ℕ} (x : List (CMvPolynomial vars F)) : IO Bool :=
   SysRand.runPCP (Fin.elim0 : Fin 0 → F) (QESAT.trivialPcpVerifier (vars := vars) x)
 
@@ -138,6 +143,10 @@ def honestProofNat {vars : ℕ} (a : Fin vars → F) : FastProof :=
 
 def zeroProofNat : FastProof :=
   fun _ => false
+
+def fastProofTable {vars : ℕ} (x : List (CMvPolynomial vars F))
+    (proof : FastProof) : Fin (2 ^ QESAT.size x) → F :=
+  fun i => boolToF (proof i.val)
 
 def monomialTotalDegreeFast {vars : ℕ} (m : CMvMonomial vars) : ℕ :=
   (List.finRange vars).foldl (fun acc i => acc + m.get i) 0
@@ -295,13 +304,17 @@ def repeatPcpFast (ci : FastInstance) (proof : FastProof) : ℕ → IO Bool
       else
         pure false
 
-def runFastVerifier {vars : ℕ} (x : List (CMvPolynomial vars F))
+def runDirectFastVerifier {vars : ℕ} (x : List (CMvPolynomial vars F))
     (proof : FastProof) : IO Bool := do
   let ci := compileFastInstance x
   if ci.proofDim ≤ ci.size then
     repeatPcpFast ci proof 6
   else
     pure true
+
+def runFastVerifier {vars : ℕ} (x : List (CMvPolynomial vars F))
+    (proof : FastProof) : IO Bool :=
+  runOracleFastVerifier x (fastProofTable x proof)
 
 def runFastTrivialVerifier {vars : ℕ} (x : List (CMvPolynomial vars F)) : IO Bool :=
   pure (trivialAcceptsFast (compileFastInstance x))
@@ -468,6 +481,18 @@ example {vars : ℕ} (x : List (CMvPolynomial vars F)) :
       Pr[= true | simulateQ ((rand F).impl + (PCP.proof π).impl)
         (QESAT.pcpVerifier (vars := vars) x)] ≤ (1 / 2 : ℝ≥0∞)) :=
   (QESAT.pcpVerifier_correct (vars := vars) x).2.2.2
+
+example {vars : ℕ} (x : List (CMvPolynomial vars F)) :
+    (x ∈ QESAT F vars → ∃ π : Fin (2 ^ QESAT.size x) → F,
+      Pr[= true | simulateQ ((rand F).impl + (PCP.proof π).impl)
+        (QESAT.fastPcpVerifier (vars := vars) x)] ≥ 1 - (0 : ℝ≥0∞)) :=
+  (QESAT.fastPcpVerifier_correct (vars := vars) x).2.2.1
+
+example {vars : ℕ} (x : List (CMvPolynomial vars F)) :
+    (x ∉ QESAT F vars → ∀ π : Fin (2 ^ QESAT.size x) → F,
+      Pr[= true | simulateQ ((rand F).impl + (PCP.proof π).impl)
+        (QESAT.fastPcpVerifier (vars := vars) x)] ≤ (1 / 2 : ℝ≥0∞)) :=
+  (QESAT.fastPcpVerifier_correct (vars := vars) x).2.2.2
 
 def runAll : IO Unit := do
   runSmoke
