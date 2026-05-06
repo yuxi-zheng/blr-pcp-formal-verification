@@ -40,7 +40,6 @@ __pycache__/
 *.synctex.gz(busy)
 *.pdfsync
 scripts/build_blueprint.sh
-/scripts/benchmarking/out/
 ## Dev
 .vscode/
 .claude/
