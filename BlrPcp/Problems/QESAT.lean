@@ -799,6 +799,550 @@ private lemma seven_eighths_pow_six_le_half : ((7 / 8 : ℝ≥0∞) ^ 6) ≤ 1 /
   · rw [ENNReal.toReal_pow, ENNReal.toReal_div, ENNReal.toReal_div]
     norm_num
 
+namespace LPCPToPCP
+
+private noncomputable def vectorFinEquiv (n : ℕ) : (Fin n → ZMod 2) ≃ Fin (2 ^ n) :=
+  (Fintype.equivFin (Fin n → ZMod 2)).trans (finCongr (by
+    rw [Fintype.card_fun, Fintype.card_fin, ZMod.card]))
+
+private noncomputable def vectorIndex {n : ℕ} (u : Fin n → ZMod 2) : Fin (2 ^ n) :=
+  vectorFinEquiv n u
+
+private noncomputable def tableFn {n : ℕ} (π : Fin (2 ^ n) → ZMod 2) :
+    (Fin n → ZMod 2) → ZMod 2 :=
+  fun u => π (vectorIndex u)
+
+private noncomputable def linearTable {n : ℕ} (π : Fin n → ZMod 2) :
+    Fin (2 ^ n) → ZMod 2 :=
+  fun i => π ⬝ᵥ (vectorFinEquiv n).symm i
+
+private noncomputable def tableImpl (n : ℕ) :
+    QueryImpl (LPCP.spec (ZMod 2) n) (OracleComp (PCP.spec (ZMod 2) (2 ^ n)))
+  | .inl () => query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inl ())
+  | .inr u => query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inr (vectorIndex u))
+
+@[simp]
+private lemma tableFn_linearTable {n : ℕ} (π : Fin n → ZMod 2)
+    (u : Fin n → ZMod 2) :
+    tableFn (linearTable π) u = π ⬝ᵥ u := by
+  simp [tableFn, linearTable, vectorIndex]
+
+private lemma simulateQ_tableImpl_eq {n : ℕ} [SampleableType (ZMod 2)] {α : Type}
+    (oa : OracleComp (LPCP.spec (ZMod 2) n) α) (π : Fin (2 ^ n) → ZMod 2) :
+    simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl) (simulateQ (tableImpl n) oa) =
+      simulateQ ((rand (ZMod 2)).impl +
+        fun u => (return tableFn π u : ProbComp (ZMod 2))) oa := by
+  rw [← QueryImpl.simulateQ_compose]
+  congr 1
+  apply QueryImpl.ext
+  intro t
+  cases t with
+  | inl u =>
+      rcases u
+      simp [tableImpl]
+      dsimp [HAdd.hAdd, QueryImpl.add]
+  | inr u =>
+      simp [tableImpl, tableFn]
+      dsimp [HAdd.hAdd, QueryImpl.add]
+
+private lemma simulateQ_tableImpl_linearTable_eq {n : ℕ} [SampleableType (ZMod 2)]
+    {α : Type} (oa : OracleComp (LPCP.spec (ZMod 2) n) α) (π : Fin n → ZMod 2) :
+    simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+        (simulateQ (tableImpl n) oa) =
+      simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) oa := by
+  rw [simulateQ_tableImpl_eq]
+  congr 1
+  apply QueryImpl.ext
+  intro u
+  simp [LPCP.proof]
+
+private lemma queryBound_simulateQ_tableImpl {n : ℕ} {α : Type}
+    {oa : OracleComp (LPCP.spec (ZMod 2) n) α} {q r : ℕ}
+    (hoa : QueryBound oa q r) :
+    QueryBound (simulateQ (tableImpl n) oa) q r := by
+  revert q r
+  induction oa using OracleComp.inductionOn with
+  | pure _ =>
+      intro q r hoa
+      simp
+  | query_bind t mx ih =>
+      intro q r hoa
+      rw [QueryBound, OracleComp.isQueryBound_query_bind_iff] at hoa
+      cases t with
+      | inl u =>
+          rcases u
+          simp only [simulateQ_bind, simulateQ_query, OracleQuery.cont_query, id_map,
+            OracleQuery.input_query, tableImpl]
+          rw [QueryBound, OracleComp.isQueryBound_query_bind_iff]
+          exact ⟨hoa.1, fun y => ih y (hoa.2 y)⟩
+      | inr _ =>
+          simp only [simulateQ_bind, simulateQ_query, OracleQuery.cont_query, id_map,
+            OracleQuery.input_query, tableImpl]
+          rw [QueryBound, OracleComp.isQueryBound_query_bind_iff]
+          exact ⟨hoa.1, fun y => ih y (hoa.2 y)⟩
+
+private def sampleField {n : ℕ} : OracleComp (PCP.spec (ZMod 2) n) (ZMod 2) :=
+  query (spec := PCP.spec (ZMod 2) n) (.inl ())
+
+private def sampleVector (tableLength n : ℕ) :
+    OracleComp (PCP.spec (ZMod 2) tableLength) (Fin n → ZMod 2) :=
+  Fin.mOfFn n fun _ => sampleField (n := tableLength)
+
+private lemma sampleVector_queryBoundAux (m tableLength : ℕ) :
+    QueryBound
+      (Fin.mOfFn m fun _ => sampleField (n := tableLength)) 0 m := by
+  induction m with
+  | zero =>
+      simp [Fin.mOfFn, QueryBound]
+  | succ m ih =>
+      simp only [Fin.mOfFn]
+      have hHead : QueryBound (sampleField (n := tableLength)) 0 1 := by
+        simp [sampleField, QueryBound]
+      simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using
+        queryBound_bind hHead fun _ => by
+          simpa [QueryBound] using ih
+
+private lemma sampleVector_queryBound (tableLength n : ℕ) :
+    QueryBound (sampleVector tableLength n) 0 n := by
+  simpa [sampleVector] using sampleVector_queryBoundAux n tableLength
+
+private noncomputable def selfCorrectSample {n : ℕ} (u : Fin n → ZMod 2) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ n)) (ZMod 2) := do
+  let z ← sampleVector (2 ^ n) n
+  let fz : ZMod 2 ← query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inr (vectorIndex z))
+  let fuz : ZMod 2 ←
+    query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inr (vectorIndex fun i => u i + z i))
+  pure (fuz + fz)
+
+private lemma selfCorrectSample_queryBound {n : ℕ} (u : Fin n → ZMod 2) :
+    QueryBound (selfCorrectSample u) 2 n := by
+  have hProof : ∀ z : Fin n → ZMod 2,
+      QueryBound
+        (do
+          let fz : ZMod 2 ←
+            (liftM (query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inr (vectorIndex z))) :
+              OracleComp (PCP.spec (ZMod 2) (2 ^ n)) (ZMod 2))
+          let fuz : ZMod 2 ←
+            (liftM
+              (query (spec := PCP.spec (ZMod 2) (2 ^ n))
+                (.inr (vectorIndex fun i => u i + z i))) :
+              OracleComp (PCP.spec (ZMod 2) (2 ^ n)) (ZMod 2))
+          pure (fuz + fz)) 2 0 := by
+    intro z
+    simp only [QueryBound]
+    rw [OracleComp.isQueryBound_query_bind_iff]
+    refine ⟨by simp, fun _ => ?_⟩
+    rw [OracleComp.isQueryBound_query_bind_iff]
+    exact ⟨by simp, fun _ => trivial⟩
+  simpa [selfCorrectSample, Nat.add_assoc] using
+    queryBound_bind (sampleVector_queryBound (2 ^ n) n) fun z => hProof z
+
+private def repeatedValue? : List (ZMod 2) → Option (ZMod 2)
+  | [] => none
+  | y :: ys => if ys.all (fun z => decide (z = y)) then some y else none
+
+private noncomputable def selfCorrect {n : ℕ} (t : ℕ) (u : Fin n → ZMod 2) :
+    OracleComp (PCP.spec (ZMod 2) (2 ^ n)) (Option (ZMod 2)) := do
+  let ys ← OracleComp.replicate t (selfCorrectSample u)
+  pure (repeatedValue? ys)
+
+private lemma selfCorrect_queryBound {n t : ℕ} (u : Fin n → ZMod 2) :
+    QueryBound (selfCorrect (n := n) t u) (2 * t) (t * n) := by
+  simpa [selfCorrect, Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using
+    queryBound_map repeatedValue? (queryBound_replicate t (selfCorrectSample_queryBound u))
+
+private noncomputable def simulateVerifier {n : ℕ} (t : ℕ) :
+    OracleComp (LPCP.spec (ZMod 2) n) Bool →
+      OracleComp (PCP.spec (ZMod 2) (2 ^ n)) Bool :=
+  OracleComp.construct
+    (fun b => pure b)
+    (fun q _oa rec =>
+      match q with
+      | .inl () => do
+          let z : ZMod 2 ← query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inl ())
+          rec z
+      | .inr u => do
+          let z? ← selfCorrect t u
+          match z? with
+          | none => pure false
+          | some z => rec z)
+
+private lemma simulateVerifier_queryBound {n rep : ℕ}
+    {oa : OracleComp (LPCP.spec (ZMod 2) n) Bool} {q r : ℕ}
+    (hoa : QueryBound oa q r) :
+    QueryBound (simulateVerifier (n := n) rep oa)
+      (2 * rep * q) (r + rep * q * n) := by
+  revert q r
+  induction oa using OracleComp.inductionOn with
+  | pure b =>
+      intro q r hoa
+      simp [simulateVerifier, QueryBound]
+  | query_bind t mx ih =>
+      intro q r hoa
+      rw [QueryBound, OracleComp.isQueryBound_query_bind_iff] at hoa
+      cases t with
+      | inl u =>
+          rcases u
+          simp only [simulateVerifier, OracleComp.construct_query_bind]
+          rw [QueryBound, OracleComp.isQueryBound_query_bind_iff]
+          refine ⟨by omega, fun z => ?_⟩
+          refine queryBound_mono (ih z (hoa.2 z)) (by rfl) ?_
+          omega
+      | inr u =>
+          simp only [simulateVerifier, OracleComp.construct_query_bind]
+          have hCont : ∀ z? : Option (ZMod 2),
+              QueryBound
+                (match z? with
+                | none => (pure false : OracleComp (PCP.spec (ZMod 2) (2 ^ n)) Bool)
+                | some z => simulateVerifier (n := n) rep (mx z))
+                (2 * rep * (q - 1)) (r + rep * (q - 1) * n) := by
+            intro z?
+            cases z? with
+            | none =>
+                simp [QueryBound]
+            | some z =>
+                exact ih z (hoa.2 z)
+          refine queryBound_mono
+            (queryBound_bind (selfCorrect_queryBound (n := n) (t := rep) u) hCont)
+            ?_ ?_
+          · have hq : q = q - 1 + 1 := by omega
+            rw [hq]
+            have hq' : q - 1 + 1 - 1 = q - 1 := by omega
+            rw [hq']
+            calc
+              2 * rep + 2 * rep * (q - 1) = 2 * rep * (q - 1 + 1) := by ring
+              _ ≤ 2 * rep * (q - 1 + 1) := le_rfl
+          · have hq : q = q - 1 + 1 := by omega
+            rw [hq]
+            have hq' : q - 1 + 1 - 1 = q - 1 := by omega
+            rw [hq']
+            calc
+              rep * n + (r + rep * (q - 1) * n) =
+                  r + rep * (q - 1 + 1) * n := by ring
+              _ ≤ r + rep * (q - 1 + 1) * n := le_rfl
+
+private noncomputable def verifier {α : Type} (size : α → ℕ) (ℓ q : ℕ → ℕ)
+    (V : LPCPVerifier α size (ZMod 2) ℓ) :
+    PCPVerifier α size (ZMod 2) (fun n => 2 ^ ℓ n) :=
+  fun x => do
+    let n := ℓ (size x)
+    let rep := Nat.clog 2 (100 * q (size x))
+    let hBLR ← simulateQ (tableImpl n) (BLR.basicVerifier (F := ZMod 2) (n := n))
+    if hBLR then
+      simulateVerifier (n := n) rep (V x)
+    else
+      pure false
+
+private lemma verifier_queryBound {α : Type} {size : α → ℕ} {ℓ q r : ℕ → ℕ}
+    {V : LPCPVerifier α size (ZMod 2) ℓ} {x : α}
+    (hV : QueryBound (V x) (q (size x)) (r (size x))) :
+    QueryBound (verifier size ℓ q V x)
+      (3 + 2 * Nat.clog 2 (100 * q (size x)) * q (size x))
+      (r (size x) +
+        (2 + Nat.clog 2 (100 * q (size x)) * q (size x)) * ℓ (size x)) := by
+  let n := ℓ (size x)
+  let rep := Nat.clog 2 (100 * q (size x))
+  have hBLR :
+      QueryBound
+        (simulateQ (tableImpl n) (BLR.basicVerifier (F := ZMod 2) (n := n))) 3 (2 * n) :=
+    queryBound_simulateQ_tableImpl BLR_basic_query_complexity
+  have hSim :
+      QueryBound (simulateVerifier (n := n) rep (V x))
+        (2 * rep * q (size x)) (r (size x) + rep * q (size x) * n) :=
+    simulateVerifier_queryBound hV
+  simp only [verifier]
+  refine queryBound_mono
+    (queryBound_bind hBLR fun h => by
+      cases h
+      · simp [QueryBound]
+      · exact hSim)
+    ?_ ?_
+  · subst rep
+    rw [Nat.mul_comm 100 (q (size x))]
+  · subst n
+    subst rep
+    rw [Nat.mul_comm 100 (q (size x))]
+    ring_nf
+    exact le_rfl
+
+private lemma verifier_accept_le_blr {α : Type} [SampleableType (ZMod 2)]
+    {size : α → ℕ} {ℓ q : ℕ → ℕ}
+    (V : LPCPVerifier α size (ZMod 2) ℓ) (x : α)
+    (π : Fin (2 ^ ℓ (size x)) → ZMod 2) :
+    Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+        (verifier size ℓ q V x)] ≤
+      Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+        (simulateQ (tableImpl (ℓ (size x)))
+          (BLR.basicVerifier (F := ZMod 2) (n := ℓ (size x))))] := by
+  simp only [verifier, simulateQ_bind]
+  have hle := probOutput_bind_mono
+      (mx := simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+        (simulateQ (tableImpl (ℓ (size x)))
+          (BLR.basicVerifier (F := ZMod 2) (n := ℓ (size x)))))
+      (my := fun hBLR =>
+        simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+          (if hBLR then
+            simulateVerifier (n := ℓ (size x)) (Nat.clog 2 (100 * q (size x))) (V x)
+          else
+            pure false))
+      (oc := fun hBLR => (pure hBLR : ProbComp Bool))
+      (y := true) (z := true) (by
+        intro hBLR _
+        cases hBLR <;> simp [simulateQ_pure])
+  simpa [simulateQ_pure] using hle
+
+private lemma optionBind_accept_le
+    (mx : ProbComp (Option (ZMod 2))) (cont : ZMod 2 → ProbComp Bool)
+    (exact : ProbComp Bool) (c : ZMod 2) {ε δ : ℝ≥0∞}
+    (hcont : Pr[= true | cont c] ≤ Pr[= true | exact] + ε)
+    (hbad : Pr[fun z? => ∃ z, z? = some z ∧ z ≠ c | mx] ≤ δ) :
+    Pr[= true | mx >>= fun
+      | none => pure false
+      | some z => cont z] ≤
+        Pr[= true | exact] + ε + δ := by
+  classical
+  let bad : Option (ZMod 2) → Prop := fun z? => ∃ z, z? = some z ∧ z ≠ c
+  let branch : Option (ZMod 2) → ProbComp Bool
+    | none => pure false
+    | some z => cont z
+  let mix : Option (ZMod 2) → ProbComp Bool := fun z? =>
+    if bad z? then pure true else exact
+  have hStep1 :
+      Pr[= true | mx >>= branch] ≤ Pr[= true | mx >>= mix] + ε := by
+    have hEvent := probEvent_bind_congr_le_add
+      (mx := mx) (my := branch) (oc := mix) (q := fun b : Bool => b = true)
+      (ε := ε) (by
+        intro z? _hz?
+        by_cases hz : bad z?
+        · simpa [mix, hz] using (calc
+            Pr[fun b => b = true | branch z?] ≤ 1 := probEvent_le_one
+            _ ≤ 1 + ε := by simp)
+        · cases z? with
+          | none =>
+              simp [branch, mix, hz]
+          | some z =>
+              have hzc : z = c := by
+                by_contra hne
+                exact hz ⟨z, rfl, hne⟩
+              subst z
+              simpa [branch, mix, hz] using hcont)
+    simpa [probEvent_eq_eq_probOutput, branch, mix] using hEvent
+  have hStep2 :
+      Pr[= true | mx >>= mix] ≤ Pr[= true | exact] + δ := by
+    have hmix := probOutput_bind_congr_le_add
+      (mx := mx) (my := mix)
+      (oc₁ := fun _ => exact)
+      (oc₂ := fun z? => (pure (decide (bad z?)) : ProbComp Bool))
+      (y := true) (z₁ := true) (z₂ := true) (by
+        intro z? _hz?
+        by_cases hz : bad z? <;> simp [mix, hz])
+    have hconst :
+        Pr[= true | mx >>= fun _ : Option (ZMod 2) => exact] ≤
+          Pr[= true | exact] := by
+      rw [probOutput_bind_const]
+      exact mul_le_of_le_one_left (zero_le _) tsub_le_self
+    have hbad' :
+        Pr[= true | mx >>= fun z? => (pure (decide (bad z?)) : ProbComp Bool)] =
+          Pr[bad | mx] := by
+      rw [← probEvent_eq_eq_probOutput]
+      simpa [Function.comp_def] using
+        (probEvent_bind_pure_comp (m := ProbComp) (mx := mx)
+          (f := fun z? => decide (bad z?)) (q := fun b : Bool => b = true))
+    calc
+      Pr[= true | mx >>= mix] ≤
+          Pr[= true | mx >>= fun _ : Option (ZMod 2) => exact] +
+            Pr[= true | mx >>= fun z? => (pure (decide (bad z?)) : ProbComp Bool)] := hmix
+      _ ≤ Pr[= true | exact] + δ := by
+        rw [hbad']
+        exact add_le_add hconst hbad
+  calc
+    Pr[= true | mx >>= fun
+      | none => pure false
+      | some z => cont z] = Pr[= true | mx >>= branch] := rfl
+    _ ≤ Pr[= true | mx >>= mix] + ε := hStep1
+    _ ≤ (Pr[= true | exact] + δ) + ε := add_le_add hStep2 le_rfl
+    _ = Pr[= true | exact] + ε + δ := by
+      rw [add_assoc, add_comm δ ε, ← add_assoc]
+
+private lemma simulateVerifier_accept_le {n rep : ℕ}
+    {oa : OracleComp (LPCP.spec (ZMod 2) n) Bool} {q r : ℕ}
+    (hoa : QueryBound oa q r) (πTable : Fin (2 ^ n) → ZMod 2)
+    (πLin : Fin n → ZMod 2) {δ : ℝ≥0∞}
+    (hWrong : ∀ u : Fin n → ZMod 2,
+      Pr[fun z? => ∃ z, z? = some z ∧ z ≠ πLin ⬝ᵥ u |
+        simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+          (selfCorrect (n := n) rep u)] ≤ δ) :
+    Pr[= true |
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+        (simulateVerifier (n := n) rep oa)] ≤
+      Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl) oa] +
+        q * δ := by
+  revert q r
+  induction oa using OracleComp.inductionOn with
+  | pure b =>
+      intro q r hoa
+      cases b <;> simp [simulateVerifier]
+  | query_bind t mx ih =>
+      intro q r hoa
+      rw [QueryBound, OracleComp.isQueryBound_query_bind_iff] at hoa
+      cases t with
+      | inl u =>
+          rcases u
+          simp only [simulateVerifier, OracleComp.construct_query_bind, simulateQ_bind,
+            simulateQ_query, OracleQuery.cont_query, id_map, OracleQuery.input_query]
+          dsimp [HAdd.hAdd, QueryImpl.add, rand]
+          have hEvent := probEvent_bind_congr_le_add
+            (mx := ($ᵗ ZMod 2 : ProbComp (ZMod 2)))
+            (my := fun z =>
+              simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+                (simulateVerifier (n := n) rep (mx z)))
+            (oc := fun z =>
+              simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl) (mx z))
+            (q := fun b : Bool => b = true) (ε := q * δ) (by
+              intro z _hz
+              simpa [probEvent_eq_eq_probOutput] using ih z (hoa.2 z))
+          simpa [probEvent_eq_eq_probOutput] using hEvent
+      | inr u =>
+          simp only [simulateVerifier, OracleComp.construct_query_bind, simulateQ_bind,
+            simulateQ_query, OracleQuery.cont_query, id_map, OracleQuery.input_query]
+          dsimp [HAdd.hAdd, QueryImpl.add, LPCP.proof]
+          let ans : ZMod 2 := πLin ⬝ᵥ (u : Fin n → ZMod 2)
+          have hCont :
+              Pr[= true |
+                simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+                  (simulateVerifier (n := n) rep (mx ans))] ≤
+              Pr[= true |
+                  simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl)
+                    (mx ans)] + ((q - 1 : ℕ) : ℝ≥0∞) * δ :=
+            ih ans (hoa.2 ans)
+          have hOpt := optionBind_accept_le
+            (mx := simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+              (selfCorrect (n := n) rep (u : Fin n → ZMod 2)))
+            (cont := fun z =>
+              simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+                (simulateVerifier (n := n) rep (mx z)))
+            (exact := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl)
+              (mx ans))
+            (c := ans) hCont (by simpa [ans] using hWrong (u : Fin n → ZMod 2))
+          have hOpt' :
+              Pr[= true | do
+                let z? ← simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+                  (selfCorrect (n := n) rep (u : Fin n → ZMod 2))
+                simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+                  (match z? with
+                  | none => pure false
+                  | some z => simulateVerifier (n := n) rep (mx z))] ≤
+                Pr[= true |
+                  simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl) (mx ans)] +
+                  ((q - 1 : ℕ) : ℝ≥0∞) * δ + δ := by
+            let impl := (rand (ZMod 2)).impl + (PCP.proof πTable).impl
+            let sc := simulateQ impl (selfCorrect (n := n) rep (u : Fin n → ZMod 2))
+            have hbranch :
+                Pr[= true | sc >>= fun z? =>
+                  simulateQ impl
+                    (match z? with
+                    | none => pure false
+                    | some z => simulateVerifier (n := n) rep (mx z))] =
+                  Pr[= true | sc >>= fun
+                    | none => pure false
+                    | some z =>
+                        simulateQ impl (simulateVerifier (n := n) rep (mx z))] := by
+              apply probOutput_bind_congr
+              intro z? _hz?
+              cases z? <;> simp [simulateQ_pure]
+            simpa [impl, sc, ans] using hbranch.trans_le hOpt
+          refine hOpt'.trans ?_
+          have hqNat : q = q - 1 + 1 := by omega
+          have hq : (q : ℝ≥0∞) = ((q - 1 : ℕ) : ℝ≥0∞) + 1 := by
+            exact_mod_cast hqNat
+          simpa [ans, simulateQ_pure] using le_of_eq (calc
+            Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl)
+                (mx ans)] + ((q - 1 : ℕ) : ℝ≥0∞) * δ + δ =
+              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl)
+                (mx ans)] + (((q - 1 : ℕ) : ℝ≥0∞) * δ + δ) := by rw [add_assoc]
+            _ = Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl)
+                (mx ans)] + ((((q - 1 : ℕ) : ℝ≥0∞) + 1) * δ) := by
+                  rw [add_mul, one_mul]
+            _ = Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl)
+                (mx ans)] + (q : ℝ≥0∞) * δ := by rw [← hq])
+
+private lemma repeatedValue?_wrong_imp_all_ne {c : ZMod 2} :
+    ∀ {ys : List (ZMod 2)},
+      (∃ z, repeatedValue? ys = some z ∧ z ≠ c) → ∀ y ∈ ys, y ≠ c
+  | [], h => by
+      simp [repeatedValue?] at h
+  | y :: ys, h => by
+      simp only [List.mem_cons]
+      intro z hz
+      simp only [repeatedValue?] at h
+      by_cases hall : ys.all (fun z => decide (z = y))
+      · simp [hall] at h
+        have hyc : y ≠ c := h
+        rcases hz with rfl | hz
+        · exact hyc
+        · have hy : z = y := by
+            have := List.all_eq_true.mp hall z hz
+            simpa using this
+          exact hy ▸ hyc
+      · simp [hall] at h
+
+private lemma repeated_selfCorrect_wrong_le_pow (mx : ProbComp (ZMod 2))
+    (rep : ℕ) (c : ZMod 2) :
+    Pr[fun z? => ∃ z, z? = some z ∧ z ≠ c |
+      do
+        let ys ← OracleComp.replicate rep mx
+        pure (repeatedValue? ys)] ≤
+      Pr[fun z => z ≠ c | mx] ^ rep := by
+  rw [show (do
+      let ys ← OracleComp.replicate rep mx
+      pure (repeatedValue? ys)) =
+        repeatedValue? <$> OracleComp.replicate rep mx by rfl]
+  rw [probEvent_map]
+  refine (probEvent_mono (mx := OracleComp.replicate rep mx)
+    (p := fun ys => ∃ z, repeatedValue? ys = some z ∧ z ≠ c)
+    (q := fun ys => ∀ y ∈ ys, y ≠ c) ?_).trans ?_
+  · intro ys _ hys
+    exact repeatedValue?_wrong_imp_all_ne hys
+  · exact le_of_eq (by
+      simpa using
+        (OracleComp.probEvent_replicate_of_probEvent_cons mx rep
+          (p := fun ys : List (ZMod 2) => ∀ y ∈ ys, y ≠ c)
+          (by simp)
+          (q := fun y : ZMod 2 => y ≠ c)
+          (by
+            intro y ys
+            simp)))
+
+private lemma selfCorrect_wrong_le_of_sample {n rep : ℕ}
+    (πTable : Fin (2 ^ n) → ZMod 2) (u : Fin n → ZMod 2) (c : ZMod 2)
+    {η : ℝ≥0∞}
+    (hSample :
+      Pr[fun z => z ≠ c |
+        simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+          (selfCorrectSample (n := n) u)] ≤ η) :
+    Pr[fun z? => ∃ z, z? = some z ∧ z ≠ c |
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+        (selfCorrect (n := n) rep u)] ≤ η ^ rep := by
+  simp only [selfCorrect, simulateQ_bind, simulateQ_pure]
+  rw [simulateQ_replicate]
+  exact (repeated_selfCorrect_wrong_le_pow
+    (simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+      (selfCorrectSample (n := n) u)) rep c).trans
+    (pow_le_pow_left₀ (by simp) hSample rep)
+
+private lemma linear_selfCorrect_value {n : ℕ} (π : Fin n → ZMod 2)
+    (u z : Fin n → ZMod 2) :
+    π ⬝ᵥ (fun i => u i + z i) + π ⬝ᵥ z = π ⬝ᵥ u := by
+  simp only [dotProduct, mul_add]
+  rw [Finset.sum_add_distrib]
+  have hdouble : ∑ x : Fin n, π x * z x + ∑ x : Fin n, π x * z x = 0 := by
+    have htwo : (2 : ZMod 2) = 0 := by native_decide
+    rw [← two_mul]
+    rw [htwo, zero_mul]
+  rw [add_assoc, hdouble, add_zero]
+
+end LPCPToPCP
+
 theorem QESAT_poly_LPCP {vars : ℕ} :
     QESAT (ZMod 2) vars ∈
       LPCP (QESAT.size) 0 (3 / 4) (ZMod 2)
