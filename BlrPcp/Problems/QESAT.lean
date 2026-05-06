@@ -930,7 +930,7 @@ theorem LPCP_to_PCP_ZMod2 {α : Type} (size : α → ℕ)
     ⊆ PCP size ε_c (max (7 / 8) (ε_s + 1 / 100)) (ZMod 2)
       (fun n => 2 ^ ℓ n)
       (fun n => 3 + 2 * Nat.clog 2 (100 * q n) * q n)
-      (fun n => r n + (2 + Nat.clog 2 (100 * q n)) * ℓ n) :=
+      (fun n => r n + (2 + Nat.clog 2 (100 * q n) * q n) * ℓ n) :=
   sorry
 
 theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
@@ -938,7 +938,7 @@ theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polyno
       PCP (QESAT.size) 0 (7 / 8) (ZMod 2)
         (fun n => 2 ^ n) (fun _ => q) r.eval := by
   let q' := 3 + 2 * Nat.clog 2 (100 * 4) * 4
-  let c := 2 + Nat.clog 2 (100 * 4)
+  let c := 2 + Nat.clog 2 (100 * 4) * 4
   let r' : Polynomial ℕ :=
     Polynomial.X + Polynomial.C (2 * vars) + Polynomial.C c * Polynomial.C (vars + vars ^ 2)
   refine ⟨q', r', ?_⟩
