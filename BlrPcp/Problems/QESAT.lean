@@ -19,6 +19,10 @@ Unless stated otherwise, all definitions and lemmas are for F = Z/2.
 - `QESAT.size`: the binary-size proxy for QESAT instances.
 - `QESAT_poly_LPCP`: QESAT over `ZMod 2` has an exponential-length LPCP.
 - `LPCP_to_PCP_ZMod2`: the conversion lemma from LPCP to PCP for `ZMod 2`.
+- `QESAT.pcpVerifierBeforeRepetition`: the explicit computable QESAT PCP verifier before
+  independent repetition.
+- `QESAT.pcpVerifier`: the explicit computable QESAT PCP verifier after independent repetition.
+- `QESAT.pcpVerifier_correct`: completeness, soundness, and query bounds for `QESAT.pcpVerifier`.
 - `QESAT_exp_PCP`: QESAT over `ZMod 2` has an exponential-length PCP.
 -/
 
@@ -2048,7 +2052,372 @@ private lemma nearestLinearCoeff_distance_le_basicReject [SampleableType (ZMod 2
     simpa [distanceToLin, nearestLinearCoeff_distance_eq_distanceToLinear] using
       BLR_basic_soundness_ZMod2 (n := n) (tableFn πTable)
 
+theorem verifier_correct {α : Type} {L : Set α} (size : α → ℕ)
+    (ε_c ε_s : ℝ≥0∞) (ℓ q r : ℕ → ℕ)
+    (V : LPCPVerifier α size (ZMod 2) ℓ) (t : Polynomial ℕ)
+    (hV : ∀ x,
+      RunsInTime (V x) (t.eval (size x)) ∧
+      QueryBound (V x) (q (size x)) (r (size x)) ∧
+      (x ∈ L → ∃ π : Fin (ℓ (size x)) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) (V x)] ≥
+          1 - ε_c) ∧
+      (x ∉ L → ∀ π : Fin (ℓ (size x)) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) (V x)] ≤
+          ε_s)) :
+    ∀ x,
+      RunsInTime (verifier size ℓ q V x) (t.eval (size x)) ∧
+      QueryBound (verifier size ℓ q V x)
+        (3 + 2 * Nat.clog 2 (100 * q (size x)) * q (size x))
+        (r (size x) + (2 + Nat.clog 2 (100 * q (size x)) * q (size x)) *
+          ℓ (size x)) ∧
+      (x ∈ L → ∃ π : Fin (2 ^ ℓ (size x)) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+          (verifier size ℓ q V x)] ≥ 1 - ε_c) ∧
+      (x ∉ L → ∀ π : Fin (2 ^ ℓ (size x)) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+          (verifier size ℓ q V x)] ≤ max (7 / 8) (ε_s + 1 / 100)) := by
+  intro x
+  rcases hV x with ⟨hTime, hQuery, hComplete, hSound⟩
+  refine ⟨by simp [RunsInTime], verifier_queryBound hQuery, ?_, ?_⟩
+  · intro hx
+    rcases hComplete hx with ⟨πLin, hπLin⟩
+    refine ⟨linearTable πLin, ?_⟩
+    have hrep : q (size x) = 0 ∨ 0 < Nat.clog 2 (100 * q (size x)) := by
+      by_cases hq : q (size x) = 0
+      · exact Or.inl hq
+      · right
+        exact Nat.clog_pos (by norm_num) (by
+          have hqpos : 0 < q (size x) := Nat.pos_of_ne_zero hq
+          omega)
+    exact le_trans hπLin (verifier_linear_accept_ge hQuery hrep πLin)
+  · intro hx π
+    let n := ℓ (size x)
+    let rep := Nat.clog 2 (100 * q (size x))
+    let blr :=
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+        (simulateQ (tableImpl n) (BLR.basicVerifier (F := ZMod 2) (n := n)))
+    by_cases hLow : Pr[= true | blr] ≤ (7 / 8 : ℝ≥0∞)
+    · exact (verifier_accept_le_blr V x π).trans (hLow.trans (le_max_left _ _))
+    · let πLin := nearestLinearCoeff (tableFn π)
+      have hHigh : (7 / 8 : ℝ≥0∞) ≤ Pr[= true | blr] := le_of_not_ge hLow
+      have hRejectSmall : Pr[= false | blr] ≤ 1 / 8 :=
+        false_prob_le_eighth_of_accept_ge_seven_eighths blr hHigh
+      have hDistSmall :
+          ENNReal.ofReal (BlrPcp.distance (tableFn π)
+            (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) ≤ 1 / 8 := by
+        have hDistReject := nearestLinearCoeff_distance_le_basicReject (n := n) π
+        have hDistReject' :
+            ENNReal.ofReal (BlrPcp.distance (tableFn π)
+              (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) ≤
+              Pr[= false | blr] := by
+          simpa [πLin, blr, n] using hDistReject
+        exact hDistReject'.trans hRejectSmall
+      have hSample :
+          ∀ u : Fin n → ZMod 2,
+            Pr[fun y => y ≠ πLin ⬝ᵥ u |
+              simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+                (selfCorrectSample (n := n) u)] ≤ 1 / 2 := by
+        intro u
+        have hOne := selfCorrectSample_wrong_le_two_distance (n := n) π πLin u
+        calc
+          Pr[fun y => y ≠ πLin ⬝ᵥ u |
+              simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+                (selfCorrectSample (n := n) u)] ≤
+              ENNReal.ofReal (BlrPcp.distance (tableFn π)
+                (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) +
+              ENNReal.ofReal (BlrPcp.distance (tableFn π)
+                (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) := hOne
+          _ ≤ 1 / 8 + 1 / 8 := add_le_add hDistSmall hDistSmall
+          _ ≤ 1 / 2 := two_eighths_le_half
+      have hWrong :
+          ∀ u : Fin n → ZMod 2,
+            Pr[fun z? => ∃ z, z? = some z ∧ z ≠ πLin ⬝ᵥ u |
+              simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+                (selfCorrect (n := n) rep u)] ≤
+              (1 / 2 : ℝ≥0∞) ^ rep := by
+        intro u
+        exact selfCorrect_wrong_le_of_sample
+          (n := n) (rep := rep) π u (πLin ⬝ᵥ u) (hSample u)
+      have hSim := simulateVerifier_accept_le (n := n) (rep := rep) hQuery π πLin hWrong
+      have hFinal := verifier_accept_le_simulateVerifier (ℓ := ℓ) (q := q) V x π
+      have hPow :
+          (q (size x) : ℝ≥0∞) * (1 / 2 : ℝ≥0∞) ^ rep ≤ 1 / 100 := by
+        simpa [rep] using nat_mul_half_pow_clog_le (q (size x))
+      calc
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+            (verifier size ℓ q V x)] ≤
+            Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+              (simulateVerifier (n := ℓ (size x))
+                (Nat.clog 2 (100 * q (size x))) (V x))] := hFinal
+        _ ≤ Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl)
+              (V x)] + (q (size x) : ℝ≥0∞) * (1 / 2 : ℝ≥0∞) ^ rep := by
+            simpa [n, rep] using hSim
+        _ ≤ ε_s + 1 / 100 := add_le_add (hSound hx πLin) hPow
+        _ ≤ max (7 / 8) (ε_s + 1 / 100) := le_max_right _ _
+
 end LPCPToPCP
+
+namespace QESAT
+
+def polyVerifierSq {vars : ℕ} :
+    LPCPVerifier (List (CMvPolynomial vars (ZMod 2))) size (ZMod 2)
+      (fun _ => vars + vars ^ 2) :=
+  cast (by
+    congr
+    ext _
+    rw [sq]) (polyVerifier (n := vars))
+
+def pcpCoreVerifier {vars : ℕ} :
+    PCPVerifier (List (CMvPolynomial vars (ZMod 2))) size (ZMod 2)
+      (fun _ => 2 ^ (vars + vars * vars)) :=
+  LPCPToPCP.verifier size (fun _ => vars + vars * vars) (fun _ => 4)
+    (polyVerifier (n := vars))
+
+def pcpVerifierBeforeRepetition {vars : ℕ} :
+    PCPVerifier (List (CMvPolynomial vars (ZMod 2))) size (ZMod 2) (fun n => 2 ^ n) :=
+  fun x =>
+    if hlen : 2 ^ (vars + vars * vars) ≤ 2 ^ (size x) then
+      simulateQ (PCP.padImpl (ZMod 2) hlen) (pcpCoreVerifier (vars := vars) x)
+    else
+      pure true
+
+def pcpVerifier {vars : ℕ} :
+    PCPVerifier (List (CMvPolynomial vars (ZMod 2))) size (ZMod 2) (fun n => 2 ^ n) :=
+  fun x => do
+    let xs ← OracleComp.replicate 6 (pcpVerifierBeforeRepetition (vars := vars) x)
+    pure (xs.all id)
+
+theorem polyVerifier_correct {vars : ℕ} :
+    ∀ polys : List (CMvPolynomial vars (ZMod 2)),
+      RunsInTime (polyVerifier (n := vars) polys) 0 ∧
+      QueryBound (polyVerifier (n := vars) polys) 4 (size polys + 2 * vars) ∧
+      (polys ∈ QESAT (ZMod 2) vars → ∃ π : Fin (vars + vars * vars) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
+          (polyVerifier (n := vars) polys)] ≥ 1 - (0 : ℝ≥0∞)) ∧
+      (polys ∉ QESAT (ZMod 2) vars → ∀ π : Fin (vars + vars * vars) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
+          (polyVerifier (n := vars) polys)] ≤ (3 / 4 : ℝ≥0∞)) := by
+  intro polys
+  refine ⟨by simp [RunsInTime], ?_, ?_, ?_⟩
+  · exact polyVerifier_queryBound (n := vars) polys
+  · rintro ⟨hdeg, a, ha⟩
+    refine ⟨TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2), ?_⟩
+    have hlin :
+        (linearMatrix polys) *ᵥ
+            TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2) =
+          linearTarget polys :=
+      linearMatrix_mul_honestProof hdeg ha
+    have hline_r (r : Fin polys.length → ZMod 2) :
+        TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2) ⬝ᵥ
+            (linearMatrix polys)ᵀ *ᵥ r =
+          linearTarget polys ⬝ᵥ r :=
+      LINEQ.dotProduct_transpose_mulVec_eq (F := ZMod 2) (linearMatrix polys)
+        (TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2))
+        (linearTarget polys) r hlin
+    simp [polyVerifier, LINEQ.verifier, LINEQ.sampleRandomVector, hline_r,
+      tensorSelfVerifier, TENSORQ.dotProduct_queryA, TENSORQ.dotProduct_queryB,
+      TENSORQ.projA_honestProof, TENSORQ.projB_honestProof,
+      TENSORQ.tensor_check_complete]
+    rw [if_pos hdeg]
+  · intro hx π
+    by_cases hdeg : ∀ p ∈ polys, p.totalDegree ≤ 2
+    · let impl := (rand (ZMod 2)).impl + (LPCP.proof π).impl
+      let line := LINEQ.verifier (F := ZMod 2) (linearMatrix polys, linearTarget polys)
+      let tensor := tensorSelfVerifier (n := vars)
+      by_cases htensor : (TENSORQ.projA π, TENSORQ.projB π) ∈ TENSORQ (ZMod 2) vars
+      · have hd :
+            (linearMatrix polys) *ᵥ π - linearTarget polys ≠ 0 := by
+          intro hzero
+          exact hx (mem_of_tensor_linear hdeg htensor (sub_eq_zero.mp hzero))
+        have hline := lineSubcheck_soundness (n := vars) polys π hd
+        have hmain_le_line :
+            Pr[= true | simulateQ impl (polyVerifier (n := vars) polys)] ≤
+              Pr[= true | simulateQ impl line] := by
+          dsimp [polyVerifier, impl]
+          rw [if_pos hdeg]
+          change
+            Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
+              (do
+                let hLine ← line
+                let hTensor ← tensor
+                pure (hLine && hTensor))] ≤
+            Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line]
+          simp only [simulateQ_bind, simulateQ_pure]
+          have hle :
+              Pr[= true | do
+                let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
+                let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
+                pure (hLine && hTensor)] ≤
+              Pr[= true | do
+                let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
+                pure hLine] := by
+            refine probOutput_bind_mono
+              (mx := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line)
+              (my := fun hLine => do
+                let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
+                pure (hLine && hTensor))
+              (oc := fun hLine => (pure hLine : ProbComp Bool))
+              (y := true) (z := true) ?_
+            intro hLine _
+            cases hLine <;> simp
+          simpa using hle
+        have hhalf : 1 / (Fintype.card (ZMod 2) : ENNReal) ≤ 3 / 4 := by
+          rw [show Fintype.card (ZMod 2) = 2 from ZMod.card 2]
+          refine (ENNReal.toReal_le_toReal ?_ ?_).mp ?_
+          · exact ENNReal.div_ne_top (by simp) (by norm_num)
+          · exact ENNReal.div_ne_top (by simp) (by norm_num)
+          · rw [ENNReal.toReal_div, ENNReal.toReal_div]
+            all_goals norm_num
+        exact hmain_le_line.trans (hline.trans hhalf)
+      · have htensor_bound := tensorSelfVerifier_soundness (n := vars) π htensor
+        have hmain_le_tensor :
+            Pr[= true | simulateQ impl (polyVerifier (n := vars) polys)] ≤
+              Pr[= true | simulateQ impl tensor] := by
+          dsimp [polyVerifier, impl]
+          rw [if_pos hdeg]
+          change
+            Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
+              (do
+                let hLine ← line
+                let hTensor ← tensor
+                pure (hLine && hTensor))] ≤
+            Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor]
+          simp only [simulateQ_bind, simulateQ_pure]
+          rw [probOutput_bind_bind_swap
+            (mx := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line)
+            (my := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor)
+            (f := fun hLine hTensor => (pure (hLine && hTensor) : ProbComp Bool))
+            (z := true)]
+          have hle :
+              Pr[= true | do
+                let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
+                let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
+                pure (hLine && hTensor)] ≤
+              Pr[= true | do
+                let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
+                pure hTensor] := by
+            refine probOutput_bind_mono
+              (mx := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor)
+              (my := fun hTensor => do
+                let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
+                pure (hLine && hTensor))
+              (oc := fun hTensor => (pure hTensor : ProbComp Bool))
+              (y := true) (z := true) ?_
+            intro hTensor _
+            cases hTensor <;> simp
+          simpa using hle
+        exact hmain_le_tensor.trans htensor_bound
+    · dsimp [polyVerifier]
+      rw [if_neg hdeg]
+      simp
+
+theorem pcpCoreVerifier_correct {vars : ℕ} :
+    ∀ polys : List (CMvPolynomial vars (ZMod 2)),
+      RunsInTime (pcpCoreVerifier (vars := vars) polys) 0 ∧
+      QueryBound (pcpCoreVerifier (vars := vars) polys)
+        (3 + 2 * Nat.clog 2 (100 * 4) * 4)
+        ((size polys + 2 * vars) +
+          (2 + Nat.clog 2 (100 * 4) * 4) * (vars + vars * vars)) ∧
+      (polys ∈ QESAT (ZMod 2) vars →
+        ∃ π : Fin (2 ^ (vars + vars * vars)) → ZMod 2,
+          Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+            (pcpCoreVerifier (vars := vars) polys)] ≥ 1 - (0 : ℝ≥0∞)) ∧
+      (polys ∉ QESAT (ZMod 2) vars →
+        ∀ π : Fin (2 ^ (vars + vars * vars)) → ZMod 2,
+          Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+            (pcpCoreVerifier (vars := vars) polys)] ≤ (7 / 8 : ℝ≥0∞)) := by
+  intro polys
+  have h := LPCPToPCP.verifier_correct (L := QESAT (ZMod 2) vars) size
+    0 (3 / 4) (fun _ => vars + vars * vars) (fun _ => 4) (fun n => n + 2 * vars)
+    (polyVerifier (n := vars)) 0 (polyVerifier_correct (vars := vars)) polys
+  rw [soundness_before_repetition] at h
+  simpa [pcpCoreVerifier] using h
+
+theorem pcpVerifierBeforeRepetition_correct {vars : ℕ} :
+    ∀ x : List (CMvPolynomial vars (ZMod 2)),
+      RunsInTime (pcpVerifierBeforeRepetition (vars := vars) x) 0 ∧
+      QueryBound (pcpVerifierBeforeRepetition (vars := vars) x)
+        (3 + 2 * Nat.clog 2 (100 * 4) * 4)
+        ((Polynomial.X + Polynomial.C (2 * vars) +
+          Polynomial.C (2 + Nat.clog 2 (100 * 4) * 4) *
+            Polynomial.C (vars + vars ^ 2)).eval (size x)) ∧
+      (x ∈ QESAT (ZMod 2) vars → ∃ π : Fin (2 ^ size x) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+          (pcpVerifierBeforeRepetition (vars := vars) x)] ≥ 1 - (0 : ℝ≥0∞)) ∧
+      (x ∉ QESAT (ZMod 2) vars → ∀ π : Fin (2 ^ size x) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+          (pcpVerifierBeforeRepetition (vars := vars) x)] ≤ (7 / 8 : ℝ≥0∞)) := by
+  intro x
+  let q' := 3 + 2 * Nat.clog 2 (100 * 4) * 4
+  let c := 2 + Nat.clog 2 (100 * 4) * 4
+  rcases pcpCoreVerifier_correct (vars := vars) x with ⟨_, hQuery, hComplete, hSound⟩
+  refine ⟨by simp [RunsInTime], ?_, ?_, ?_⟩
+  · by_cases hlen : 2 ^ (vars + vars * vars) ≤ 2 ^ (size x)
+    · simp only [pcpVerifierBeforeRepetition, hlen, ↓reduceDIte]
+      simpa [q', c, Polynomial.eval_add, Polynomial.eval_mul, sq] using
+        PCP.queryBound_simulateQ_padImpl hlen hQuery
+    · simp [pcpVerifierBeforeRepetition, hlen, QueryBound]
+  · intro hxL
+    by_cases hlen : 2 ^ (vars + vars * vars) ≤ 2 ^ (size x)
+    · rcases hComplete hxL with ⟨π₀, hπ₀⟩
+      let π₁ : Fin (2 ^ size x) → ZMod 2 := fun j =>
+        if hj : j.val < 2 ^ (vars + vars * vars) then π₀ ⟨j.val, hj⟩ else default
+      refine ⟨π₁, ?_⟩
+      have hπ : ∀ i, π₁ (Fin.castLE hlen i) = π₀ i := by
+        intro i
+        simp [π₁]
+      simp only [pcpVerifierBeforeRepetition, hlen, ↓reduceDIte]
+      rw [PCP.simulateQ_padImpl_eq hlen (pcpCoreVerifier (vars := vars) x) π₀ π₁ hπ]
+      exact hπ₀
+    · refine ⟨fun _ => default, ?_⟩
+      simp [pcpVerifierBeforeRepetition, hlen]
+  · intro hxNot π₁
+    by_cases hlen : 2 ^ (vars + vars * vars) ≤ 2 ^ (size x)
+    · let π₀ : Fin (2 ^ (vars + vars * vars)) → ZMod 2 :=
+        fun i => π₁ (Fin.castLE hlen i)
+      have hπ : ∀ i, π₁ (Fin.castLE hlen i) = π₀ i := by
+        intro i
+        rfl
+      simp only [pcpVerifierBeforeRepetition, hlen, ↓reduceDIte]
+      rw [PCP.simulateQ_padImpl_eq hlen (pcpCoreVerifier (vars := vars) x) π₀ π₁ hπ]
+      exact hSound hxNot π₀
+    · exfalso
+      exact hxNot (mem_of_length_eq_zero x
+        (length_eq_zero_of_not_pow_le x (by simpa [sq] using hlen)))
+
+theorem pcpVerifier_correct {vars : ℕ} :
+    ∀ x : List (CMvPolynomial vars (ZMod 2)),
+      RunsInTime (pcpVerifier (vars := vars) x) 0 ∧
+      QueryBound (pcpVerifier (vars := vars) x)
+        (6 * (3 + 2 * Nat.clog 2 (100 * 4) * 4))
+        ((Polynomial.C 6 * (Polynomial.X + Polynomial.C (2 * vars) +
+          Polynomial.C (2 + Nat.clog 2 (100 * 4) * 4) *
+            Polynomial.C (vars + vars ^ 2))).eval (size x)) ∧
+      (x ∈ QESAT (ZMod 2) vars → ∃ π : Fin (2 ^ size x) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+          (pcpVerifier (vars := vars) x)] ≥ 1 - (0 : ℝ≥0∞)) ∧
+      (x ∉ QESAT (ZMod 2) vars → ∀ π : Fin (2 ^ size x) → ZMod 2,
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+          (pcpVerifier (vars := vars) x)] ≤ (1 / 2 : ℝ≥0∞)) := by
+  intro x
+  rcases pcpVerifierBeforeRepetition_correct (vars := vars) x with
+    ⟨_, hQuery, hComplete, hSound⟩
+  refine ⟨by simp [RunsInTime], ?_, ?_, ?_⟩
+  · simpa [pcpVerifier, Polynomial.eval_mul, Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc]
+      using queryBound_map (fun xs : List Bool => xs.all id) (queryBound_replicate 6 hQuery)
+  · intro hxL
+    rcases hComplete hxL with ⟨π, hπ⟩
+    refine ⟨π, ?_⟩
+    simp only [pcpVerifier, simulateQ_bind, simulateQ_pure]
+    rw [simulateQ_replicate]
+    simpa using repeated_accept_ge_one (n := 6) (by simpa using hπ)
+  · intro hxNot π
+    have hBase := hSound hxNot π
+    simp only [pcpVerifier, simulateQ_bind, simulateQ_pure]
+    rw [simulateQ_replicate]
+    exact (repeated_accept_le (n := 6) hBase).trans seven_eighths_pow_six_le_half
+
+end QESAT
 
 theorem QESAT_poly_LPCP {vars : ℕ} :
     QESAT (ZMod 2) vars ∈
@@ -2057,122 +2426,8 @@ theorem QESAT_poly_LPCP {vars : ℕ} :
   have hpoly :
       QESAT (ZMod 2) vars ∈
         LPCP (QESAT.size) 0 (3 / 4) (ZMod 2)
-          (fun _ => vars + vars * vars) (fun _ => 4) (fun n => n + 2 * vars) := by
-    refine ⟨QESAT.polyVerifier (n := vars), 0, fun polys => ?_⟩
-    refine ⟨by simp [RunsInTime], ?_, ?_, ?_⟩
-    · exact QESAT.polyVerifier_queryBound (n := vars) polys
-    · rintro ⟨hdeg, a, ha⟩
-      refine ⟨TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2), ?_⟩
-      have hlin :
-          (QESAT.linearMatrix polys) *ᵥ
-              TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2) =
-            QESAT.linearTarget polys :=
-        QESAT.linearMatrix_mul_honestProof hdeg ha
-      have hline_r (r : Fin polys.length → ZMod 2) :
-          TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2) ⬝ᵥ
-              (QESAT.linearMatrix polys)ᵀ *ᵥ r =
-            QESAT.linearTarget polys ⬝ᵥ r :=
-        LINEQ.dotProduct_transpose_mulVec_eq (F := ZMod 2) (QESAT.linearMatrix polys)
-          (TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2))
-          (QESAT.linearTarget polys) r hlin
-      simp [QESAT.polyVerifier, LINEQ.verifier, LINEQ.sampleRandomVector,
-        hline_r,
-        QESAT.tensorSelfVerifier, TENSORQ.dotProduct_queryA, TENSORQ.dotProduct_queryB,
-        TENSORQ.projA_honestProof, TENSORQ.projB_honestProof,
-        TENSORQ.tensor_check_complete]
-      rw [if_pos hdeg]
-    · intro hx π
-      by_cases hdeg : ∀ p ∈ polys, p.totalDegree ≤ 2
-      · let impl := (rand (ZMod 2)).impl + (LPCP.proof π).impl
-        let line :=
-          LINEQ.verifier (F := ZMod 2) (QESAT.linearMatrix polys, QESAT.linearTarget polys)
-        let tensor := QESAT.tensorSelfVerifier (n := vars)
-        by_cases htensor : (TENSORQ.projA π, TENSORQ.projB π) ∈ TENSORQ (ZMod 2) vars
-        · have hd :
-              (QESAT.linearMatrix polys) *ᵥ π - QESAT.linearTarget polys ≠ 0 := by
-            intro hzero
-            exact hx (QESAT.mem_of_tensor_linear hdeg htensor (sub_eq_zero.mp hzero))
-          have hline := QESAT.lineSubcheck_soundness (n := vars) polys π hd
-          have hmain_le_line :
-              Pr[= true | simulateQ impl (QESAT.polyVerifier (n := vars) polys)] ≤
-                Pr[= true | simulateQ impl line] := by
-            dsimp [QESAT.polyVerifier, impl]
-            rw [if_pos hdeg]
-            change
-              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
-                (do
-                  let hLine ← line
-                  let hTensor ← tensor
-                  pure (hLine && hTensor))] ≤
-              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line]
-            simp only [simulateQ_bind, simulateQ_pure]
-            have hle :
-                Pr[= true | do
-                  let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
-                  let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
-                  pure (hLine && hTensor)] ≤
-                Pr[= true | do
-                  let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
-                  pure hLine] := by
-              refine probOutput_bind_mono
-                (mx := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line)
-                (my := fun hLine => do
-                  let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
-                  pure (hLine && hTensor))
-                (oc := fun hLine => (pure hLine : ProbComp Bool))
-                (y := true) (z := true) ?_
-              intro hLine _
-              cases hLine <;> simp
-            simpa using hle
-          have hhalf : 1 / (Fintype.card (ZMod 2) : ENNReal) ≤ 3 / 4 := by
-            rw [show Fintype.card (ZMod 2) = 2 from ZMod.card 2]
-            refine (ENNReal.toReal_le_toReal ?_ ?_).mp ?_
-            · exact ENNReal.div_ne_top (by simp) (by norm_num)
-            · exact ENNReal.div_ne_top (by simp) (by norm_num)
-            · rw [ENNReal.toReal_div, ENNReal.toReal_div]
-              all_goals norm_num
-          exact hmain_le_line.trans (hline.trans hhalf)
-        · have htensor_bound := QESAT.tensorSelfVerifier_soundness (n := vars) π htensor
-          have hmain_le_tensor :
-              Pr[= true | simulateQ impl (QESAT.polyVerifier (n := vars) polys)] ≤
-                Pr[= true | simulateQ impl tensor] := by
-            dsimp [QESAT.polyVerifier, impl]
-            rw [if_pos hdeg]
-            change
-              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
-                (do
-                  let hLine ← line
-                  let hTensor ← tensor
-                  pure (hLine && hTensor))] ≤
-              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor]
-            simp only [simulateQ_bind, simulateQ_pure]
-            rw [probOutput_bind_bind_swap
-              (mx := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line)
-              (my := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor)
-              (f := fun hLine hTensor => (pure (hLine && hTensor) : ProbComp Bool))
-              (z := true)]
-            have hle :
-                Pr[= true | do
-                  let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
-                  let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
-                  pure (hLine && hTensor)] ≤
-                Pr[= true | do
-                  let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
-                  pure hTensor] := by
-              refine probOutput_bind_mono
-                (mx := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor)
-                (my := fun hTensor => do
-                  let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
-                  pure (hLine && hTensor))
-                (oc := fun hTensor => (pure hTensor : ProbComp Bool))
-                (y := true) (z := true) ?_
-              intro hTensor _
-              cases hTensor <;> simp
-            simpa using hle
-          exact hmain_le_tensor.trans htensor_bound
-      · dsimp [QESAT.polyVerifier]
-        rw [if_neg hdeg]
-        simp
+          (fun _ => vars + vars * vars) (fun _ => 4) (fun n => n + 2 * vars) :=
+    ⟨QESAT.polyVerifier (n := vars), 0, QESAT.polyVerifier_correct (vars := vars)⟩
   simpa [sq] using hpoly
 
 theorem LPCP_to_PCP_ZMod2 {α : Type} (size : α → ℕ)
@@ -2185,89 +2440,8 @@ theorem LPCP_to_PCP_ZMod2 {α : Type} (size : α → ℕ)
 by
   intro L hL
   rcases hL with ⟨V, t, hV⟩
-  refine ⟨LPCPToPCP.verifier size ℓ q V, t, fun x => ?_⟩
-  rcases hV x with ⟨hTime, hQuery, hComplete, hSound⟩
-  refine ⟨by simp [RunsInTime], LPCPToPCP.verifier_queryBound hQuery, ?_, ?_⟩
-  · intro hx
-    rcases hComplete hx with ⟨πLin, hπLin⟩
-    refine ⟨LPCPToPCP.linearTable πLin, ?_⟩
-    have hrep : q (size x) = 0 ∨ 0 < Nat.clog 2 (100 * q (size x)) := by
-      by_cases hq : q (size x) = 0
-      · exact Or.inl hq
-      · right
-        exact Nat.clog_pos (by norm_num) (by
-          have hqpos : 0 < q (size x) := Nat.pos_of_ne_zero hq
-          omega)
-    exact le_trans hπLin (LPCPToPCP.verifier_linear_accept_ge hQuery hrep πLin)
-  · intro hx π
-    let n := ℓ (size x)
-    let rep := Nat.clog 2 (100 * q (size x))
-    let blr :=
-      simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
-        (simulateQ (LPCPToPCP.tableImpl n) (BLR.basicVerifier (F := ZMod 2) (n := n)))
-    by_cases hLow : Pr[= true | blr] ≤ (7 / 8 : ℝ≥0∞)
-    · exact (LPCPToPCP.verifier_accept_le_blr V x π).trans
-        (hLow.trans (le_max_left _ _))
-    · let πLin := LPCPToPCP.nearestLinearCoeff (LPCPToPCP.tableFn π)
-      have hHigh : (7 / 8 : ℝ≥0∞) ≤ Pr[= true | blr] := le_of_not_ge hLow
-      have hRejectSmall : Pr[= false | blr] ≤ 1 / 8 :=
-        false_prob_le_eighth_of_accept_ge_seven_eighths blr hHigh
-      have hDistSmall :
-          ENNReal.ofReal (BlrPcp.distance (LPCPToPCP.tableFn π)
-            (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) ≤ 1 / 8 := by
-        have hDistReject := LPCPToPCP.nearestLinearCoeff_distance_le_basicReject
-          (n := n) π
-        have hDistReject' :
-            ENNReal.ofReal (BlrPcp.distance (LPCPToPCP.tableFn π)
-              (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) ≤
-              Pr[= false | blr] := by
-          simpa [πLin, blr, n] using hDistReject
-        exact hDistReject'.trans hRejectSmall
-      have hSample :
-          ∀ u : Fin n → ZMod 2,
-            Pr[fun y => y ≠ πLin ⬝ᵥ u |
-              simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
-                (LPCPToPCP.selfCorrectSample (n := n) u)] ≤ 1 / 2 := by
-        intro u
-        have hOne := LPCPToPCP.selfCorrectSample_wrong_le_two_distance
-          (n := n) π πLin u
-        calc
-          Pr[fun y => y ≠ πLin ⬝ᵥ u |
-              simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
-                (LPCPToPCP.selfCorrectSample (n := n) u)] ≤
-              ENNReal.ofReal (BlrPcp.distance (LPCPToPCP.tableFn π)
-                (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) +
-              ENNReal.ofReal (BlrPcp.distance (LPCPToPCP.tableFn π)
-                (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) := hOne
-          _ ≤ 1 / 8 + 1 / 8 := add_le_add hDistSmall hDistSmall
-          _ ≤ 1 / 2 := two_eighths_le_half
-      have hWrong :
-          ∀ u : Fin n → ZMod 2,
-            Pr[fun z? => ∃ z, z? = some z ∧ z ≠ πLin ⬝ᵥ u |
-              simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
-                (LPCPToPCP.selfCorrect (n := n) rep u)] ≤
-              (1 / 2 : ℝ≥0∞) ^ rep := by
-        intro u
-        exact LPCPToPCP.selfCorrect_wrong_le_of_sample
-          (n := n) (rep := rep) π u (πLin ⬝ᵥ u) (hSample u)
-      have hSim := LPCPToPCP.simulateVerifier_accept_le
-        (n := n) (rep := rep) hQuery π πLin hWrong
-      have hFinal := LPCPToPCP.verifier_accept_le_simulateVerifier
-        (ℓ := ℓ) (q := q) V x π
-      have hPow :
-          (q (size x) : ℝ≥0∞) * (1 / 2 : ℝ≥0∞) ^ rep ≤ 1 / 100 := by
-        simpa [rep] using nat_mul_half_pow_clog_le (q (size x))
-      calc
-        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
-            (LPCPToPCP.verifier size ℓ q V x)] ≤
-            Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
-              (LPCPToPCP.simulateVerifier (n := ℓ (size x))
-                (Nat.clog 2 (100 * q (size x))) (V x))] := hFinal
-        _ ≤ Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl)
-              (V x)] + (q (size x) : ℝ≥0∞) * (1 / 2 : ℝ≥0∞) ^ rep := by
-            simpa [n, rep] using hSim
-        _ ≤ ε_s + 1 / 100 := add_le_add (hSound hx πLin) hPow
-        _ ≤ max (7 / 8) (ε_s + 1 / 100) := le_max_right _ _
+  exact ⟨LPCPToPCP.verifier size ℓ q V, t,
+    LPCPToPCP.verifier_correct size ε_c ε_s ℓ q r V t hV⟩
 
 theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (ZMod 2) vars ∈
@@ -2278,73 +2452,17 @@ theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polyno
   let r' : Polynomial ℕ :=
     Polynomial.X + Polynomial.C (2 * vars) + Polynomial.C c * Polynomial.C (vars + vars ^ 2)
   refine ⟨q', r', ?_⟩
-  have hConverted := (LPCP_to_PCP_ZMod2 (QESAT.size)
-    0 (3 / 4) (fun _ => vars + vars ^ 2) (fun _ => 4) (fun n => n + 2 * vars))
-      (QESAT_poly_LPCP (vars := vars))
-  rw [QESAT.soundness_before_repetition] at hConverted
-  rcases hConverted with ⟨V₀, t, hV₀⟩
-  let V : PCPVerifier (List (CMvPolynomial vars (ZMod 2))) (QESAT.size)
-      (ZMod 2) (fun n => 2 ^ n) := fun x =>
-    if hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x) then
-      simulateQ (PCP.padImpl (ZMod 2) hlen) (V₀ x)
-    else pure true
-  refine ⟨V, t, fun x => ?_⟩
-  rcases hV₀ x with ⟨_, hQuery, hComplete, hSound⟩
-  refine ⟨by simp [RunsInTime], ?_, ?_, ?_⟩
-  · by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)
-    · simp only [V, hlen, ↓reduceDIte]
-      simpa [q', r', c, Polynomial.eval_add, Polynomial.eval_mul] using
-        PCP.queryBound_simulateQ_padImpl hlen hQuery
-    · simp [V, hlen, QueryBound]
-  · intro hxL
-    by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)
-    · rcases hComplete hxL with ⟨π₀, hπ₀⟩
-      let π₁ : Fin (2 ^ QESAT.size x) → ZMod 2 := fun j =>
-        if hj : j.val < 2 ^ (vars + vars ^ 2) then π₀ ⟨j.val, hj⟩ else default
-      refine ⟨π₁, ?_⟩
-      have hπ : ∀ i, π₁ (Fin.castLE hlen i) = π₀ i := by
-        intro i
-        simp [π₁]
-      simp only [V, hlen, ↓reduceDIte]
-      rw [PCP.simulateQ_padImpl_eq hlen (V₀ x) π₀ π₁ hπ]
-      exact hπ₀
-    · refine ⟨fun _ => default, ?_⟩
-      simp [V, hlen]
-  · intro hxNot π₁
-    by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)
-    · let π₀ : Fin (2 ^ (vars + vars ^ 2)) → ZMod 2 := fun i => π₁ (Fin.castLE hlen i)
-      have hπ : ∀ i, π₁ (Fin.castLE hlen i) = π₀ i := by
-        intro i
-        rfl
-      simp only [V, hlen, ↓reduceDIte]
-      rw [PCP.simulateQ_padImpl_eq hlen (V₀ x) π₀ π₁ hπ]
-      exact hSound hxNot π₀
-    · exfalso
-      exact hxNot (QESAT.mem_of_length_eq_zero x (QESAT.length_eq_zero_of_not_pow_le x hlen))
+  refine ⟨QESAT.pcpVerifierBeforeRepetition (vars := vars), 0, fun x => ?_⟩
+  simpa [q', r', c] using QESAT.pcpVerifierBeforeRepetition_correct (vars := vars) x
 
 theorem QESAT_exp_PCP {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (ZMod 2) vars ∈
       PCP (QESAT.size) 0 (1 / 2) (ZMod 2)
         (fun n => 2 ^ n) (fun _ => q) r.eval := by
-  rcases QESAT_exp_PCP_before_repetition (vars := vars) with ⟨q₀, r₀, hBefore⟩
-  rcases hBefore with ⟨V₀, t, hV₀⟩
-  let V : PCPVerifier (List (CMvPolynomial vars (ZMod 2))) (QESAT.size)
-      (ZMod 2) (fun n => 2 ^ n) := fun x => do
-    let xs ← OracleComp.replicate 6 (V₀ x)
-    pure (xs.all id)
-  refine ⟨6 * q₀, Polynomial.C 6 * r₀, V, t, fun x => ?_⟩
-  rcases hV₀ x with ⟨_, hQuery, hComplete, hSound⟩
-  refine ⟨by simp [RunsInTime], ?_, ?_, ?_⟩
-  · simpa [V, Polynomial.eval_mul, Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using
-      queryBound_map (fun xs : List Bool => xs.all id) (queryBound_replicate 6 hQuery)
-  · intro hxL
-    rcases hComplete hxL with ⟨π, hπ⟩
-    refine ⟨π, ?_⟩
-    simp only [V, simulateQ_bind, simulateQ_pure]
-    rw [simulateQ_replicate]
-    simpa using repeated_accept_ge_one (n := 6) (by simpa using hπ)
-  · intro hxNot π
-    have hBase := hSound hxNot π
-    simp only [V, simulateQ_bind, simulateQ_pure]
-    rw [simulateQ_replicate]
-    exact (repeated_accept_le (n := 6) hBase).trans seven_eighths_pow_six_le_half
+  let q := 6 * (3 + 2 * Nat.clog 2 (100 * 4) * 4)
+  let c := 2 + Nat.clog 2 (100 * 4) * 4
+  let r : Polynomial ℕ :=
+    Polynomial.C 6 * (Polynomial.X + Polynomial.C (2 * vars) +
+      Polynomial.C c * Polynomial.C (vars + vars ^ 2))
+  refine ⟨q, r, QESAT.pcpVerifier (vars := vars), 0, fun x => ?_⟩
+  simpa [q, r, c] using QESAT.pcpVerifier_correct (vars := vars) x
