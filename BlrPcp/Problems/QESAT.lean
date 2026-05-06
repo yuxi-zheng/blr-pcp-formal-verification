@@ -1,6 +1,8 @@
 import Architect
 import BlrPcp.Oracle
+import BlrPcp.Problems.TensorEq
 import CompPoly.Multivariate.CMvPolynomial
+import CompPoly.Multivariate.MvPolyEquiv.Eval
 import VCVio.OracleComp.Constructions.Replicate
 
 /-!
@@ -25,6 +27,7 @@ variable {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F]
 open CPoly CMvPolynomial
 open OracleComp
 open scoped ENNReal
+open scoped Matrix
 
 abbrev QESAT (F : Type) [Field F] (n : ℕ) : Set (List (CMvPolynomial n F)) :=
   fun polys => (∀ p ∈ polys, p.totalDegree ≤ 2) ∧
@@ -39,6 +42,582 @@ TODO: the proper way would be to use this:
 https://leanprover-community.github.io/mathlib4_docs/Mathlib/Computability/Encoding.html -/
 def size {n : ℕ} (polys : List (CMvPolynomial n F)) :
     ℕ :=  polys.length * (n + 1)^2
+
+private abbrev mvPoly {n : ℕ} (p : CMvPolynomial n (ZMod 2)) :
+    MvPolynomial (Fin n) (ZMod 2) :=
+  fromCMvPolynomial p
+
+private abbrev mvCoeff {n : ℕ} (p : CMvPolynomial n (ZMod 2)) (m : Fin n →₀ ℕ) :
+    ZMod 2 :=
+  MvPolynomial.coeff m (mvPoly p)
+
+private def cmvCoeff {n : ℕ} (p : CMvPolynomial n (ZMod 2)) (m : Fin n →₀ ℕ) :
+    ZMod 2 :=
+  CMvPolynomial.coeff (CMvMonomial.ofFinsupp m) p
+
+private def singleMonomial {n : ℕ} (i : Fin n) (e : ℕ) : CMvMonomial n :=
+  Vector.ofFn fun j => if j = i then e else 0
+
+private def pairMonomial {n : ℕ} (i j : Fin n) : CMvMonomial n :=
+  Vector.ofFn fun k => (if k = i then 1 else 0) + if k = j then 1 else 0
+
+@[simp]
+private lemma singleMonomial_eq_ofFinsupp_single {n : ℕ} (i : Fin n) (e : ℕ) :
+    singleMonomial i e = CMvMonomial.ofFinsupp (Finsupp.single i e) := by
+  apply Vector.ext
+  intro k hk
+  unfold singleMonomial CMvMonomial.ofFinsupp
+  rw [Vector.getElem_ofFn, Vector.getElem_ofFn]
+  let l : Fin n := ⟨k, hk⟩
+  change (if l = i then e else 0) = (Finsupp.single i e) l
+  by_cases h : l = i
+  · rw [if_pos h, h, Finsupp.single_eq_same]
+  · rw [if_neg h, Finsupp.single_eq_of_ne h]
+
+@[simp]
+private lemma pairMonomial_eq_ofFinsupp_pair {n : ℕ} (i j : Fin n) :
+    pairMonomial i j =
+      CMvMonomial.ofFinsupp (Finsupp.single i 1 + Finsupp.single j 1) := by
+  apply Vector.ext
+  intro k hk
+  unfold pairMonomial CMvMonomial.ofFinsupp
+  rw [Vector.getElem_ofFn, Vector.getElem_ofFn]
+  let l : Fin n := ⟨k, hk⟩
+  change ((if l = i then 1 else 0) + if l = j then 1 else 0) =
+    (Finsupp.single i 1) l + (Finsupp.single j 1) l
+  by_cases hi : l = i
+  · by_cases hj : l = j
+    · have hij : i = j := hi.symm.trans hj
+      subst j
+      simp [hi]
+    · have hij : i ≠ j := fun h => hj (hi.trans h)
+      rw [if_pos hi, if_neg hj, hi, Finsupp.single_eq_same,
+        Finsupp.single_eq_of_ne hij]
+  · by_cases hj : l = j
+    · have hji : j ≠ i := fun h => hi (hj.trans h)
+      rw [if_neg hi, if_pos hj, hj, Finsupp.single_eq_same,
+        Finsupp.single_eq_of_ne hji]
+    · rw [if_neg hi, if_neg hj, Finsupp.single_eq_of_ne hi,
+        Finsupp.single_eq_of_ne hj]
+
+@[simp]
+private lemma ofFinsupp_eq_iff {n : ℕ} {m₁ m₂ : Fin n →₀ ℕ} :
+    CMvMonomial.ofFinsupp m₁ = CMvMonomial.ofFinsupp m₂ ↔ m₁ = m₂ := by
+  constructor
+  · exact fun h => CMvMonomial.injective_ofFinsupp h
+  · intro h
+    rw [h]
+
+private def monomialQuery {n : ℕ} (m : CMvMonomial n) :
+    Fin (n + n * n) → ZMod 2 :=
+  Fin.append (Function.const _ 0) fun k =>
+    let ij := finProdFinEquiv.symm k
+    if m = singleMonomial ij.1 1 then
+      if ij.1 = ij.2 then 1 else 0
+    else if m = singleMonomial ij.1 2 then
+      if ij.1 = ij.2 then 1 else 0
+    else if m = pairMonomial ij.1 ij.2 then
+      if ij.1.val < ij.2.val then 1 else 0
+    else
+      0
+
+private def linearCoeff {n : ℕ} (p : CMvPolynomial n (ZMod 2)) :
+    Fin (n + n * n) → ZMod 2 :=
+  fun k => ∑ m ∈ p.support.erase 0,
+    cmvCoeff p m * monomialQuery (CMvMonomial.ofFinsupp m) k
+
+private def constantCoeff {n : ℕ} (p : CMvPolynomial n (ZMod 2)) : ZMod 2 :=
+  cmvCoeff p 0
+
+private def linearMatrix {n : ℕ} (polys : List (CMvPolynomial n (ZMod 2))) :
+    Matrix (Fin polys.length) (Fin (n + n * n)) (ZMod 2) :=
+  fun i => linearCoeff (polys.get i)
+
+private def linearTarget {n : ℕ} (polys : List (CMvPolynomial n (ZMod 2))) :
+    Fin polys.length → ZMod 2 :=
+  fun i => -constantCoeff (polys.get i)
+
+private def tensorSelfVerifier {n : ℕ} :
+    OracleComp (LPCP.spec (ZMod 2) (n + n * n)) Bool := do
+  let s ← LINEQ.sampleRandomVector n (n + n * n) (ZMod 2)
+  let t ← LINEQ.sampleRandomVector n (n + n * n) (ZMod 2)
+  let yA : ZMod 2 ← query (spec := LPCP.spec (ZMod 2) (n + n * n)) (.inr (TENSORQ.queryA s))
+  let yA' : ZMod 2 ← query (spec := LPCP.spec (ZMod 2) (n + n * n)) (.inr (TENSORQ.queryA t))
+  let yB : ZMod 2 ← query (spec := LPCP.spec (ZMod 2) (n + n * n)) (.inr (TENSORQ.queryB s t))
+  pure (yB = yA * yA')
+
+private def polyVerifier {n : ℕ} :
+    LPCPVerifier (List (CMvPolynomial n (ZMod 2))) size (ZMod 2) (fun _ => n + n * n) :=
+  fun polys =>
+    if ∀ p ∈ polys, p.totalDegree ≤ 2 then do
+      let hLine ← LINEQ.verifier (F := ZMod 2)
+        (linearMatrix polys, linearTarget polys)
+      let hTensor ← tensorSelfVerifier (n := n)
+      pure (hLine && hTensor)
+    else
+      pure false
+
+private lemma zmod2_mul_self (x : ZMod 2) : x * x = x := by
+  fin_cases x <;> norm_num
+
+private lemma finsupp_single_one_ne_single_two {n : ℕ} (i j : Fin n) :
+    Finsupp.single i 1 ≠ Finsupp.single j 2 := by
+  intro h
+  have := congrArg (fun m : Fin n →₀ ℕ => m.sum fun _ e => e) h
+  norm_num at this
+
+private lemma finsupp_single_two_ne_single_one {n : ℕ} (i j : Fin n) :
+    Finsupp.single i 2 ≠ Finsupp.single j 1 :=
+  fun h => finsupp_single_one_ne_single_two j i h.symm
+
+private lemma finsupp_single_one_ne_pair {n : ℕ} (i j k : Fin n) :
+    Finsupp.single i 1 ≠ Finsupp.single j 1 + Finsupp.single k 1 := by
+  intro h
+  have := congrArg (fun m : Fin n →₀ ℕ => m.sum fun _ e => e) h
+  have hpair :
+      (Finsupp.single j 1 + Finsupp.single k 1).sum (fun _ e => e) = 2 := by
+    rw [Finsupp.sum_add_index' (fun _ => rfl) (fun _ _ _ => rfl)]
+    simp
+  simp [hpair] at this
+
+private lemma finsupp_single_two_ne_pair_of_left_ne {n : ℕ} {i j k : Fin n}
+    (hji : j ≠ i) :
+    Finsupp.single i 2 ≠ Finsupp.single j 1 + Finsupp.single k 1 := by
+  intro h
+  have hj := congrFun (congrArg DFunLike.coe h) j
+  by_cases hkj : k = j
+  · subst k
+    simp [hji] at hj
+  · simp [hji, hkj] at hj
+
+private lemma finsupp_pair_ne_single_two_of_ne {n : ℕ} {i j k : Fin n}
+    (hij : i ≠ j) :
+    Finsupp.single i 1 + Finsupp.single j 1 ≠ Finsupp.single k 2 := by
+  intro h
+  have hi := congrFun (congrArg DFunLike.coe h) i
+  by_cases hki : k = i
+  · subst k
+    simp [hij] at hi
+  · simp [hki, hij] at hi
+
+private lemma finsupp_pair_eq_pair_of_lt {n : ℕ} {i j u v : Fin n}
+    (hij : i.val < j.val) (huv : u.val < v.val)
+    (h : Finsupp.single i 1 + Finsupp.single j 1 =
+        Finsupp.single u 1 + Finsupp.single v 1) :
+    i = u ∧ j = v := by
+  have hi := congrFun (congrArg DFunLike.coe h) i
+  have hj := congrFun (congrArg DFunLike.coe h) j
+  have hijne : i ≠ j := Fin.ne_of_val_ne (ne_of_lt hij)
+  by_cases hiu : i = u
+  · subst u
+    have hjv : j = v := by
+      by_contra hjv
+      have hji : j ≠ i := hijne.symm
+      simp [hji, hjv] at hj
+    exact ⟨rfl, hjv⟩
+  · have hiv : i = v := by
+      by_contra hiv
+      simp [hiu, hiv, hijne] at hi
+    subst v
+    have hju : j = u := by
+      by_contra hju
+      have hji : j ≠ i := hijne.symm
+      simp [hji, hju] at hj
+    subst u
+    omega
+
+private lemma finsupp_sum_le_two_cases {n : ℕ} (m : Fin n →₀ ℕ)
+    (hm : m.sum (fun _ e => e) ≤ 2) :
+    m = 0 ∨
+      (∃ i, m = Finsupp.single i 1) ∨
+      (∃ i, m = Finsupp.single i 2) ∨
+      (∃ i j, i.val < j.val ∧ m = Finsupp.single i 1 + Finsupp.single j 1) := by
+  classical
+  have hcard : Multiset.card (Finsupp.toMultiset m) ≤ 2 := by
+    simpa [Finsupp.card_toMultiset] using hm
+  interval_cases h : Multiset.card (Finsupp.toMultiset m)
+  · left
+    have hms : Finsupp.toMultiset m = 0 := Multiset.card_eq_zero.mp h
+    simpa using (Finsupp.toMultiset_eq_iff.mp hms)
+  · right; left
+    rcases Multiset.card_eq_one.mp h with ⟨i, hi⟩
+    refine ⟨i, ?_⟩
+    simpa using (Finsupp.toMultiset_eq_iff.mp hi)
+  · rcases Multiset.card_eq_two.mp h with ⟨i, j, hij⟩
+    have hmij : m = Finsupp.single i 1 + Finsupp.single j 1 := by
+      have hto :
+          Multiset.toFinsupp ({i, j} : Multiset (Fin n)) =
+            Finsupp.single i 1 + Finsupp.single j 1 := by
+        ext k
+        by_cases hki : k = i
+        · subst k
+          by_cases hij' : i = j <;> simp [hij']
+        · by_cases hkj : k = j
+          · subst k
+            simp [hki]
+          · simp [hki, hkj]
+      exact (Finsupp.toMultiset_eq_iff.mp hij).trans hto
+    by_cases hEq : i = j
+    · right; right; left
+      refine ⟨i, ?_⟩
+      subst hEq
+      rw [hmij]
+      ext k
+      by_cases hk : k = i <;> simp [Finsupp.single_eq_same, Finsupp.single_eq_of_ne, hk]
+    · right; right; right
+      rcases lt_or_gt_of_ne (Fin.val_ne_of_ne hEq) with hijlt | hjilt
+      · exact ⟨i, j, hijlt, hmij⟩
+      · refine ⟨j, i, hjilt, ?_⟩
+        rw [hmij, add_comm]
+
+private lemma dotProduct_monomialQuery_single_one {n : ℕ} (a : Fin n → ZMod 2)
+    (i : Fin n) :
+    TENSORQ.honestProof (a, fun p : Fin n × Fin n => a p.1 * a p.2) ⬝ᵥ
+        monomialQuery (CMvMonomial.ofFinsupp (Finsupp.single i 1)) =
+      a i := by
+  simp only [dotProduct, monomialQuery, TENSORQ.honestProof]
+  rw [Fin.sum_univ_add]
+  simp only [Fin.append_left, Function.const_apply, mul_zero, Finset.sum_const_zero,
+    Fin.append_right, zero_add]
+  rw [← finProdFinEquiv.sum_comp]
+  simp only [Equiv.symm_apply_apply]
+  rw [Finset.sum_eq_single (i, i)]
+  · simp [zmod2_mul_self]
+  · rintro ⟨j, k⟩ _ hne
+    by_cases hji : j = i
+    · subst j
+      by_cases hki : k = i
+      · subst k
+        exact (hne rfl).elim
+      · have hik : i ≠ k := fun h => hki h.symm
+        simp [hik]
+    · have hsing : Finsupp.single i 1 ≠ Finsupp.single j 1 := by
+        intro h
+        rcases (Finsupp.single_eq_single_iff i j 1 1).mp h with hij | hzero
+        · exact hji hij.1.symm
+        · norm_num at hzero
+      simp [hsing, finsupp_single_one_ne_single_two, finsupp_single_one_ne_pair]
+  · intro hmem
+    simp at hmem
+
+private lemma dotProduct_monomialQuery_single_two {n : ℕ} (a : Fin n → ZMod 2)
+    (i : Fin n) :
+    TENSORQ.honestProof (a, fun p : Fin n × Fin n => a p.1 * a p.2) ⬝ᵥ
+        monomialQuery (CMvMonomial.ofFinsupp (Finsupp.single i 2)) =
+      a i := by
+  simp only [dotProduct, monomialQuery, TENSORQ.honestProof]
+  rw [Fin.sum_univ_add]
+  simp only [Fin.append_left, Function.const_apply, mul_zero, Finset.sum_const_zero,
+    Fin.append_right, zero_add]
+  rw [← finProdFinEquiv.sum_comp]
+  simp only [Equiv.symm_apply_apply]
+  rw [Finset.sum_eq_single (i, i)]
+  · simp [zmod2_mul_self, finsupp_single_two_ne_single_one]
+  · rintro ⟨j, k⟩ _ hne
+    by_cases hji : j = i
+    · subst j
+      by_cases hki : k = i
+      · subst k
+        exact (hne rfl).elim
+      · have hik : i ≠ k := fun h => hki h.symm
+        simp [hik, finsupp_single_two_ne_single_one]
+    · have hsing : Finsupp.single i 2 ≠ Finsupp.single j 2 := by
+        intro h
+        rcases (Finsupp.single_eq_single_iff i j 2 2).mp h with hij | hzero
+        · exact hji hij.1.symm
+        · norm_num at hzero
+      have hpair := finsupp_single_two_ne_pair_of_left_ne (i := i) (j := j) (k := k) hji
+      simp [hsing, hpair, finsupp_single_two_ne_single_one]
+  · intro hmem
+    simp at hmem
+
+private lemma dotProduct_monomialQuery_pair {n : ℕ} (a : Fin n → ZMod 2)
+    {i j : Fin n} (hij : i.val < j.val) :
+    TENSORQ.honestProof (a, fun p : Fin n × Fin n => a p.1 * a p.2) ⬝ᵥ
+        monomialQuery (CMvMonomial.ofFinsupp
+          (Finsupp.single i 1 + Finsupp.single j 1)) =
+      a i * a j := by
+  simp only [dotProduct, monomialQuery, TENSORQ.honestProof]
+  rw [Fin.sum_univ_add]
+  simp only [Fin.append_left, Function.const_apply, mul_zero, Finset.sum_const_zero,
+    Fin.append_right, zero_add]
+  rw [← finProdFinEquiv.sum_comp]
+  simp only [Equiv.symm_apply_apply]
+  rw [Finset.sum_eq_single (i, j)]
+  · have hijne : i ≠ j := Fin.ne_of_val_ne (ne_of_lt hij)
+    simp [hij,
+      finsupp_pair_ne_single_two_of_ne (i := i) (j := j) (k := i) hijne]
+  · rintro ⟨u, v⟩ _ hne
+    have hpair_ne_one : Finsupp.single i 1 + Finsupp.single j 1 ≠ Finsupp.single u 1 :=
+      fun h => finsupp_single_one_ne_pair u i j h.symm
+    have hijne : i ≠ j := Fin.ne_of_val_ne (ne_of_lt hij)
+    have hpair_ne_two : Finsupp.single i 1 + Finsupp.single j 1 ≠ Finsupp.single u 2 :=
+      finsupp_pair_ne_single_two_of_ne (i := i) (j := j) (k := u) hijne
+    by_cases huv : u.val < v.val
+    · by_cases hp : Finsupp.single i 1 + Finsupp.single j 1 =
+          Finsupp.single u 1 + Finsupp.single v 1
+      · have hcoords := finsupp_pair_eq_pair_of_lt hij huv hp
+        exact (hne (by ext <;> simp [hcoords.1, hcoords.2])).elim
+      · simp [hpair_ne_one, hpair_ne_two, hp]
+    · simp [hpair_ne_one, hpair_ne_two, huv]
+  · intro hmem
+    simp at hmem
+
+private lemma monomialQuery_eval {n : ℕ} (a : Fin n → ZMod 2) {m : Fin n →₀ ℕ}
+    (hm0 : m ≠ 0) (hmdeg : m.sum (fun _ e => e) ≤ 2) :
+    (∏ i ∈ m.support, a i ^ m i) =
+      TENSORQ.honestProof (a, fun p : Fin n × Fin n => a p.1 * a p.2) ⬝ᵥ
+        monomialQuery (CMvMonomial.ofFinsupp m) := by
+  classical
+  rcases finsupp_sum_le_two_cases m hmdeg with hzero | hlin | hsquare | hpair
+  · exact (hm0 hzero).elim
+  · rcases hlin with ⟨i, rfl⟩
+    rw [dotProduct_monomialQuery_single_one]
+    rw [Finsupp.support_single_ne_zero i (by norm_num : (1 : ℕ) ≠ 0)]
+    simp
+  · rcases hsquare with ⟨i, rfl⟩
+    rw [dotProduct_monomialQuery_single_two]
+    rw [Finsupp.support_single_ne_zero i (by norm_num : (2 : ℕ) ≠ 0)]
+    simp
+  · rcases hpair with ⟨i, j, hij, rfl⟩
+    rw [dotProduct_monomialQuery_pair (hij := hij)]
+    have hijne : i ≠ j := Fin.ne_of_val_ne (ne_of_lt hij)
+    have hsupp :
+        (Finsupp.single i 1 + Finsupp.single j 1).support = {i, j} := by
+      ext x
+      by_cases hxi : x = i <;> by_cases hxj : x = j <;>
+        simp [Finsupp.mem_support_iff, hxi, hxj, hijne, hijne.symm]
+    rw [hsupp]
+    simp [hijne, hijne.symm]
+
+private lemma dotProduct_linearCoeff_eq_sum {n : ℕ} (p : CMvPolynomial n (ZMod 2))
+    (π : Fin (n + n * n) → ZMod 2) :
+    π ⬝ᵥ linearCoeff p =
+      ∑ m ∈ (mvPoly p).support.erase 0,
+        mvCoeff p m * (π ⬝ᵥ monomialQuery (CMvMonomial.ofFinsupp m)) := by
+  simp only [dotProduct, linearCoeff]
+  calc
+    ∑ k, π k * (∑ m ∈ (mvPoly p).support.erase 0,
+          mvCoeff p m * monomialQuery (CMvMonomial.ofFinsupp m) k)
+        = ∑ k, ∑ m ∈ (mvPoly p).support.erase 0,
+            π k * (mvCoeff p m * monomialQuery (CMvMonomial.ofFinsupp m) k) := by
+          refine Finset.sum_congr rfl fun k _ => ?_
+          simp [Finset.mul_sum]
+    _ = ∑ m ∈ (mvPoly p).support.erase 0, ∑ k,
+            π k * (mvCoeff p m * monomialQuery (CMvMonomial.ofFinsupp m) k) := by
+          rw [Finset.sum_comm]
+    _ = ∑ m ∈ (mvPoly p).support.erase 0, mvCoeff p m * ∑ k,
+            π k * monomialQuery (CMvMonomial.ofFinsupp m) k := by
+          refine Finset.sum_congr rfl fun m _ => ?_
+          rw [Finset.mul_sum]
+          refine Finset.sum_congr rfl fun _ _ => ?_
+          ring
+
+private lemma linearCoeff_eval {n : ℕ} (p : CMvPolynomial n (ZMod 2))
+    (hpdeg : p.totalDegree ≤ 2) (a : Fin n → ZMod 2) :
+    TENSORQ.honestProof (a, fun q : Fin n × Fin n => a q.1 * a q.2) ⬝ᵥ
+        linearCoeff p + constantCoeff p =
+      CMvPolynomial.eval a p := by
+  classical
+  rw [eval_equiv, MvPolynomial.eval_eq]
+  rw [dotProduct_linearCoeff_eq_sum]
+  let P := mvPoly p
+  have hdeg : P.totalDegree ≤ 2 := by
+    simpa [P, mvPoly, totalDegree_equiv] using hpdeg
+  have hterm : ∀ m ∈ P.support, m ≠ 0 →
+      (∏ i ∈ m.support, a i ^ m i) =
+        TENSORQ.honestProof (a, fun q : Fin n × Fin n => a q.1 * a q.2) ⬝ᵥ
+          monomialQuery (CMvMonomial.ofFinsupp m) := by
+    intro m hm hm0
+    exact monomialQuery_eval a hm0 ((MvPolynomial.le_totalDegree hm).trans hdeg)
+  by_cases h0 : (0 : Fin n →₀ ℕ) ∈ P.support
+  · rw [← Finset.add_sum_erase P.support
+        (fun m => P.coeff m * ∏ i ∈ m.support, a i ^ m i) h0]
+    simp only [constantCoeff, mvCoeff, P]
+    rw [add_comm]
+    simp only [Finsupp.support_zero, Finset.prod_empty, mul_one]
+    congr 1
+    refine Finset.sum_congr rfl fun m hm => ?_
+    have hm0 : m ≠ 0 := by
+      intro hz
+      exact Finset.notMem_erase _ _ (hz ▸ hm)
+    rw [hterm m (Finset.mem_of_mem_erase hm) hm0]
+  · have hcoeff0 : P.coeff 0 = 0 := by
+      simpa [MvPolynomial.notMem_support_iff] using h0
+    rw [Finset.erase_eq_of_notMem h0]
+    have hconst : constantCoeff p = 0 := by
+      simpa [constantCoeff, cmvCoeff, mvCoeff, P] using hcoeff0
+    rw [hconst, add_zero]
+    simp only [mvCoeff, P]
+    refine Finset.sum_congr rfl fun m hm => ?_
+    have hm0 : m ≠ 0 := by
+      intro hz
+      exact h0 (hz ▸ hm)
+    rw [← hterm m hm hm0]
+
+private lemma tensorSelfVerifier_queryBound {n : ℕ} :
+    QueryBound (tensorSelfVerifier (n := n)) 3 (2 * n) := by
+  have hQuery : ∀ s t : Fin n → ZMod 2,
+      QueryBound
+        (do
+          let yA : ZMod 2 ←
+            (liftM (query (spec := LPCP.spec (ZMod 2) (n + n * n))
+              (.inr (TENSORQ.queryA s))) :
+              OracleComp (LPCP.spec (ZMod 2) (n + n * n)) (ZMod 2))
+          let yA' : ZMod 2 ←
+            (liftM (query (spec := LPCP.spec (ZMod 2) (n + n * n))
+              (.inr (TENSORQ.queryA t))) :
+              OracleComp (LPCP.spec (ZMod 2) (n + n * n)) (ZMod 2))
+          let yB : ZMod 2 ←
+            (liftM (query (spec := LPCP.spec (ZMod 2) (n + n * n))
+              (.inr (TENSORQ.queryB s t))) :
+              OracleComp (LPCP.spec (ZMod 2) (n + n * n)) (ZMod 2))
+          pure (decide (yB = yA * yA'))) 3 0 := by
+    intro s t
+    simp only [QueryBound]
+    rw [OracleComp.isQueryBound_query_bind_iff]
+    refine ⟨by simp, fun _ => ?_⟩
+    rw [OracleComp.isQueryBound_query_bind_iff]
+    refine ⟨by simp, fun _ => ?_⟩
+    rw [OracleComp.isQueryBound_query_bind_iff]
+    exact ⟨by simp, fun _ => trivial⟩
+  simpa [tensorSelfVerifier, two_mul, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using
+    queryBound_bind (LINEQ.sampleRandomVector_queryBound (F := ZMod 2) n (n + n * n)) fun s =>
+      queryBound_bind (LINEQ.sampleRandomVector_queryBound (F := ZMod 2) n (n + n * n)) fun t =>
+        hQuery s t
+
+private lemma length_le_size {n : ℕ} (polys : List (CMvPolynomial n (ZMod 2))) :
+    polys.length ≤ QESAT.size polys := by
+  unfold QESAT.size
+  exact Nat.le_mul_of_pos_right _ (by positivity : 0 < (n + 1) ^ 2)
+
+private lemma polyVerifier_queryBound {n : ℕ} (polys : List (CMvPolynomial n (ZMod 2))) :
+    QueryBound (polyVerifier polys) 4 (QESAT.size polys + 2 * n) := by
+  by_cases hdeg : ∀ p ∈ polys, p.totalDegree ≤ 2
+  · have hqb :
+        QueryBound
+          (do
+            let hLine ← LINEQ.verifier (F := ZMod 2)
+              (linearMatrix polys, linearTarget polys)
+            let hTensor ← tensorSelfVerifier (n := n)
+            pure (hLine && hTensor)) 4 (polys.length + 2 * n) := by
+      simpa [Nat.add_assoc] using
+        queryBound_bind
+          (LINEQ.verifier_queryBound (F := ZMod 2)
+            (linearMatrix polys, linearTarget polys))
+          (fun hLine =>
+            queryBound_bind (tensorSelfVerifier_queryBound (n := n)) fun hTensor => by
+              show QueryBound
+                (pure (hLine && hTensor) :
+                  OracleComp (LPCP.spec (ZMod 2) (n + n * n)) Bool) 0 0
+              simp [QueryBound])
+    dsimp [polyVerifier]
+    rw [if_pos hdeg]
+    exact queryBound_mono hqb (by rfl) (Nat.add_le_add_right (length_le_size polys) (2 * n))
+  · dsimp [polyVerifier]
+    rw [if_neg hdeg]
+    simp [QueryBound]
+
+private lemma linearMatrix_mul_honestProof {n : ℕ}
+    {polys : List (CMvPolynomial n (ZMod 2))}
+    (hdeg : ∀ p ∈ polys, p.totalDegree ≤ 2) {a : Fin n → ZMod 2}
+    (ha : ∀ p ∈ polys, CMvPolynomial.eval a p = 0) :
+    (linearMatrix polys) *ᵥ (TENSORQ.honestProof (a, fun q : Fin n × Fin n => a q.1 * a q.2)) =
+      linearTarget polys := by
+  funext i
+  have hEval := linearCoeff_eval (polys.get i)
+    (hdeg (polys.get i) (List.get_mem polys i)) a
+  rw [ha (polys.get i) (List.get_mem polys i)] at hEval
+  have hdot :
+      TENSORQ.honestProof (a, fun q : Fin n × Fin n => a q.1 * a q.2) ⬝ᵥ
+          linearCoeff (polys.get i) =
+        -constantCoeff (polys.get i) := by
+    linear_combination hEval
+  simpa [linearMatrix, linearTarget, Matrix.mulVec, dotProduct, mul_comm] using hdot
+
+private lemma tensor_honestProof_proj {n : ℕ}
+    (π : Fin (n + n * n) → ZMod 2) :
+    TENSORQ.honestProof (TENSORQ.projA π, TENSORQ.projB π) = π := by
+  funext k
+  refine Fin.addCases (fun i => ?_) (fun j => ?_) k
+  · simp [TENSORQ.honestProof, TENSORQ.projA]
+  · simp only [TENSORQ.honestProof, TENSORQ.projB, Fin.append_right]
+    rw [Equiv.apply_symm_apply]
+
+private lemma mem_of_tensor_linear {n : ℕ} {polys : List (CMvPolynomial n (ZMod 2))}
+    {π : Fin (n + n * n) → ZMod 2}
+    (hdeg : ∀ p ∈ polys, p.totalDegree ≤ 2)
+    (htensor : (TENSORQ.projA π, TENSORQ.projB π) ∈ TENSORQ (ZMod 2) n)
+    (hline : (linearMatrix polys) *ᵥ π = linearTarget polys) :
+    polys ∈ QESAT (ZMod 2) n := by
+  refine ⟨hdeg, TENSORQ.projA π, ?_⟩
+  rw [List.forall_mem_iff_get]
+  intro i
+  have hπ :
+      TENSORQ.honestProof
+          (TENSORQ.projA π, fun q : Fin n × Fin n => TENSORQ.projA π q.1 * TENSORQ.projA π q.2) =
+        π := by
+    have hb :
+        TENSORQ.projB π =
+          fun q : Fin n × Fin n => TENSORQ.projA π q.1 * TENSORQ.projA π q.2 := htensor
+    simpa [hb] using tensor_honestProof_proj π
+  have hEval := linearCoeff_eval (polys.get i)
+    (hdeg (polys.get i) (List.get_mem polys i)) (TENSORQ.projA π)
+  rw [hπ] at hEval
+  have hdot :
+      π ⬝ᵥ linearCoeff (polys.get i) = -constantCoeff (polys.get i) := by
+    simpa [linearMatrix, linearTarget, Matrix.mulVec, dotProduct, mul_comm] using congrFun hline i
+  rw [hdot] at hEval
+  rw [← hEval]
+  exact neg_add_cancel (constantCoeff (polys.get i))
+
+private lemma lineSubcheck_soundness {n : ℕ} (polys : List (CMvPolynomial n (ZMod 2)))
+    (π : Fin (n + n * n) → ZMod 2)
+    (hd : (linearMatrix polys) *ᵥ π - linearTarget polys ≠ 0) :
+    Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
+      (LINEQ.verifier (F := ZMod 2) (linearMatrix polys, linearTarget polys))] ≤
+        1 / (Fintype.card (ZMod 2) : ENNReal) := by
+  simp [LINEQ.verifier]
+  rw [← probEvent_eq_eq_probOutput]
+  rw [probEvent_map]
+  let accept : (Fin polys.length → ZMod 2) → Prop := fun r =>
+    decide (π ⬝ᵥ (linearMatrix polys)ᵀ *ᵥ r = linearTarget polys ⬝ᵥ r) = true
+  rw [LINEQ.simulateQ_sampleRandomVector (F := ZMod 2) polys.length (n + n * n)
+    (LPCP.proof π).impl]
+  change Pr[accept | ($ᵗ (Fin polys.length → ZMod 2) : ProbComp (Fin polys.length → ZMod 2))] *
+    (2 : ENNReal) ≤ 1
+  rw [show
+      Pr[accept |
+          ($ᵗ (Fin polys.length → ZMod 2) : ProbComp (Fin polys.length → ZMod 2))] =
+        Pr[fun r : Fin polys.length → ZMod 2 =>
+            ((linearMatrix polys) *ᵥ π - linearTarget polys) ⬝ᵥ r = 0 |
+          ($ᵗ (Fin polys.length → ZMod 2) : ProbComp (Fin polys.length → ZMod 2))] by
+    apply probEvent_ext
+    intro r _hr
+    dsimp [accept]
+    simp [LINEQ.dotProduct_transpose_mulVec_eq (F := ZMod 2) (linearMatrix polys) π
+      ((linearMatrix polys) *ᵥ π) r rfl, sub_eq_zero]]
+  simpa [ZMod.card] using LINEQ.linear_form_uniform_prob_mul_card_le_one (F := ZMod 2) hd
+
+private lemma tensorSelfVerifier_soundness {n : ℕ}
+    (π : Fin (n + n * n) → ZMod 2)
+    (hπ : (TENSORQ.projA π, TENSORQ.projB π) ∉ TENSORQ (ZMod 2) n) :
+    Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
+      (tensorSelfVerifier (n := n))] ≤ 3 / 4 := by
+  simp [tensorSelfVerifier]
+  rw [← probEvent_eq_eq_probOutput]
+  rw [LINEQ.simulateQ_sampleRandomVector (F := ZMod 2) n (n + n * n) (LPCP.proof π).impl]
+  have h := TENSORQ.verifier_soundness_after_sampling (F := ZMod 2)
+    (TENSORQ.projA π) (TENSORQ.projB π) π hπ
+  have hcard :
+      (2 * (Fintype.card (ZMod 2) : ENNReal) - 1)
+          / (Fintype.card (ZMod 2) : ENNReal) ^ 2 = 3 / 4 := by
+    rw [show Fintype.card (ZMod 2) = 2 from ZMod.card 2]
+    norm_num [ENNReal.div_eq_inv_mul]
+    rw [show (4 : ENNReal) - 1 = 3 by
+      exact ENNReal.sub_eq_of_eq_add (by simp : (1 : ENNReal) ≠ ⊤) (by norm_num)]
+  rw [hcard] at h
+  simpa [TENSORQ.dotProduct_queryA, TENSORQ.dotProduct_queryB] using h
 
 private lemma length_eq_zero_of_not_pow_le {vars : ℕ}
     (x : List (CMvPolynomial vars (ZMod 2)))
@@ -224,7 +803,126 @@ theorem QESAT_poly_LPCP {vars : ℕ} :
     QESAT (ZMod 2) vars ∈
       LPCP (QESAT.size) 0 (3 / 4) (ZMod 2)
         (fun _ => vars + vars ^ 2) (fun _ => 4) (fun n => n + 2 * vars) := by
-  sorry
+  have hpoly :
+      QESAT (ZMod 2) vars ∈
+        LPCP (QESAT.size) 0 (3 / 4) (ZMod 2)
+          (fun _ => vars + vars * vars) (fun _ => 4) (fun n => n + 2 * vars) := by
+    refine ⟨QESAT.polyVerifier (n := vars), 0, fun polys => ?_⟩
+    refine ⟨by simp [RunsInTime], ?_, ?_, ?_⟩
+    · exact QESAT.polyVerifier_queryBound (n := vars) polys
+    · rintro ⟨hdeg, a, ha⟩
+      refine ⟨TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2), ?_⟩
+      have hlin :
+          (QESAT.linearMatrix polys) *ᵥ
+              TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2) =
+            QESAT.linearTarget polys :=
+        QESAT.linearMatrix_mul_honestProof hdeg ha
+      have hline_r (r : Fin polys.length → ZMod 2) :
+          TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2) ⬝ᵥ
+              (QESAT.linearMatrix polys)ᵀ *ᵥ r =
+            QESAT.linearTarget polys ⬝ᵥ r :=
+        LINEQ.dotProduct_transpose_mulVec_eq (F := ZMod 2) (QESAT.linearMatrix polys)
+          (TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2))
+          (QESAT.linearTarget polys) r hlin
+      simp [QESAT.polyVerifier, LINEQ.verifier, LINEQ.sampleRandomVector,
+        hline_r,
+        QESAT.tensorSelfVerifier, TENSORQ.dotProduct_queryA, TENSORQ.dotProduct_queryB,
+        TENSORQ.projA_honestProof, TENSORQ.projB_honestProof,
+        TENSORQ.tensor_check_complete]
+      rw [if_pos hdeg]
+    · intro hx π
+      by_cases hdeg : ∀ p ∈ polys, p.totalDegree ≤ 2
+      · let impl := (rand (ZMod 2)).impl + (LPCP.proof π).impl
+        let line :=
+          LINEQ.verifier (F := ZMod 2) (QESAT.linearMatrix polys, QESAT.linearTarget polys)
+        let tensor := QESAT.tensorSelfVerifier (n := vars)
+        by_cases htensor : (TENSORQ.projA π, TENSORQ.projB π) ∈ TENSORQ (ZMod 2) vars
+        · have hd :
+              (QESAT.linearMatrix polys) *ᵥ π - QESAT.linearTarget polys ≠ 0 := by
+            intro hzero
+            exact hx (QESAT.mem_of_tensor_linear hdeg htensor (sub_eq_zero.mp hzero))
+          have hline := QESAT.lineSubcheck_soundness (n := vars) polys π hd
+          have hmain_le_line :
+              Pr[= true | simulateQ impl (QESAT.polyVerifier (n := vars) polys)] ≤
+                Pr[= true | simulateQ impl line] := by
+            dsimp [QESAT.polyVerifier, impl]
+            rw [if_pos hdeg]
+            change
+              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
+                (do
+                  let hLine ← line
+                  let hTensor ← tensor
+                  pure (hLine && hTensor))] ≤
+              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line]
+            simp only [simulateQ_bind, simulateQ_pure]
+            have hle :
+                Pr[= true | do
+                  let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
+                  let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
+                  pure (hLine && hTensor)] ≤
+                Pr[= true | do
+                  let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
+                  pure hLine] := by
+              refine probOutput_bind_mono
+                (mx := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line)
+                (my := fun hLine => do
+                  let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
+                  pure (hLine && hTensor))
+                (oc := fun hLine => (pure hLine : ProbComp Bool))
+                (y := true) (z := true) ?_
+              intro hLine _
+              cases hLine <;> simp
+            simpa using hle
+          have hhalf : 1 / (Fintype.card (ZMod 2) : ENNReal) ≤ 3 / 4 := by
+            rw [show Fintype.card (ZMod 2) = 2 from ZMod.card 2]
+            refine (ENNReal.toReal_le_toReal ?_ ?_).mp ?_
+            · exact ENNReal.div_ne_top (by simp) (by norm_num)
+            · exact ENNReal.div_ne_top (by simp) (by norm_num)
+            · rw [ENNReal.toReal_div, ENNReal.toReal_div]
+              all_goals norm_num
+          exact hmain_le_line.trans (hline.trans hhalf)
+        · have htensor_bound := QESAT.tensorSelfVerifier_soundness (n := vars) π htensor
+          have hmain_le_tensor :
+              Pr[= true | simulateQ impl (QESAT.polyVerifier (n := vars) polys)] ≤
+                Pr[= true | simulateQ impl tensor] := by
+            dsimp [QESAT.polyVerifier, impl]
+            rw [if_pos hdeg]
+            change
+              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
+                (do
+                  let hLine ← line
+                  let hTensor ← tensor
+                  pure (hLine && hTensor))] ≤
+              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor]
+            simp only [simulateQ_bind, simulateQ_pure]
+            rw [probOutput_bind_bind_swap
+              (mx := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line)
+              (my := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor)
+              (f := fun hLine hTensor => (pure (hLine && hTensor) : ProbComp Bool))
+              (z := true)]
+            have hle :
+                Pr[= true | do
+                  let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
+                  let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
+                  pure (hLine && hTensor)] ≤
+                Pr[= true | do
+                  let hTensor ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor
+                  pure hTensor] := by
+              refine probOutput_bind_mono
+                (mx := simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) tensor)
+                (my := fun hTensor => do
+                  let hLine ← simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) line
+                  pure (hLine && hTensor))
+                (oc := fun hTensor => (pure hTensor : ProbComp Bool))
+                (y := true) (z := true) ?_
+              intro hTensor _
+              cases hTensor <;> simp
+            simpa using hle
+          exact hmain_le_tensor.trans htensor_bound
+      · dsimp [QESAT.polyVerifier]
+        rw [if_neg hdeg]
+        simp
+  simpa [sq] using hpoly
 
 theorem LPCP_to_PCP_ZMod2 {α : Type} (size : α → ℕ)
     (ε_c ε_s : ℝ≥0∞) (ℓ q r : ℕ → ℕ) :
