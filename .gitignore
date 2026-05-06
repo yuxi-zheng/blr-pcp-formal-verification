@@ -3,6 +3,8 @@
 ## Python venv
 venv/
 .venv/
+__pycache__/
+*.py[cod]
 ## Lake
 .lake/*
 .cache/*
@@ -38,6 +40,7 @@ venv/
 *.synctex.gz(busy)
 *.pdfsync
 scripts/build_blueprint.sh
+/scripts/benchmarking/out/
 ## Dev
 .vscode/
 .claude/

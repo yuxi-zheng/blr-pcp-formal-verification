@@ -22,6 +22,8 @@ Unless stated otherwise, all definitions and lemmas are for F = Z/2.
 - `QESAT.pcpVerifierBeforeRepetition`: the explicit computable QESAT PCP verifier before
   independent repetition.
 - `QESAT.pcpVerifier`: the explicit computable QESAT PCP verifier after independent repetition.
+- `QESAT.trivialPcpVerifier`: a zero-query exponential-time PCP verifier that brute-forces
+  satisfiability.
 - `QESAT.pcpVerifier_correct`: completeness, soundness, and query bounds for `QESAT.pcpVerifier`.
 - `QESAT_exp_PCP`: QESAT over `ZMod 2` has an exponential-length PCP.
 -/
@@ -2186,6 +2188,34 @@ def pcpVerifier {vars : ℕ} :
   fun x => do
     let xs ← OracleComp.replicate 6 (pcpVerifierBeforeRepetition (vars := vars) x)
     pure (xs.all id)
+
+/-- Brute-force decision procedure for `QESAT (ZMod 2)`.
+It checks the degree bound and then enumerates all assignments in `(ZMod 2)^vars`. -/
+def trivialAccepts {vars : ℕ} (x : List (CMvPolynomial vars (ZMod 2))) : Bool :=
+  (x.all fun p => decide (p.totalDegree ≤ 2)) &&
+    decide ((Finset.univ.filter fun a : Fin vars → ZMod 2 =>
+      x.all fun p => decide (CMvPolynomial.eval a p = 0)).Nonempty)
+
+lemma trivialAccepts_eq_true {vars : ℕ} (x : List (CMvPolynomial vars (ZMod 2))) :
+    trivialAccepts x = true ↔ x ∈ QESAT (ZMod 2) vars := by
+  classical
+  rw [trivialAccepts]
+  simp only [Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true]
+  constructor
+  · rintro ⟨hdeg, ⟨a, ha⟩⟩
+    exact ⟨hdeg, a, by simpa using ha⟩
+  · rintro ⟨hdeg, a, ha⟩
+    exact ⟨hdeg, a, by simpa using ha⟩
+
+/-- A trivial PCP verifier for QESAT.
+It ignores the proof oracle, makes no queries, and brute-forces the instance. -/
+def trivialPcpVerifier {vars : ℕ} :
+    PCPVerifier (List (CMvPolynomial vars (ZMod 2))) size (ZMod 2) (fun _ => 0) :=
+  fun x => pure (trivialAccepts x)
+
+lemma trivialPcpVerifier_queryBound {vars : ℕ} (x : List (CMvPolynomial vars (ZMod 2))) :
+    QueryBound (trivialPcpVerifier (vars := vars) x) 0 0 := by
+  simp [trivialPcpVerifier, QueryBound]
 
 theorem polyVerifier_correct {vars : ℕ} :
     ∀ polys : List (CMvPolynomial vars (ZMod 2)),

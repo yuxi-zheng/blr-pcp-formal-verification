@@ -11,7 +11,8 @@ lake exe qesat_test
 ```
 
 The default mode is a bounded smoke test. Use `lake exe qesat_test bench`
-for a larger local timing run.
+for a larger local timing run, or `.lake/build/bin/qesat_test csv` for
+machine-readable benchmark rows after building the executable.
 -/
 
 open CPoly CMvPolynomial
@@ -63,6 +64,9 @@ def zeroProof {vars : ℕ} (x : List (CMvPolynomial vars F)) :
 def runVerifier {vars : ℕ} (x : List (CMvPolynomial vars F))
     (π : Fin (2 ^ QESAT.size x) → F) : IO Bool :=
   SysRand.runPCP π (QESAT.pcpVerifier (vars := vars) x)
+
+def runTrivialVerifier {vars : ℕ} (x : List (CMvPolynomial vars F)) : IO Bool :=
+  SysRand.runPCP (Fin.elim0 : Fin 0 → F) (QESAT.trivialPcpVerifier (vars := vars) x)
 
 structure TrialSummary where
   label : String
@@ -141,6 +145,45 @@ def runLengthRuntimeCase (vars count trials : ℕ) : IO Unit := do
     (runVerifier x π)
   IO.println summary.render
 
+structure BenchmarkRow where
+  verifier : String
+  vars : ℕ
+  polys : ℕ
+  trials : ℕ
+  accepts : ℕ
+  elapsedMs : ℕ
+
+def BenchmarkRow.avgMs (row : BenchmarkRow) : ℕ :=
+  if row.trials = 0 then 0 else row.elapsedMs / row.trials
+
+def BenchmarkRow.csvHeader : String :=
+  "verifier,vars,polys,trials,accepts,elapsed_ms,avg_ms"
+
+def BenchmarkRow.toCsv (row : BenchmarkRow) : String :=
+  s!"{row.verifier},{row.vars},{row.polys},{row.trials},{row.accepts}," ++
+    s!"{row.elapsedMs},{row.avgMs}"
+
+def runBenchmarkRow (verifier : String) (vars polys trials : ℕ) (trial : IO Bool) :
+    IO BenchmarkRow := do
+  let (accepts, elapsed) ← timeIt (repeatTrials trials trial)
+  pure { verifier, vars, polys, trials, accepts, elapsedMs := elapsed }
+
+def runPcpBenchmarkRow (vars trials : ℕ) : IO BenchmarkRow := do
+  let x := satInstance vars
+  let π := honestPCPProof x (allOnes (vars := vars + 1))
+  runBenchmarkRow "pcp" (vars + 1) x.length trials (runVerifier x π)
+
+def runTrivialBenchmarkRow (vars trials : ℕ) : IO BenchmarkRow := do
+  let x := satInstance vars
+  runBenchmarkRow "trivial" (vars + 1) x.length trials (runTrivialVerifier x)
+
+def runCsv (pcpMaxVars trivialMaxVars trials : ℕ) : IO Unit := do
+  IO.println BenchmarkRow.csvHeader
+  for vars in List.range pcpMaxVars do
+    IO.println (← runPcpBenchmarkRow vars trials).toCsv
+  for vars in List.range trivialMaxVars do
+    IO.println (← runTrivialBenchmarkRow vars trials).toCsv
+
 def runSmoke : IO Unit := do
   IO.println "QESAT PCP concrete verifier smoke tests"
   IO.println "Completeness checks"
@@ -199,6 +242,22 @@ def main (args : List String) : IO UInt32 := do
   | ["bench"] =>
       QESATTest.runBench
       pure 0
+  | ["csv"] =>
+      QESATTest.runCsv 3 16 3
+      pure 0
+  | ["csv", maxVars] =>
+      let n := maxVars.toNat?.getD 3
+      QESATTest.runCsv n n 3
+      pure 0
+  | ["csv", maxVars, trials] =>
+      let n := maxVars.toNat?.getD 3
+      QESATTest.runCsv n n (trials.toNat?.getD 3)
+      pure 0
+  | ["csv", pcpMaxVars, trials, trivialMaxVars] =>
+      QESATTest.runCsv (pcpMaxVars.toNat?.getD 3) (trivialMaxVars.toNat?.getD 16)
+        (trials.toNat?.getD 3)
+      pure 0
   | _ =>
-      IO.eprintln "usage: lake exe qesat_test [smoke|bench]"
+      IO.eprintln
+        "usage: lake exe qesat_test [smoke|bench|csv [maxVars] [trials] [trivialMaxVars]]"
       pure 1
