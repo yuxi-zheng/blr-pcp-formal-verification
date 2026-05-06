@@ -43,8 +43,14 @@ def allOnes {vars : ℕ} : Fin vars → F :=
 def vectorOfIndex {n : ℕ} (i : Fin (2 ^ n)) : Fin n → F :=
   fun j => (Nat.getBit j.val i.val : F)
 
+def linearTableNat : (n : ℕ) → (Fin n → F) → ℕ → F
+  | 0, _, _ => 0
+  | n + 1, π, i =>
+      let tail := linearTableNat n (fun j => π (Fin.castSucc j)) i
+      if Nat.getBit n i = 0 then tail else tail + π (Fin.last n)
+
 def linearTable {n : ℕ} (π : Fin n → F) : Fin (2 ^ n) → F :=
-  fun i => π ⬝ᵥ vectorOfIndex i
+  fun i => linearTableNat n π i.val
 
 def honestLPCPProof {vars : ℕ} (a : Fin vars → F) :
     Fin (vars + vars * vars) → F :=
@@ -173,6 +179,11 @@ def runPcpBenchmarkRow (vars trials : ℕ) : IO BenchmarkRow := do
   let π := honestPCPProof x (allOnes (vars := vars + 1))
   runBenchmarkRow "pcp" (vars + 1) x.length trials (runVerifier x π)
 
+def runPcpZeroBenchmarkRow (vars trials : ℕ) : IO BenchmarkRow := do
+  let x := satInstance vars
+  let π := zeroProof x
+  runBenchmarkRow "pcp-zero" (vars + 1) x.length trials (runVerifier x π)
+
 def runTrivialBenchmarkRow (vars trials : ℕ) : IO BenchmarkRow := do
   let x := satInstance vars
   runBenchmarkRow "trivial" (vars + 1) x.length trials (runTrivialVerifier x)
@@ -257,7 +268,13 @@ def main (args : List String) : IO UInt32 := do
       QESATTest.runCsv (pcpMaxVars.toNat?.getD 3) (trivialMaxVars.toNat?.getD 16)
         (trials.toNat?.getD 3)
       pure 0
+  | ["csv-zero", maxVars, trials] =>
+      IO.println QESATTest.BenchmarkRow.csvHeader
+      for vars in List.range (maxVars.toNat?.getD 3) do
+        IO.println (← QESATTest.runPcpZeroBenchmarkRow vars (trials.toNat?.getD 1)).toCsv
+      pure 0
   | _ =>
       IO.eprintln
-        "usage: lake exe qesat_test [smoke|bench|csv [maxVars] [trials] [trivialMaxVars]]"
+        ("usage: lake exe qesat_test " ++
+          "[smoke|bench|csv [maxVars] [trials] [trivialMaxVars]|csv-zero maxVars trials]")
       pure 1

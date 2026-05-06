@@ -68,6 +68,32 @@ private def singleMonomial {n : ℕ} (i : Fin n) (e : ℕ) : CMvMonomial n :=
 private def pairMonomial {n : ℕ} (i j : Fin n) : CMvMonomial n :=
   Vector.ofFn fun k => (if k = i then 1 else 0) + if k = j then 1 else 0
 
+private def monomialSupportedOnly {n : ℕ} (m : CMvMonomial n) (keep : Fin n → Bool) :
+    Bool :=
+  (List.finRange n).all fun i => keep i || m.get i == 0
+
+private def monomialQueryFast {n : ℕ} (m : CMvMonomial n) :
+    Fin (n + n * n) → ZMod 2 :=
+  fun k =>
+    if hk : k.val < n then
+      0
+    else
+      let q : Fin (n * n) := ⟨k.val - n, by have := k.isLt; omega⟩
+      let ij := finProdFinEquiv.symm q
+      let i := ij.1
+      let j := ij.2
+      if i = j then
+        if ((m.get i == 1) || (m.get i == 2)) &&
+            monomialSupportedOnly m (fun l => l == i) then
+          1
+        else
+          0
+      else if decide (i.val < j.val) && (m.get i == 1) && (m.get j == 1) &&
+          monomialSupportedOnly m (fun l => (l == i) || (l == j)) then
+        1
+      else
+        0
+
 @[simp]
 private lemma singleMonomial_eq_ofFinsupp_single {n : ℕ} (i : Fin n) (e : ℕ) :
     singleMonomial i e = CMvMonomial.ofFinsupp (Finsupp.single i e) := by
@@ -115,6 +141,7 @@ private lemma ofFinsupp_eq_iff {n : ℕ} {m₁ m₂ : Fin n →₀ ℕ} :
   · intro h
     rw [h]
 
+@[implemented_by monomialQueryFast]
 private def monomialQuery {n : ℕ} (m : CMvMonomial n) :
     Fin (n + n * n) → ZMod 2 :=
   Fin.append (Function.const _ 0) fun k =>
@@ -888,6 +915,16 @@ private lemma zmod2Bit_cast (a : ZMod 2) : (zmod2Bit a : ZMod 2) = a := by
       omega
     simp [(ZMod.val_eq_one (by norm_num) a).mp hval]
 
+private def vectorIndexNatFast : (n : ℕ) → (Fin n → ZMod 2) → ℕ
+  | 0, _ => 0
+  | n + 1, u =>
+      vectorIndexNatFast n (fun i => u (Fin.castSucc i)) +
+        (if u (Fin.last n) = 0 then 0 else 2 ^ n)
+
+private def vectorIndexFast {n : ℕ} (u : Fin n → ZMod 2) : Fin (2 ^ n) :=
+  ⟨vectorIndexNatFast n u % 2 ^ n, Nat.mod_lt _ (Nat.pow_pos (by norm_num : 0 < 2))⟩
+
+@[implemented_by vectorIndexFast]
 private def vectorIndex {n : ℕ} (u : Fin n → ZMod 2) : Fin (2 ^ n) :=
   Nat.binaryFinMapToNat (fun i => zmod2Bit (u i)) fun i => zmod2Bit_le_one (u i)
 
