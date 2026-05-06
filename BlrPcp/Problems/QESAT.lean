@@ -799,6 +799,67 @@ private lemma seven_eighths_pow_six_le_half : ((7 / 8 : ℝ≥0∞) ^ 6) ≤ 1 /
   · rw [ENNReal.toReal_pow, ENNReal.toReal_div, ENNReal.toReal_div]
     norm_num
 
+private lemma one_sub_seven_eighths : (1 : ℝ≥0∞) - 7 / 8 = 1 / 8 := by
+  apply ENNReal.sub_eq_of_eq_add
+  · exact ENNReal.div_ne_top (by simp) (by norm_num)
+  · symm
+    refine (ENNReal.toReal_eq_toReal_iff' ?_ ?_).mp ?_
+    · exact ENNReal.add_ne_top.mpr
+        ⟨ENNReal.div_ne_top (by simp) (by norm_num),
+          ENNReal.div_ne_top (by simp) (by norm_num)⟩
+    · simp
+    · rw [ENNReal.toReal_add]
+      · norm_num [ENNReal.toReal_div]
+      · exact ENNReal.div_ne_top (by simp) (by norm_num)
+      · exact ENNReal.div_ne_top (by simp) (by norm_num)
+
+private lemma two_eighths_le_half : (1 / 8 : ℝ≥0∞) + 1 / 8 ≤ 1 / 2 := by
+  refine (ENNReal.toReal_le_toReal ?_ ?_).mp ?_
+  · exact ENNReal.add_ne_top.mpr
+      ⟨ENNReal.div_ne_top (by simp) (by norm_num),
+        ENNReal.div_ne_top (by simp) (by norm_num)⟩
+  · exact ENNReal.div_ne_top (by simp) (by norm_num)
+  · rw [ENNReal.toReal_add]
+    · norm_num [ENNReal.toReal_div]
+    · exact ENNReal.div_ne_top (by simp) (by norm_num)
+    · exact ENNReal.div_ne_top (by simp) (by norm_num)
+
+private lemma false_prob_le_eighth_of_accept_ge_seven_eighths (mx : ProbComp Bool)
+    (haccept : (7 / 8 : ℝ≥0∞) ≤ Pr[= true | mx]) :
+    Pr[= false | mx] ≤ 1 / 8 := by
+  have hsumle : Pr[= true | mx] + Pr[= false | mx] ≤ (1 : ℝ≥0∞) := by
+    rw [probOutput_true_add_false]
+    exact tsub_le_self
+  have hfalse_sub : Pr[= false | mx] ≤ 1 - Pr[= true | mx] :=
+    ENNReal.le_sub_of_add_le_left (probOutput_ne_top (mx := mx) (x := true)) hsumle
+  exact hfalse_sub.trans (by
+    rw [← one_sub_seven_eighths]
+    exact tsub_le_tsub_left haccept 1)
+
+private lemma nat_mul_half_pow_clog_le (q : ℕ) :
+    (q : ℝ≥0∞) * (1 / 2 : ℝ≥0∞) ^ Nat.clog 2 (100 * q) ≤ 1 / 100 := by
+  by_cases hq : q = 0
+  · subst q
+    simp
+  · let rep := Nat.clog 2 (100 * q)
+    have hpow_nat : 100 * q ≤ 2 ^ rep := by
+      simpa [rep] using Nat.le_pow_clog (by norm_num : 1 < 2) (100 * q)
+    have hpow_real : (100 : ℝ) * q ≤ (2 : ℝ) ^ rep := by
+      exact_mod_cast hpow_nat
+    refine (ENNReal.toReal_le_toReal ?_ ?_).mp ?_
+    · exact ENNReal.mul_ne_top (ENNReal.natCast_ne_top q)
+        (ENNReal.pow_ne_top (ENNReal.div_ne_top (by simp) (by norm_num)))
+    · exact ENNReal.div_ne_top (by simp) (by norm_num)
+    · rw [ENNReal.toReal_mul, ENNReal.toReal_pow, ENNReal.toReal_div,
+        ENNReal.toReal_div, ENNReal.toReal_natCast]
+      norm_num [ENNReal.toReal_ofNat]
+      change (q : ℝ) * (1 / 2) ^ rep ≤ 1 / 100
+      have hpow_pos : 0 < (2 : ℝ) ^ rep := pow_pos (by norm_num) rep
+      rw [show (1 / 2 : ℝ) ^ rep = ((2 : ℝ) ^ rep)⁻¹ by
+        rw [one_div, inv_pow]]
+      rw [mul_inv_le_iff₀ hpow_pos]
+      nlinarith
+
 namespace LPCPToPCP
 
 private noncomputable def vectorFinEquiv (n : ℕ) : (Fin n → ZMod 2) ≃ Fin (2 ^ n) :=
@@ -905,6 +966,136 @@ private lemma sampleVector_queryBoundAux (m tableLength : ℕ) :
 private lemma sampleVector_queryBound (tableLength n : ℕ) :
     QueryBound (sampleVector tableLength n) 0 n := by
   simpa [sampleVector] using sampleVector_queryBoundAux n tableLength
+
+private lemma probOutput_simulateQ_sampleVectorAux [SampleableType (ZMod 2)]
+    (m tableLength : ℕ) (impl : QueryImpl (PCP.proofSpec (ZMod 2) tableLength) ProbComp)
+    (x : Fin m → ZMod 2) :
+    Pr[= x |
+      simulateQ ((rand (ZMod 2)).impl + impl)
+        (Fin.mOfFn m fun _ => sampleField (n := tableLength))] =
+      (Fintype.card (Fin m → ZMod 2) : ENNReal)⁻¹ := by
+  induction m with
+  | zero =>
+      have hx : x = Fin.elim0 := by
+        funext i
+        exact Fin.elim0 i
+      subst hx
+      simp [Fin.mOfFn]
+  | succ m ih =>
+      simp only [Fin.mOfFn, sampleField, simulateQ_bind, simulateQ_query,
+        simulateQ_pure, OracleQuery.cont_query, id_map, OracleQuery.input_query, rand]
+      rw [probOutput_bind_eq_tsum, tsum_fintype]
+      rw [Finset.sum_eq_single (x 0)]
+      · change Pr[= x 0 | ($ᵗ ZMod 2 : ProbComp (ZMod 2))] *
+            Pr[= x |
+              (Fin.cons (x 0)) <$>
+                simulateQ ((rand (ZMod 2)).impl + impl)
+                  (Fin.mOfFn m fun _ => sampleField (n := tableLength))] = _
+        rw [probOutput_uniformSample, probOutput_finCons_map_eq, ih]
+        rw [Fintype.card_fun, Fintype.card_fin, Fintype.card_fun, Fintype.card_fin]
+        rw [Nat.pow_succ]
+        simp only [Nat.cast_mul, Nat.cast_pow]
+        rw [ENNReal.mul_inv]
+        · rw [mul_comm]
+        · left
+          exact_mod_cast pow_ne_zero m (Fintype.card_ne_zero (α := ZMod 2))
+        · left
+          simp
+      · intro a _ ha
+        change Pr[= a | ($ᵗ ZMod 2 : ProbComp (ZMod 2))] *
+            Pr[= x |
+              (Fin.cons a) <$>
+                simulateQ ((rand (ZMod 2)).impl + impl)
+                  (Fin.mOfFn m fun _ => sampleField (n := tableLength))] = 0
+        rw [probOutput_finCons_map_ne _ x ha]
+        simp
+      · intro h
+        simp at h
+
+private lemma probOutput_simulateQ_sampleVector [SampleableType (ZMod 2)]
+    {tableLength n : ℕ} (impl : QueryImpl (PCP.proofSpec (ZMod 2) tableLength) ProbComp)
+    (x : Fin n → ZMod 2) :
+    Pr[= x | simulateQ ((rand (ZMod 2)).impl + impl) (sampleVector tableLength n)] =
+      (Fintype.card (Fin n → ZMod 2) : ENNReal)⁻¹ := by
+  simpa [sampleVector] using probOutput_simulateQ_sampleVectorAux n tableLength impl x
+
+private lemma ofReal_distance_eq_sum {n : ℕ}
+    (f g : (Fin n → ZMod 2) → ZMod 2) :
+    ENNReal.ofReal (BlrPcp.distance f g) =
+      ∑ x : Fin n → ZMod 2,
+        (Fintype.card (Fin n → ZMod 2) : ENNReal)⁻¹ * if f x ≠ g x then 1 else 0 := by
+  have hvec_pos : 0 < (Fintype.card (Fin n → ZMod 2) : Real) := by
+    exact_mod_cast Fintype.card_pos_iff.mpr ⟨0⟩
+  rw [BlrPcp.distance]
+  rw [ENNReal.ofReal_mul]
+  · rw [ENNReal.ofReal_sum_of_nonneg]
+    · simp only [ENNReal.ofReal_inv_of_pos hvec_pos, ENNReal.ofReal_natCast]
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro x _
+      by_cases hx : f x ≠ g x <;> simp [hx]
+    · intro x _
+      by_cases hx : f x ≠ g x <;> simp [hx]
+  · positivity
+
+private lemma probEvent_sampleVector_eq_distance [SampleableType (ZMod 2)]
+    {tableLength n : ℕ} (impl : QueryImpl (PCP.proofSpec (ZMod 2) tableLength) ProbComp)
+    (f g : (Fin n → ZMod 2) → ZMod 2) :
+    Pr[fun x => f x ≠ g x |
+      simulateQ ((rand (ZMod 2)).impl + impl) (sampleVector tableLength n)] =
+      ENNReal.ofReal (BlrPcp.distance f g) := by
+  rw [ofReal_distance_eq_sum f g]
+  rw [probEvent_eq_tsum_ite, tsum_fintype]
+  apply Finset.sum_congr rfl
+  intro y _
+  rw [probOutput_simulateQ_sampleVector (impl := impl) y]
+  by_cases hy : f y ≠ g y <;> simp [hy, mul_comm]
+
+private def translateEquiv {n : ℕ} (u : Fin n → ZMod 2) :
+    (Fin n → ZMod 2) ≃ (Fin n → ZMod 2) where
+  toFun z := fun i => u i + z i
+  invFun z := fun i => u i + z i
+  left_inv z := by
+    funext i
+    change u i + (u i + z i) = z i
+    have htwo : (2 : ZMod 2) = 0 := by native_decide
+    ring_nf
+    rw [htwo]
+    simp
+  right_inv z := by
+    funext i
+    change u i + (u i + z i) = z i
+    have htwo : (2 : ZMod 2) = 0 := by native_decide
+    ring_nf
+    rw [htwo]
+    simp
+
+private lemma probEvent_sampleVector_translate_eq_distance [SampleableType (ZMod 2)]
+    {tableLength n : ℕ} (impl : QueryImpl (PCP.proofSpec (ZMod 2) tableLength) ProbComp)
+    (f g : (Fin n → ZMod 2) → ZMod 2) (u : Fin n → ZMod 2) :
+    Pr[fun z => f (fun i => u i + z i) ≠ g (fun i => u i + z i) |
+      simulateQ ((rand (ZMod 2)).impl + impl) (sampleVector tableLength n)] =
+      ENNReal.ofReal (BlrPcp.distance f g) := by
+  rw [ofReal_distance_eq_sum f g]
+  rw [probEvent_eq_tsum_ite, tsum_fintype]
+  simp_rw [probOutput_simulateQ_sampleVector (impl := impl)]
+  change (∑ z : Fin n → ZMod 2,
+      if f (fun i => u i + z i) ≠ g (fun i => u i + z i) then
+        (Fintype.card (Fin n → ZMod 2) : ENNReal)⁻¹ else 0) = _
+  rw [show (∑ z : Fin n → ZMod 2,
+      if f (fun i => u i + z i) ≠ g (fun i => u i + z i) then
+        (Fintype.card (Fin n → ZMod 2) : ENNReal)⁻¹ else 0) =
+    ∑ z : Fin n → ZMod 2,
+      (Fintype.card (Fin n → ZMod 2) : ENNReal)⁻¹ *
+        if f (fun i => u i + z i) ≠ g (fun i => u i + z i) then 1 else 0 by
+      apply Finset.sum_congr rfl
+      intro z _
+      by_cases hz : f (fun i => u i + z i) ≠ g (fun i => u i + z i) <;>
+        simp [hz]]
+  simpa [translateEquiv] using
+    (Equiv.sum_comp (translateEquiv u)
+      (fun x : Fin n → ZMod 2 =>
+        (Fintype.card (Fin n → ZMod 2) : ENNReal)⁻¹ * if f x ≠ g x then 1 else 0))
 
 private noncomputable def selfCorrectSample {n : ℕ} (u : Fin n → ZMod 2) :
     OracleComp (PCP.spec (ZMod 2) (2 ^ n)) (ZMod 2) := do
@@ -1090,6 +1281,35 @@ private lemma verifier_accept_le_blr {α : Type} [SampleableType (ZMod 2)]
         intro hBLR _
         cases hBLR <;> simp [simulateQ_pure])
   simpa [simulateQ_pure] using hle
+
+private lemma verifier_accept_le_simulateVerifier {α : Type} [SampleableType (ZMod 2)]
+    {size : α → ℕ} {ℓ q : ℕ → ℕ}
+    (V : LPCPVerifier α size (ZMod 2) ℓ) (x : α)
+    (π : Fin (2 ^ ℓ (size x)) → ZMod 2) :
+    Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+        (verifier size ℓ q V x)] ≤
+      Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+        (simulateVerifier (n := ℓ (size x)) (Nat.clog 2 (100 * q (size x))) (V x))] := by
+  simp only [verifier, simulateQ_bind]
+  have hle := probOutput_bind_mono
+    (mx := simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+      (simulateQ (tableImpl (ℓ (size x)))
+        (BLR.basicVerifier (F := ZMod 2) (n := ℓ (size x)))))
+    (my := fun hBLR =>
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+        (if hBLR then
+          simulateVerifier (n := ℓ (size x)) (Nat.clog 2 (100 * q (size x))) (V x)
+        else
+          pure false))
+    (oc := fun _ =>
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+        (simulateVerifier (n := ℓ (size x)) (Nat.clog 2 (100 * q (size x))) (V x)))
+    (y := true) (z := true) (by
+      intro hBLR _
+      cases hBLR <;> simp [simulateQ_pure])
+  refine hle.trans ?_
+  rw [probOutput_bind_const]
+  exact mul_le_of_le_one_left (zero_le _) tsub_le_self
 
 private lemma optionBind_accept_le
     (mx : ProbComp (Option (ZMod 2))) (cont : ZMod 2 → ProbComp Bool)
@@ -1341,6 +1561,468 @@ private lemma linear_selfCorrect_value {n : ℕ} (π : Fin n → ZMod 2)
     rw [htwo, zero_mul]
   rw [add_assoc, hdouble, add_zero]
 
+private lemma selfCorrectSample_wrong_le_two_distance [SampleableType (ZMod 2)]
+    {n : ℕ} (πTable : Fin (2 ^ n) → ZMod 2) (πLin : Fin n → ZMod 2)
+    (u : Fin n → ZMod 2) :
+    Pr[fun y => y ≠ πLin ⬝ᵥ u |
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl) (selfCorrectSample u)] ≤
+      ENNReal.ofReal (BlrPcp.distance (tableFn πTable)
+        (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) +
+      ENNReal.ofReal (BlrPcp.distance (tableFn πTable)
+        (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) := by
+  let g := BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin
+  have hpoint : ∀ z : Fin n → ZMod 2,
+      tableFn πTable (fun i => u i + z i) + tableFn πTable z ≠ πLin ⬝ᵥ u →
+        tableFn πTable (fun i => u i + z i) ≠ g (fun i => u i + z i) ∨
+          tableFn πTable z ≠ g z := by
+    intro z hbad
+    by_contra hnot
+    push_neg at hnot
+    apply hbad
+    rw [hnot.1, hnot.2]
+    simpa [g, BlrPcp.linearFn, dotProduct] using linear_selfCorrect_value πLin u z
+  simp only [selfCorrectSample, simulateQ_bind, simulateQ_query, simulateQ_pure,
+    OracleQuery.cont_query, id_map, OracleQuery.input_query]
+  dsimp [HAdd.hAdd, QueryImpl.add, PCP.proof]
+  simp only [pure_bind]
+  change Pr[fun y => y ≠ πLin ⬝ᵥ u |
+      (fun z : Fin n → ZMod 2 => tableFn πTable (fun i => u i + z i) + tableFn πTable z) <$>
+        simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+          (sampleVector (2 ^ n) n)] ≤ _
+  rw [probEvent_map]
+  change Pr[fun z : Fin n → ZMod 2 => tableFn πTable (fun i => u i + z i) +
+      tableFn πTable z ≠ πLin ⬝ᵥ u |
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+        (sampleVector (2 ^ n) n)] ≤ _
+  refine (probEvent_mono
+      (mx := simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+        (sampleVector (2 ^ n) n))
+      (p := fun z : Fin n → ZMod 2 =>
+        tableFn πTable (fun i => u i + z i) + tableFn πTable z ≠ πLin ⬝ᵥ u)
+      (q := fun z : Fin n → ZMod 2 =>
+        tableFn πTable (fun i => u i + z i) ≠ g (fun i => u i + z i) ∨
+          tableFn πTable z ≠ g z) ?_).trans ?_
+  · intro z _ hz
+    exact hpoint z hz
+  · refine (probEvent_or_le _ _ _).trans ?_
+    rw [probEvent_sampleVector_translate_eq_distance (impl := (PCP.proof πTable).impl)
+      (f := tableFn πTable) (g := g) (u := u)]
+    rw [probEvent_sampleVector_eq_distance (impl := (PCP.proof πTable).impl)
+      (f := tableFn πTable) (g := g)]
+    rfl
+
+private lemma selfCorrectSample_linear_probOutput [SampleableType (ZMod 2)]
+    {n : ℕ} (π : Fin n → ZMod 2) (u : Fin n → ZMod 2) :
+    Pr[= π ⬝ᵥ u |
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+        (selfCorrectSample u)] = 1 := by
+  simp only [selfCorrectSample, simulateQ_bind, simulateQ_query, simulateQ_pure,
+    OracleQuery.cont_query, id_map, OracleQuery.input_query]
+  dsimp [HAdd.hAdd, QueryImpl.add, PCP.proof]
+  simp only [pure_bind]
+  change Pr[= π ⬝ᵥ u |
+      (fun z : Fin n → ZMod 2 =>
+        linearTable π (vectorIndex (fun i => u i + z i)) + linearTable π (vectorIndex z)) <$>
+        simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+          (sampleVector (2 ^ n) n)] = 1
+  have hconst :
+      (fun z : Fin n → ZMod 2 =>
+          linearTable π (vectorIndex (fun i => u i + z i)) + linearTable π (vectorIndex z)) =
+        fun _ => π ⬝ᵥ u := by
+    funext z
+    simpa [linearTable, vectorIndex] using linear_selfCorrect_value π u z
+  rw [hconst]
+  rw [show (fun _ : Fin n → ZMod 2 => π ⬝ᵥ u) <$>
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+        (sampleVector (2 ^ n) n) =
+      (do
+        let _z ← simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+          (sampleVector (2 ^ n) n)
+        pure (π ⬝ᵥ u)) by rfl]
+  rw [probOutput_bind_const]
+  simp
+
+private lemma repeatedValue?_eq_some_of_forall_eq {c : ZMod 2} :
+    ∀ {ys : List (ZMod 2)}, ys ≠ [] → (∀ y ∈ ys, y = c) → repeatedValue? ys = some c
+  | [], hnil, _ => (hnil rfl).elim
+  | y :: ys, _hnil, hall => by
+      have hy : y = c := hall y (by simp)
+      have hys : ys.all (fun z => decide (z = y)) = true := by
+        apply List.all_eq_true.mpr
+        intro z hz
+        have hzc : z = c := hall z (by simp [hz])
+        exact show decide (z = y) = true by simp [hzc, hy]
+      have hysc : ys.all (fun z => decide (z = c)) = true := by
+        apply List.all_eq_true.mpr
+        intro z hz
+        have hzc : z = c := hall z (by simp [hz])
+        simp [hzc]
+      simp only [repeatedValue?, hy, hysc, if_true]
+
+private lemma selfCorrect_linear_probOutput [SampleableType (ZMod 2)]
+    {n rep : ℕ} (hrep : 0 < rep) (π : Fin n → ZMod 2) (u : Fin n → ZMod 2) :
+    Pr[= some (π ⬝ᵥ u) |
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+        (selfCorrect (n := n) rep u)] = 1 := by
+  let c : ZMod 2 := π ⬝ᵥ u
+  let mx :=
+    simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+      (selfCorrectSample (n := n) u)
+  have hmx : Pr[= c | mx] = 1 := by
+    simpa [mx, c] using selfCorrectSample_linear_probOutput π u
+  have hsupport : support mx = {c} := (probOutput_eq_one_iff.mp hmx).2
+  simp only [selfCorrect, simulateQ_bind, simulateQ_pure]
+  rw [simulateQ_replicate]
+  rw [show (do
+      let ys ← OracleComp.replicate rep mx
+      pure (repeatedValue? ys)) =
+      repeatedValue? <$> OracleComp.replicate rep mx by rfl]
+  rw [← probEvent_eq_eq_probOutput]
+  rw [probEvent_map]
+  have hall :
+      Pr[fun ys : List (ZMod 2) => ∀ y ∈ ys, y = c | OracleComp.replicate rep mx] = 1 := by
+    rw [OracleComp.probEvent_replicate_of_probEvent_cons mx rep
+      (p := fun ys : List (ZMod 2) => ∀ y ∈ ys, y = c)
+      (by simp)
+      (q := fun y : ZMod 2 => y = c)]
+    · rw [probEvent_eq_eq_probOutput, hmx]
+      simp
+    · intro y ys
+      simp
+  have hmono :
+      Pr[fun ys : List (ZMod 2) => ∀ y ∈ ys, y = c | OracleComp.replicate rep mx] ≤
+        Pr[fun ys : List (ZMod 2) => repeatedValue? ys = some c |
+          OracleComp.replicate rep mx] := by
+    refine probEvent_mono
+      (mx := OracleComp.replicate rep mx)
+      (p := fun ys : List (ZMod 2) => ∀ y ∈ ys, y = c)
+      (q := fun ys : List (ZMod 2) => repeatedValue? ys = some c) ?_
+    intro ys hys hall'
+    rw [OracleComp.support_replicate] at hys
+    exact repeatedValue?_eq_some_of_forall_eq
+      (by
+        intro hnil
+        have hlen : ys.length = rep := hys.1
+        rw [hnil] at hlen
+        simp at hlen
+        omega)
+      hall'
+  exact le_antisymm probEvent_le_one (by simpa [hall] using hmono)
+
+private lemma simulateVerifier_linear_accept_ge [SampleableType (ZMod 2)] {n rep : ℕ}
+    {oa : OracleComp (LPCP.spec (ZMod 2) n) Bool} {q r : ℕ}
+    (hoa : QueryBound oa q r) (hrep : q = 0 ∨ 0 < rep) (π : Fin n → ZMod 2) :
+    Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) oa] ≤
+      Pr[= true |
+        simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+          (simulateVerifier (n := n) rep oa)] := by
+  revert q r
+  induction oa using OracleComp.inductionOn with
+  | pure b =>
+      intro q r _ _
+      cases b <;> simp [simulateVerifier]
+  | query_bind t mx ih =>
+      intro q r hoa hrep
+      rw [QueryBound, OracleComp.isQueryBound_query_bind_iff] at hoa
+      cases t with
+      | inl u =>
+          rcases u
+          simp only [simulateVerifier, OracleComp.construct_query_bind, simulateQ_bind,
+            simulateQ_query, OracleQuery.cont_query, id_map, OracleQuery.input_query]
+          dsimp [HAdd.hAdd, QueryImpl.add, rand]
+          refine probOutput_bind_mono (y := true) (z := true) ?_
+          intro z _
+          exact ih z (hoa.2 z) hrep
+      | inr u =>
+          simp only [simulateVerifier, OracleComp.construct_query_bind, simulateQ_bind,
+            simulateQ_query, OracleQuery.cont_query, id_map, OracleQuery.input_query]
+          dsimp [HAdd.hAdd, QueryImpl.add, LPCP.proof]
+          let ans : ZMod 2 := π ⬝ᵥ (u : Fin n → ZMod 2)
+          have hrep_pos : 0 < rep := by
+            rcases hrep with hq | hrep_pos
+            · omega
+            · exact hrep_pos
+          have hcont :
+              Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl)
+                (mx ans)] ≤
+              Pr[= true |
+                simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                  (simulateVerifier (n := n) rep (mx ans))] :=
+            ih ans (hoa.2 ans) (by omega)
+          let sc :=
+            simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+              (selfCorrect (n := n) rep (u : Fin n → ZMod 2))
+          have hsc : Pr[= some ans | sc] = 1 := by
+            simpa [sc, ans] using selfCorrect_linear_probOutput hrep_pos π (u : Fin n → ZMod 2)
+          have hsupport : support sc = {some ans} := (probOutput_eq_one_iff.mp hsc).2
+          have hbind :
+              Pr[= true | sc >>= fun
+                | none =>
+                    simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                      (pure false)
+                | some z =>
+                    simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                      (simulateVerifier (n := n) rep (mx z))] =
+              Pr[= true | sc >>= fun _ =>
+                    simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                      (simulateVerifier (n := n) rep (mx ans))] := by
+            apply probOutput_bind_congr
+            intro z hz
+            have hz' : z = some ans := by
+              simpa [hsupport] using hz
+            subst z
+            simp [simulateQ_pure]
+          have hfail : Pr[⊥ | sc] = 0 := (probOutput_eq_one_iff.mp hsc).1
+          have hmatch :
+              Pr[= true | sc >>= fun
+                  | none =>
+                      simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                        (pure false)
+                  | some z =>
+                      simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                        (simulateVerifier (n := n) rep (mx z))] =
+              Pr[= true | sc >>= fun x =>
+                  simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                    (match x with
+                    | none => pure false
+                    | some z => simulateVerifier (n := n) rep (mx z))] := by
+            apply probOutput_bind_congr
+            intro z _hz
+            cases z <;> simp [simulateQ_pure]
+          calc
+            Pr[= true | simulateQ (QueryImpl.add (fun _ => $ᵗ ZMod 2)
+                (fun u => pure (π ⬝ᵥ u))) (mx ans)] ≤
+                Pr[= true |
+                  simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                    (simulateVerifier (n := n) rep (mx ans))] := by
+                  simpa [LPCP.proof, ans] using hcont
+            _ = Pr[= true | sc >>= fun _ =>
+                  simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                    (simulateVerifier (n := n) rep (mx ans))] := by
+                  rw [probOutput_bind_const, hfail]
+                  simp
+            _ = Pr[= true | sc >>= fun
+                  | none =>
+                      simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                        (pure false)
+                  | some z =>
+                      simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                        (simulateVerifier (n := n) rep (mx z))] := hbind.symm
+            _ = Pr[= true | sc >>= fun x =>
+                  simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+                    (match x with
+                    | none => pure false
+                    | some z => simulateVerifier (n := n) rep (mx z))] := hmatch
+            _ = Pr[= true | do
+                  let x ← simulateQ (QueryImpl.add (fun _ => $ᵗ ZMod 2)
+                    (fun q => pure (linearTable π q))) (selfCorrect rep u)
+                  simulateQ (QueryImpl.add (fun _ => $ᵗ ZMod 2)
+                    (fun q => pure (linearTable π q)))
+                    (match x with
+                    | none => pure false
+                    | some z => simulateVerifier (n := n) rep (mx z))] := by
+                  simpa [sc, PCP.proof, rand, HAdd.hAdd, QueryImpl.add, simulateQ_pure,
+                    simulateVerifier]
+            _ ≤ _ := by
+                  simp [simulateVerifier]
+
+private lemma blrPrecheck_linear_probOutput [SampleableType (ZMod 2)]
+    {n : ℕ} (π : Fin n → ZMod 2) :
+    Pr[= true |
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+        (simulateQ (tableImpl n) (BLR.basicVerifier (F := ZMod 2) (n := n)))] = 1 := by
+  rw [simulateQ_tableImpl_linearTable_eq]
+  simp [BLR.basicVerifier, BLR.basicSampleVector, BLR.basicSampleField, LPCP.proof,
+    dotProduct, Finset.sum_add_distrib, mul_add]
+
+private lemma verifier_linear_accept_ge {α : Type} [SampleableType (ZMod 2)]
+    {size : α → ℕ} {ℓ q : ℕ → ℕ}
+    {V : LPCPVerifier α size (ZMod 2) ℓ} {x : α}
+    {rV : ℕ} (hV : QueryBound (V x) (q (size x)) rV)
+    (hrep : q (size x) = 0 ∨ 0 < Nat.clog 2 (100 * q (size x)))
+    (π : Fin (ℓ (size x)) → ZMod 2) :
+    Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) (V x)] ≤
+      Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+        (verifier size ℓ q V x)] := by
+  let n := ℓ (size x)
+  let rep := Nat.clog 2 (100 * q (size x))
+  let blr :=
+    simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+      (simulateQ (tableImpl n) (BLR.basicVerifier (F := ZMod 2) (n := n)))
+  let sim :=
+    simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+      (simulateVerifier (n := n) rep (V x))
+  have hSim :
+      Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) (V x)] ≤
+        Pr[= true | sim] := by
+    simpa [sim, n, rep] using
+      simulateVerifier_linear_accept_ge (n := n) (rep := rep) hV hrep π
+  have hBLR : Pr[= true | blr] = 1 := by
+    simpa [blr, n] using blrPrecheck_linear_probOutput (n := n) π
+  have hsupport : support blr = {true} := (probOutput_eq_one_iff.mp hBLR).2
+  have hfail : Pr[⊥ | blr] = 0 := (probOutput_eq_one_iff.mp hBLR).1
+  have hfinal :
+      Pr[= true | blr >>= fun h => if h then sim else pure false] =
+        Pr[= true | blr >>= fun _ => sim] := by
+    apply probOutput_bind_congr
+    intro b hb
+    have hbtrue : b = true := by simpa [hsupport] using hb
+    subst b
+    simp
+  simp only [verifier, simulateQ_bind]
+  calc
+    Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof π).impl) (V x)] ≤
+        Pr[= true | sim] := hSim
+    _ = Pr[= true | blr >>= fun _ => sim] := by
+      rw [probOutput_bind_const, hfail]
+      simp
+    _ = Pr[= true | blr >>= fun h => if h then sim else pure false] := hfinal.symm
+    _ = Pr[= true | do
+          let hBLR ←
+            simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+              (simulateQ (tableImpl (ℓ (size x)))
+                (BLR.basicVerifier (F := ZMod 2) (n := ℓ (size x))))
+          simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
+            (if hBLR then
+              simulateVerifier (n := ℓ (size x)) (Nat.clog 2 (100 * q (size x))) (V x)
+            else
+              pure false)] := by
+      simpa [blr, sim, n, rep, PCP.proof, rand, HAdd.hAdd, QueryImpl.add]
+    _ ≤ _ := by
+      simp [PCP.proof, rand, HAdd.hAdd, QueryImpl.add]
+
+private noncomputable def nearestLinearCoeff {n : ℕ}
+    (f : (Fin n → ZMod 2) → ZMod 2) : Fin n → ZMod 2 :=
+  Classical.choose (Finset.exists_min_image
+    (s := (Finset.univ : Finset (Fin n → ZMod 2)))
+    (f := fun π => BlrPcp.distance f (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) π))
+    ⟨0, by simp⟩)
+
+private lemma nearestLinearCoeff_min {n : ℕ}
+    (f : (Fin n → ZMod 2) → ZMod 2) (π : Fin n → ZMod 2) :
+    BlrPcp.distance f (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n)
+      (nearestLinearCoeff f)) ≤
+      BlrPcp.distance f (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) π) := by
+  classical
+  have h := Classical.choose_spec (Finset.exists_min_image
+    (s := (Finset.univ : Finset (Fin n → ZMod 2)))
+    (f := fun π => BlrPcp.distance f (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) π))
+    ⟨0, by simp⟩)
+  exact h.2 π (by simp)
+
+private lemma distanceToLinear_le_linearFn {n : ℕ}
+    (f : (Fin n → ZMod 2) → ZMod 2) (π : Fin n → ZMod 2) :
+    BlrPcp.distanceToLinear (F := ZMod 2) (Idx := Fin n) f ≤
+      BlrPcp.distance f (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) π) := by
+  classical
+  unfold BlrPcp.distanceToLinear
+  apply Finset.inf'_le
+  change BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) π ∈
+    ((Finset.univ : Finset (BlrPcp.ScalarFn (ZMod 2) (Fin n))).filter fun g =>
+      g ∈ BlrPcp.LinearSet (F := ZMod 2) (Idx := Fin n))
+  simp [BlrPcp.LinearSet, BlrPcp.IsLinear]
+  exact ⟨π, fun _ => rfl⟩
+
+private lemma nearestLinearCoeff_distance_le_distanceToLinear {n : ℕ}
+    (f : (Fin n → ZMod 2) → ZMod 2) :
+    BlrPcp.distance f (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n)
+      (nearestLinearCoeff f)) ≤
+    BlrPcp.distanceToLinear (F := ZMod 2) (Idx := Fin n) f := by
+  classical
+  unfold BlrPcp.distanceToLinear
+  apply Finset.le_inf'
+  intro g hg
+  change g ∈ ((Finset.univ : Finset (BlrPcp.ScalarFn (ZMod 2) (Fin n))).filter fun g =>
+    g ∈ BlrPcp.LinearSet (F := ZMod 2) (Idx := Fin n)) at hg
+  rw [Finset.mem_filter] at hg
+  rcases hg.2 with ⟨π, hπ⟩
+  have hdist :
+      BlrPcp.distance f g =
+        BlrPcp.distance f (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) π) := by
+    congr 1
+    ext x
+    exact hπ x
+  rw [hdist]
+  exact nearestLinearCoeff_min f π
+
+private lemma nearestLinearCoeff_distance_eq_distanceToLinear {n : ℕ}
+    (f : (Fin n → ZMod 2) → ZMod 2) :
+    BlrPcp.distance f (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n)
+      (nearestLinearCoeff f)) =
+    BlrPcp.distanceToLinear (F := ZMod 2) (Idx := Fin n) f := by
+  exact le_antisymm (nearestLinearCoeff_distance_le_distanceToLinear f)
+    (distanceToLinear_le_linearFn f (nearestLinearCoeff f))
+
+private lemma nearestLinearCoeff_distance_le_basicReject [SampleableType (ZMod 2)]
+    {n : ℕ} (πTable : Fin (2 ^ n) → ZMod 2) :
+    ENNReal.ofReal (BlrPcp.distance (tableFn πTable)
+      (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n)
+        (nearestLinearCoeff (tableFn πTable)))) ≤
+    Pr[= false |
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof πTable).impl)
+        (simulateQ (tableImpl n) (BLR.basicVerifier (F := ZMod 2) (n := n)))] := by
+  by_cases hn : n = 0
+  · subst n
+    haveI : Subsingleton (Fin 0 → ZMod 2) := ⟨by
+      intro u v
+      funext i
+      exact Fin.elim0 i⟩
+    have hdouble : ∀ a : ZMod 2, a + a = 0 := by
+      intro a
+      have htwo : (2 : ZMod 2) = 0 := by native_decide
+      rw [← two_mul, htwo, zero_mul]
+    rw [simulateQ_tableImpl_eq]
+    simp [BLR.basicVerifier, BLR.basicSampleVector, Fin.mOfFn, tableFn, BlrPcp.distance,
+      BlrPcp.linearFn, HAdd.hAdd, QueryImpl.add]
+    have hidx0 : vectorIndex Fin.elim0 = vectorIndex default := by
+      congr
+      exact Subsingleton.elim _ _
+    have hidx_add :
+        vectorIndex (fun i : Fin 0 => Add.add i.elim0 i.elim0) = vectorIndex default := by
+      congr
+      exact Subsingleton.elim _ _
+    have hidx_const : vectorIndex (fun _ : Fin 0 => default) = vectorIndex default := by
+      congr
+    rw [hidx0, hidx_add]
+    have ha :
+        Add.add (πTable (vectorIndex default)) (πTable (vectorIndex default)) = 0 :=
+      hdouble (πTable (vectorIndex default))
+    rw [ha]
+    by_cases h : 0 = πTable (vectorIndex
+        (@default (BlrPcp.Vec (ZMod 2) (Fin 0))
+          (@Unique.instInhabited (BlrPcp.Vec (ZMod 2) (Fin 0)) inferInstance)))
+    · have h' : πTable (vectorIndex
+          (@default (BlrPcp.Vec (ZMod 2) (Fin 0))
+            (@Unique.instInhabited (BlrPcp.Vec (ZMod 2) (Fin 0)) inferInstance))) = 0 :=
+        h.symm
+      have hleft :
+          ENNReal.ofReal
+            (if πTable (vectorIndex
+                (@default (BlrPcp.Vec (ZMod 2) (Fin 0))
+                  (@Unique.instInhabited (BlrPcp.Vec (ZMod 2) (Fin 0)) inferInstance))) =
+              0 then (0 : ℝ) else 1) = 0 := by
+        simp only [if_pos h', ENNReal.ofReal_zero]
+      have hright : (if 0 = πTable
+          (vectorIndex
+            (@default (BlrPcp.Vec (ZMod 2) (Fin 0))
+              (@Unique.instInhabited (BlrPcp.Vec (ZMod 2) (Fin 0)) inferInstance))) then
+          (0 : ℝ≥0∞) else 1) = 0 := by
+        simp only [if_pos h]
+      exact hleft.trans_le (zero_le _)
+    · have hleft :
+          ¬πTable (vectorIndex
+            (@default (BlrPcp.Vec (ZMod 2) (Fin 0))
+              (@Unique.instInhabited (BlrPcp.Vec (ZMod 2) (Fin 0)) inferInstance))) = 0 :=
+        fun h' => h h'.symm
+      split_ifs with hA hB <;> simp_all
+      exact h (by
+        congr
+        exact Subsingleton.elim _ _)
+  · letI : Nonempty (Fin n) := ⟨⟨0, Nat.pos_of_ne_zero hn⟩⟩
+    rw [simulateQ_tableImpl_eq]
+    simpa [distanceToLin, nearestLinearCoeff_distance_eq_distanceToLinear] using
+      BLR_basic_soundness_ZMod2 (n := n) (tableFn πTable)
+
 end LPCPToPCP
 
 theorem QESAT_poly_LPCP {vars : ℕ} :
@@ -1475,7 +2157,92 @@ theorem LPCP_to_PCP_ZMod2 {α : Type} (size : α → ℕ)
       (fun n => 2 ^ ℓ n)
       (fun n => 3 + 2 * Nat.clog 2 (100 * q n) * q n)
       (fun n => r n + (2 + Nat.clog 2 (100 * q n) * q n) * ℓ n) :=
-  sorry
+by
+  intro L hL
+  rcases hL with ⟨V, t, hV⟩
+  refine ⟨LPCPToPCP.verifier size ℓ q V, t, fun x => ?_⟩
+  rcases hV x with ⟨hTime, hQuery, hComplete, hSound⟩
+  refine ⟨by simpa [RunsInTime] using hTime, LPCPToPCP.verifier_queryBound hQuery, ?_, ?_⟩
+  · intro hx
+    rcases hComplete hx with ⟨πLin, hπLin⟩
+    refine ⟨LPCPToPCP.linearTable πLin, ?_⟩
+    have hrep : q (size x) = 0 ∨ 0 < Nat.clog 2 (100 * q (size x)) := by
+      by_cases hq : q (size x) = 0
+      · exact Or.inl hq
+      · right
+        exact Nat.clog_pos (by norm_num) (by
+          have hqpos : 0 < q (size x) := Nat.pos_of_ne_zero hq
+          omega)
+    exact le_trans hπLin (LPCPToPCP.verifier_linear_accept_ge hQuery hrep πLin)
+  · intro hx π
+    let n := ℓ (size x)
+    let rep := Nat.clog 2 (100 * q (size x))
+    let blr :=
+      simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+        (simulateQ (LPCPToPCP.tableImpl n) (BLR.basicVerifier (F := ZMod 2) (n := n)))
+    by_cases hLow : Pr[= true | blr] ≤ (7 / 8 : ℝ≥0∞)
+    · exact (LPCPToPCP.verifier_accept_le_blr V x π).trans
+        (hLow.trans (le_max_left _ _))
+    · let πLin := LPCPToPCP.nearestLinearCoeff (LPCPToPCP.tableFn π)
+      have hHigh : (7 / 8 : ℝ≥0∞) ≤ Pr[= true | blr] := le_of_not_ge hLow
+      have hRejectSmall : Pr[= false | blr] ≤ 1 / 8 :=
+        false_prob_le_eighth_of_accept_ge_seven_eighths blr hHigh
+      have hDistSmall :
+          ENNReal.ofReal (BlrPcp.distance (LPCPToPCP.tableFn π)
+            (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) ≤ 1 / 8 := by
+        have hDistReject := LPCPToPCP.nearestLinearCoeff_distance_le_basicReject
+          (n := n) π
+        have hDistReject' :
+            ENNReal.ofReal (BlrPcp.distance (LPCPToPCP.tableFn π)
+              (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) ≤
+              Pr[= false | blr] := by
+          simpa [πLin, blr, n] using hDistReject
+        exact hDistReject'.trans hRejectSmall
+      have hSample :
+          ∀ u : Fin n → ZMod 2,
+            Pr[fun y => y ≠ πLin ⬝ᵥ u |
+              simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+                (LPCPToPCP.selfCorrectSample (n := n) u)] ≤ 1 / 2 := by
+        intro u
+        have hOne := LPCPToPCP.selfCorrectSample_wrong_le_two_distance
+          (n := n) π πLin u
+        calc
+          Pr[fun y => y ≠ πLin ⬝ᵥ u |
+              simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+                (LPCPToPCP.selfCorrectSample (n := n) u)] ≤
+              ENNReal.ofReal (BlrPcp.distance (LPCPToPCP.tableFn π)
+                (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) +
+              ENNReal.ofReal (BlrPcp.distance (LPCPToPCP.tableFn π)
+                (BlrPcp.linearFn (F := ZMod 2) (Idx := Fin n) πLin)) := hOne
+          _ ≤ 1 / 8 + 1 / 8 := add_le_add hDistSmall hDistSmall
+          _ ≤ 1 / 2 := two_eighths_le_half
+      have hWrong :
+          ∀ u : Fin n → ZMod 2,
+            Pr[fun z? => ∃ z, z? = some z ∧ z ≠ πLin ⬝ᵥ u |
+              simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+                (LPCPToPCP.selfCorrect (n := n) rep u)] ≤
+              (1 / 2 : ℝ≥0∞) ^ rep := by
+        intro u
+        exact LPCPToPCP.selfCorrect_wrong_le_of_sample
+          (n := n) (rep := rep) π u (πLin ⬝ᵥ u) (hSample u)
+      have hSim := LPCPToPCP.simulateVerifier_accept_le
+        (n := n) (rep := rep) hQuery π πLin hWrong
+      have hFinal := LPCPToPCP.verifier_accept_le_simulateVerifier
+        (ℓ := ℓ) (q := q) V x π
+      have hPow :
+          (q (size x) : ℝ≥0∞) * (1 / 2 : ℝ≥0∞) ^ rep ≤ 1 / 100 := by
+        simpa [rep] using nat_mul_half_pow_clog_le (q (size x))
+      calc
+        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+            (LPCPToPCP.verifier size ℓ q V x)] ≤
+            Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
+              (LPCPToPCP.simulateVerifier (n := ℓ (size x))
+                (Nat.clog 2 (100 * q (size x))) (V x))] := hFinal
+        _ ≤ Pr[= true | simulateQ ((rand (ZMod 2)).impl + (LPCP.proof πLin).impl)
+              (V x)] + (q (size x) : ℝ≥0∞) * (1 / 2 : ℝ≥0∞) ^ rep := by
+            simpa [n, rep] using hSim
+        _ ≤ ε_s + 1 / 100 := add_le_add (hSound hx πLin) hPow
+        _ ≤ max (7 / 8) (ε_s + 1 / 100) := le_max_right _ _
 
 theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (ZMod 2) vars ∈
