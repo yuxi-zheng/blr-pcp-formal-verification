@@ -3,7 +3,8 @@ Copyright (c) 2026 Thomas Vidick. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Thomas Vidick
 -/
-import BlrPcp.GH3
+import BlrPcp.GH.Background
+import BlrPcp.GH.GowersHatami
 
 import Mathlib.Data.Fintype.EquivFin
 import Mathlib.LinearAlgebra.Matrix.Rank
@@ -28,7 +29,7 @@ universe u
 variable {d : Nat}
 variable (G : Type u) [Group G] [Fintype G]
 
-namespace GH3
+namespace GH
 
 noncomputable section
 /-! ## Reindexing an abstract witness to a numeric dimension -/
@@ -253,4 +254,4 @@ theorem gowers_hatami [DecidableEq G]
 
 end
 
-end GH3
+end GH

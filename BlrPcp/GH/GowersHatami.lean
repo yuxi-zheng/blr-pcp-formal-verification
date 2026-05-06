@@ -3,7 +3,7 @@ Copyright (c) 2026 Thomas Vidick. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Thomas Vidick
 -/
-import BlrPcp.GH3.Background
+import BlrPcp.GH.Background
 
 /-!
 # Gowers-Hatami with an abstract finite target index
@@ -28,7 +28,7 @@ universe u
 variable {d : Nat}
 variable (G : Type u) [Group G] [Fintype G]
 
-namespace GH3
+namespace GH
 
 noncomputable section
 /-- The coordinate Hilbert space with basis indexed by an arbitrary finite type. -/
@@ -339,4 +339,4 @@ theorem gowers_hatami_abstract [DecidableEq G]
 
 end
 
-end GH3
+end GH

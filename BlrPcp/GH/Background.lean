@@ -3,7 +3,6 @@ Copyright (c) 2026 Thomas Vidick. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Thomas Vidick
 -/
-import BlrPcp.GowersHatami
 
 import Mathlib.Analysis.Matrix.Order
 import Mathlib.LinearAlgebra.Matrix.Permutation
@@ -33,9 +32,44 @@ universe u
 variable {d : Nat}
 variable (G : Type u) [Group G] [Fintype G]
 
-namespace GH3
+namespace GH
+
+
+
+
+
 
 noncomputable section
+
+
+def sigmaInner {n : ℕ} (σ A B : Matrix (Fin n) (Fin n) ℂ) : ℂ :=
+  Matrix.trace (Aᴴ * B * σ)
+
+def sigmaNormSq {n : ℕ} (σ A : Matrix (Fin n) (Fin n) ℂ) : ℝ :=
+  (sigmaInner σ A A).re
+
+  /-!
+### (ε, σ)-representation
+
+Given a finite group $G$, an integer $d \ge 1$, $\varepsilon \ge 0$, and a
+$d$-dimensional density matrix $\sigma$, an $(\varepsilon, \sigma)$-representation
+of $G$ is a map $f : G \to U_d(\mathbb{C})$ such that
+\[
+  \mathbb{E}_{x,y \in G}
+  \Re\!\left(\langle f(x)^* f(y),\, f(x^{-1}y)\rangle_\sigma\right) \ge 1 - \varepsilon.
+\]
+-/
+
+def IsApproxRepresentation
+    (σ : Matrix (Fin d) (Fin d) ℂ)
+    (f : G → Matrix (Fin d) (Fin d) ℂ)
+    (ε : ℝ) : Prop :=
+  (∑ x : G, ∑ y : G,
+    (sigmaInner σ (f x * f y) (f (x * y))).re) /
+    (Fintype.card G ^ 2 : ℝ) ≥ 1 - ε
+
+
+
 /-! ## The enlarged Hilbert space `L(G, H)` -/
 
 /-- Matrix index for `L(G, ℂ^d)`. -/
@@ -316,4 +350,4 @@ theorem average_two_sub_two_mul (c : G → Real) :
 
 end
 
-end GH3
+end GH

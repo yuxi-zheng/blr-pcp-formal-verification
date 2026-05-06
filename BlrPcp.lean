@@ -5,5 +5,7 @@ import BlrPcp.Problems.QESAT
 import BlrPcp.Problems.LinEq
 import BlrPcp.Problems.BLR
 import BlrPcp.Problems.TensorEq
-import BlrPcp.GowersHatami
-import BlrPcp.GH2
+import BlrPcp.GowersHatami_original
+import BlrPcp.GH.Background
+import BlrPcp.GH.Concrete
+import BlrPcp.GH.GowersHatami
