@@ -1,6 +1,7 @@
 import Architect
 import BlrPcp.Oracle
 import BlrPcp.Problems.TensorEq
+import CompPoly.Data.Nat.Bitwise
 import CompPoly.Multivariate.CMvPolynomial
 import CompPoly.Multivariate.MvPolyEquiv.Eval
 import VCVio.OracleComp.Constructions.Replicate
@@ -862,22 +863,47 @@ private lemma nat_mul_half_pow_clog_le (q : ℕ) :
 
 namespace LPCPToPCP
 
-private noncomputable def vectorFinEquiv (n : ℕ) : (Fin n → ZMod 2) ≃ Fin (2 ^ n) :=
-  (Fintype.equivFin (Fin n → ZMod 2)).trans (finCongr (by
-    rw [Fintype.card_fun, Fintype.card_fin, ZMod.card]))
+private def zmod2Bit (a : ZMod 2) : ℕ :=
+  if a = 0 then 0 else 1
 
-private noncomputable def vectorIndex {n : ℕ} (u : Fin n → ZMod 2) : Fin (2 ^ n) :=
-  vectorFinEquiv n u
+private lemma zmod2Bit_le_one (a : ZMod 2) : zmod2Bit a ≤ 1 := by
+  unfold zmod2Bit
+  split <;> omega
 
-private noncomputable def tableFn {n : ℕ} (π : Fin (2 ^ n) → ZMod 2) :
+private lemma zmod2Bit_cast (a : ZMod 2) : (zmod2Bit a : ZMod 2) = a := by
+  unfold zmod2Bit
+  by_cases ha : a = 0
+  · simp [ha]
+  · have hval : a.val = 1 := by
+      have hlt : a.val < 2 := ZMod.val_lt a
+      have hne : a.val ≠ 0 := by
+        intro hzero
+        exact ha ((ZMod.val_eq_zero a).mp hzero)
+      omega
+    simp [(ZMod.val_eq_one (by norm_num) a).mp hval]
+
+private def vectorIndex {n : ℕ} (u : Fin n → ZMod 2) : Fin (2 ^ n) :=
+  Nat.binaryFinMapToNat (fun i => zmod2Bit (u i)) fun i => zmod2Bit_le_one (u i)
+
+private def vectorOfIndex {n : ℕ} (i : Fin (2 ^ n)) : Fin n → ZMod 2 :=
+  fun j => Nat.getBit j.val i.val
+
+private lemma vectorOfIndex_vectorIndex {n : ℕ} (u : Fin n → ZMod 2) :
+    vectorOfIndex (vectorIndex u) = u := by
+  funext j
+  unfold vectorOfIndex vectorIndex
+  rw [Nat.getBit_of_binaryFinMapToNat]
+  simp [zmod2Bit_cast]
+
+private def tableFn {n : ℕ} (π : Fin (2 ^ n) → ZMod 2) :
     (Fin n → ZMod 2) → ZMod 2 :=
   fun u => π (vectorIndex u)
 
-private noncomputable def linearTable {n : ℕ} (π : Fin n → ZMod 2) :
+private def linearTable {n : ℕ} (π : Fin n → ZMod 2) :
     Fin (2 ^ n) → ZMod 2 :=
-  fun i => π ⬝ᵥ (vectorFinEquiv n).symm i
+  fun i => π ⬝ᵥ vectorOfIndex i
 
-private noncomputable def tableImpl (n : ℕ) :
+private def tableImpl (n : ℕ) :
     QueryImpl (LPCP.spec (ZMod 2) n) (OracleComp (PCP.spec (ZMod 2) (2 ^ n)))
   | .inl () => query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inl ())
   | .inr u => query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inr (vectorIndex u))
@@ -886,7 +912,7 @@ private noncomputable def tableImpl (n : ℕ) :
 private lemma tableFn_linearTable {n : ℕ} (π : Fin n → ZMod 2)
     (u : Fin n → ZMod 2) :
     tableFn (linearTable π) u = π ⬝ᵥ u := by
-  simp [tableFn, linearTable, vectorIndex]
+  simp [tableFn, linearTable, vectorOfIndex_vectorIndex]
 
 private lemma simulateQ_tableImpl_eq {n : ℕ} [SampleableType (ZMod 2)] {α : Type}
     (oa : OracleComp (LPCP.spec (ZMod 2) n) α) (π : Fin (2 ^ n) → ZMod 2) :
@@ -1097,7 +1123,7 @@ private lemma probEvent_sampleVector_translate_eq_distance [SampleableType (ZMod
       (fun x : Fin n → ZMod 2 =>
         (Fintype.card (Fin n → ZMod 2) : ENNReal)⁻¹ * if f x ≠ g x then 1 else 0))
 
-private noncomputable def selfCorrectSample {n : ℕ} (u : Fin n → ZMod 2) :
+private def selfCorrectSample {n : ℕ} (u : Fin n → ZMod 2) :
     OracleComp (PCP.spec (ZMod 2) (2 ^ n)) (ZMod 2) := do
   let z ← sampleVector (2 ^ n) n
   let fz : ZMod 2 ← query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inr (vectorIndex z))
@@ -1132,7 +1158,7 @@ private def repeatedValue? : List (ZMod 2) → Option (ZMod 2)
   | [] => none
   | y :: ys => if ys.all (fun z => decide (z = y)) then some y else none
 
-private noncomputable def selfCorrect {n : ℕ} (t : ℕ) (u : Fin n → ZMod 2) :
+private def selfCorrect {n : ℕ} (t : ℕ) (u : Fin n → ZMod 2) :
     OracleComp (PCP.spec (ZMod 2) (2 ^ n)) (Option (ZMod 2)) := do
   let ys ← OracleComp.replicate t (selfCorrectSample u)
   pure (repeatedValue? ys)
@@ -1142,7 +1168,7 @@ private lemma selfCorrect_queryBound {n t : ℕ} (u : Fin n → ZMod 2) :
   simpa [selfCorrect, Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using
     queryBound_map repeatedValue? (queryBound_replicate t (selfCorrectSample_queryBound u))
 
-private noncomputable def simulateVerifier {n : ℕ} (t : ℕ) :
+private def simulateVerifier {n : ℕ} (t : ℕ) :
     OracleComp (LPCP.spec (ZMod 2) n) Bool →
       OracleComp (PCP.spec (ZMod 2) (2 ^ n)) Bool :=
   OracleComp.construct
@@ -1212,7 +1238,7 @@ private lemma simulateVerifier_queryBound {n rep : ℕ}
                   r + rep * (q - 1 + 1) * n := by ring
               _ ≤ r + rep * (q - 1 + 1) * n := le_rfl
 
-private noncomputable def verifier {α : Type} (size : α → ℕ) (ℓ q : ℕ → ℕ)
+def verifier {α : Type} (size : α → ℕ) (ℓ q : ℕ → ℕ)
     (V : LPCPVerifier α size (ZMod 2) ℓ) :
     PCPVerifier α size (ZMod 2) (fun n => 2 ^ ℓ n) :=
   fun x => do
@@ -1630,7 +1656,7 @@ private lemma selfCorrectSample_linear_probOutput [SampleableType (ZMod 2)]
           linearTable π (vectorIndex (fun i => u i + z i)) + linearTable π (vectorIndex z)) =
         fun _ => π ⬝ᵥ u := by
     funext z
-    simpa [linearTable, vectorIndex] using linear_selfCorrect_value π u z
+    simpa [linearTable, vectorOfIndex_vectorIndex] using linear_selfCorrect_value π u z
   rw [hconst]
   rw [show (fun _ : Fin n → ZMod 2 => π ⬝ᵥ u) <$>
       simulateQ ((rand (ZMod 2)).impl + (PCP.proof (linearTable π)).impl)
@@ -1771,7 +1797,7 @@ private lemma simulateVerifier_linear_accept_ge [SampleableType (ZMod 2)] {n rep
             have hz' : z = some ans := by
               simpa [hsupport] using hz
             subst z
-            simp [simulateQ_pure]
+            simp
           have hfail : Pr[⊥ | sc] = 0 := (probOutput_eq_one_iff.mp hsc).1
           have hmatch :
               Pr[= true | sc >>= fun
@@ -1821,8 +1847,7 @@ private lemma simulateVerifier_linear_accept_ge [SampleableType (ZMod 2)] {n rep
                     (match x with
                     | none => pure false
                     | some z => simulateVerifier (n := n) rep (mx z))] := by
-                  simpa [sc, PCP.proof, rand, HAdd.hAdd, QueryImpl.add, simulateQ_pure,
-                    simulateVerifier]
+                  simp [sc, PCP.proof, rand, HAdd.hAdd, simulateVerifier]
             _ ≤ _ := by
                   simp [simulateVerifier]
 
@@ -1887,9 +1912,9 @@ private lemma verifier_linear_accept_ge {α : Type} [SampleableType (ZMod 2)]
               simulateVerifier (n := ℓ (size x)) (Nat.clog 2 (100 * q (size x))) (V x)
             else
               pure false)] := by
-      simpa [blr, sim, n, rep, PCP.proof, rand, HAdd.hAdd, QueryImpl.add]
+      simp [blr, sim, n, rep, PCP.proof, rand, HAdd.hAdd]
     _ ≤ _ := by
-      simp [PCP.proof, rand, HAdd.hAdd, QueryImpl.add]
+      simp [PCP.proof, rand, HAdd.hAdd]
 
 private noncomputable def nearestLinearCoeff {n : ℕ}
     (f : (Fin n → ZMod 2) → ZMod 2) : Fin n → ZMod 2 :=
@@ -2162,7 +2187,7 @@ by
   rcases hL with ⟨V, t, hV⟩
   refine ⟨LPCPToPCP.verifier size ℓ q V, t, fun x => ?_⟩
   rcases hV x with ⟨hTime, hQuery, hComplete, hSound⟩
-  refine ⟨by simpa [RunsInTime] using hTime, LPCPToPCP.verifier_queryBound hQuery, ?_, ?_⟩
+  refine ⟨by simp [RunsInTime], LPCPToPCP.verifier_queryBound hQuery, ?_, ?_⟩
   · intro hx
     rcases hComplete hx with ⟨πLin, hπLin⟩
     refine ⟨LPCPToPCP.linearTable πLin, ?_⟩
