@@ -21,13 +21,11 @@ Unless stated otherwise, all definitions and lemmas are for F = Z/2.
 - `LPCP_to_PCP_ZMod2`: the conversion lemma from LPCP to PCP for `ZMod 2`.
 - `QESAT.pcpVerifierBeforeRepetition`: the explicit computable QESAT PCP verifier before
   independent repetition.
-- `QESAT.pcpVerifier`: the explicit computable QESAT PCP verifier after independent repetition.
-- `QESAT.fastPcpVerifier`: a theorem-backed verifier with an optimized compiled implementation.
+- `QESAT.pcpVerifier`: the theorem-backed QESAT PCP verifier after independent repetition,
+  with an optimized compiled implementation.
 - `QESAT.trivialPcpVerifier`: a zero-query exponential-time PCP verifier that brute-forces
   satisfiability.
 - `QESAT.pcpVerifier_correct`: completeness, soundness, and query bounds for `QESAT.pcpVerifier`.
-- `QESAT.fastPcpVerifier_correct`: completeness, soundness, and query bounds for
-  `QESAT.fastPcpVerifier`.
 - `QESAT_exp_PCP`: QESAT over `ZMod 2` has an exponential-length PCP.
 -/
 
@@ -884,14 +882,6 @@ private lemma soundness_before_repetition :
       norm_num
     · exact ENNReal.div_ne_top (by simp) (by norm_num)
     · exact ENNReal.div_ne_top (by simp) (by norm_num)
-
-def verifier {m n : ℕ} :
-    LPCPVerifier (List (CMvPolynomial n F)) size F (fun _ => n + n * n) :=
-  fun x => do
-    -- create M and c from the input
-    -- sample
-    -- 4 queries
-    sorry
 
 end QESAT
 
@@ -2416,16 +2406,12 @@ def pcpVerifierBeforeRepetition {vars : ℕ} :
     else
       pure true
 
+@[implemented_by pcpVerifierFastImpl]
 def pcpVerifier {vars : ℕ} :
     PCPVerifier (List (CMvPolynomial vars (ZMod 2))) size (ZMod 2) (fun n => 2 ^ n) :=
   fun x => do
     let xs ← OracleComp.replicate 6 (pcpVerifierBeforeRepetition (vars := vars) x)
     pure (xs.all id)
-
-@[implemented_by pcpVerifierFastImpl]
-def fastPcpVerifier {vars : ℕ} :
-    PCPVerifier (List (CMvPolynomial vars (ZMod 2))) size (ZMod 2) (fun n => 2 ^ n) :=
-  pcpVerifier
 
 /-- Brute-force decision procedure for `QESAT (ZMod 2)`.
 It checks the degree bound and then enumerates all assignments in `(ZMod 2)^vars`. -/
@@ -2684,22 +2670,6 @@ theorem pcpVerifier_correct {vars : ℕ} :
     simp only [pcpVerifier, simulateQ_bind, simulateQ_pure]
     rw [simulateQ_replicate]
     exact (repeated_accept_le (n := 6) hBase).trans seven_eighths_pow_six_le_half
-
-theorem fastPcpVerifier_correct {vars : ℕ} :
-    ∀ x : List (CMvPolynomial vars (ZMod 2)),
-      RunsInTime (fastPcpVerifier (vars := vars) x) 0 ∧
-      QueryBound (fastPcpVerifier (vars := vars) x)
-        (6 * (3 + 2 * Nat.clog 2 (100 * 4) * 4))
-        ((Polynomial.C 6 * (Polynomial.X + Polynomial.C (2 * vars) +
-          Polynomial.C (2 + Nat.clog 2 (100 * 4) * 4) *
-            Polynomial.C (vars + vars ^ 2))).eval (size x)) ∧
-      (x ∈ QESAT (ZMod 2) vars → ∃ π : Fin (2 ^ size x) → ZMod 2,
-        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
-          (fastPcpVerifier (vars := vars) x)] ≥ 1 - (0 : ℝ≥0∞)) ∧
-      (x ∉ QESAT (ZMod 2) vars → ∀ π : Fin (2 ^ size x) → ZMod 2,
-        Pr[= true | simulateQ ((rand (ZMod 2)).impl + (PCP.proof π).impl)
-          (fastPcpVerifier (vars := vars) x)] ≤ (1 / 2 : ℝ≥0∞)) := by
-  simpa [fastPcpVerifier] using pcpVerifier_correct (vars := vars)
 
 end QESAT
 

@@ -67,15 +67,15 @@ def zeroProof {vars : ℕ} (x : List (CMvPolynomial vars F)) :
     Fin (2 ^ QESAT.size x) → F :=
   fun _ => 0
 
-/-- Slow reference runner for the proof-oriented `OracleComp` verifier. -/
+/-- Runner for the theorem-backed QESAT PCP verifier using one system-randomness call per bit. -/
 def runOracleVerifier {vars : ℕ} (x : List (CMvPolynomial vars F))
     (π : Fin (2 ^ QESAT.size x) → F) : IO Bool :=
   SysRand.runPCP π (QESAT.pcpVerifier (vars := vars) x)
 
-/-- Runner for the proof-backed verifier with the optimized compiled implementation. -/
+/-- Runner for the theorem-backed QESAT PCP verifier using buffered system randomness. -/
 def runOracleFastVerifier {vars : ℕ} (x : List (CMvPolynomial vars F))
     (π : Fin (2 ^ QESAT.size x) → F) : IO Bool :=
-  SysRand.runPCPBuffered π (QESAT.fastPcpVerifier (vars := vars) x)
+  SysRand.runPCPBuffered π (QESAT.pcpVerifier (vars := vars) x)
 
 def runOracleTrivialVerifier {vars : ℕ} (x : List (CMvPolynomial vars F)) : IO Bool :=
   SysRand.runPCP (Fin.elim0 : Fin 0 → F) (QESAT.trivialPcpVerifier (vars := vars) x)
@@ -481,18 +481,6 @@ example {vars : ℕ} (x : List (CMvPolynomial vars F)) :
       Pr[= true | simulateQ ((rand F).impl + (PCP.proof π).impl)
         (QESAT.pcpVerifier (vars := vars) x)] ≤ (1 / 2 : ℝ≥0∞)) :=
   (QESAT.pcpVerifier_correct (vars := vars) x).2.2.2
-
-example {vars : ℕ} (x : List (CMvPolynomial vars F)) :
-    (x ∈ QESAT F vars → ∃ π : Fin (2 ^ QESAT.size x) → F,
-      Pr[= true | simulateQ ((rand F).impl + (PCP.proof π).impl)
-        (QESAT.fastPcpVerifier (vars := vars) x)] ≥ 1 - (0 : ℝ≥0∞)) :=
-  (QESAT.fastPcpVerifier_correct (vars := vars) x).2.2.1
-
-example {vars : ℕ} (x : List (CMvPolynomial vars F)) :
-    (x ∉ QESAT F vars → ∀ π : Fin (2 ^ QESAT.size x) → F,
-      Pr[= true | simulateQ ((rand F).impl + (PCP.proof π).impl)
-        (QESAT.fastPcpVerifier (vars := vars) x)] ≤ (1 / 2 : ℝ≥0∞)) :=
-  (QESAT.fastPcpVerifier_correct (vars := vars) x).2.2.2
 
 def runAll : IO Unit := do
   runSmoke
