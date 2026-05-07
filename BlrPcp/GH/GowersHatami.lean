@@ -233,11 +233,11 @@ theorem compression_sigmaNormSq_le_one [DecidableEq G]
   have hsq_avg :
       ‖((Fintype.card G : Complex)⁻¹ • ∑ y : G,
           (rho y)ᴴ * rho (y * x))‖ ^ 2 ≤ 1 := by
-    have h := norm_average_le_one G (fun y : G =>
-        (rho y)ᴴ * rho (y * x)) hnormF
-    nlinarith [h,
-      norm_nonneg ((Fintype.card G : Complex)⁻¹ • ∑ y : G,
-        (rho y)ᴴ * rho (y * x))]
+    simpa [sigmaNormSq_eq_matrix_norm_sq sigma
+      ((Fintype.card G : Complex)⁻¹ • ∑ y : G,
+        (rho y)ᴴ * rho (y * x)) hsigma] using
+      sigmaNormSq_average_le_one G sigma hsigma (fun y : G =>
+        (rho y)ᴴ * rho (y * x)) (by intro y; have h := hnormF y; rw [sigmaNormSq_eq_matrix_norm_sq sigma ((rho y)ᴴ * rho (y * x)) hsigma]; nlinarith [h, norm_nonneg ((rho y)ᴴ * rho (y * x))])
   simpa [sigmaNormSq_eq_matrix_norm_sq sigma
     ((Fintype.card G : Complex)⁻¹ • ∑ y : G,
       (rho y)ᴴ * rho (y * x)) hsigma] using hsq_avg
