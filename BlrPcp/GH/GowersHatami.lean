@@ -26,8 +26,24 @@ variable (G : Type u) [Group G] [Fintype G]
 namespace GH
 
 noncomputable section
+
+
+
+/-
+### Definitions
+-/
+
 /-- The coordinate Hilbert space with basis indexed by an arbitrary finite type. -/
 abbrev CoordHilbert (ι : Type*) := EuclideanSpace Complex ι
+
+/-- (ε, σ)-representations -/
+def IsApproxRepresentation
+    (σ : Matrix (Fin d) (Fin d) ℂ)
+    (f : G → Matrix (Fin d) (Fin d) ℂ)
+    (ε : ℝ) : Prop :=
+  (∑ x : G, ∑ y : G,
+    (sigmaInner σ (f x * f y) (f (x * y))).re) /
+    (Fintype.card G ^ 2 : ℝ) ≥ 1 - ε
 
 /-- Compression of a representation on the enlarged coordinate space by an isometry adjoint `V`. -/
 def compression {ι : Type*} [Fintype ι] [DecidableEq ι]
@@ -38,9 +54,6 @@ def compression {ι : Type*} [Fintype ι] [DecidableEq ι]
 
 /--
 A finite-dimensional Hilbert-space witness for Gowers-Hatami, in coordinates.
-
-The target Hilbert space is `CoordHilbert ι` for an arbitrary finite index type
-`ι`; no choice of an equivalence `ι ≃ Fin d'` is part of this statement.
 -/
 def HasFiniteHilbertWitness
     (sigma : Matrix (Fin d) (Fin d) Complex)
@@ -84,19 +97,13 @@ def embedding (rho : G → Matrix (Fin d) (Fin d) Complex) :
     Matrix (Fin d) (Index G d) Complex :=
   fun i xj ↦ scale G * (starRingEnd Complex) (rho xj.1 xj.2 i)
 
-private theorem unitary_conjTranspose_mul_self
-    {A : Matrix (Fin d) (Fin d) Complex}
-    (hA : A ∈ Matrix.unitaryGroup (Fin d) Complex) :
-    Aᴴ * A = 1 :=
-  Matrix.mem_unitaryGroup_iff'.mp hA
-
 private theorem unitary_col_sum
     (A : Matrix (Fin d) (Fin d) Complex)
     (hA : A ∈ Matrix.unitaryGroup (Fin d) Complex)
     (i j : Fin d) :
     (∑ k : Fin d, (starRingEnd Complex) (A k i) * A k j) =
       (1 : Matrix (Fin d) (Fin d) Complex) i j := by
-  have hmat : Aᴴ * A = 1 := unitary_conjTranspose_mul_self hA
+  have hmat : Aᴴ * A = 1 := Matrix.mem_unitaryGroup_iff'.mp hA
   simpa [Matrix.mul_apply, Matrix.conjTranspose_apply] using
     congr_fun (congr_fun hmat i) j
 
@@ -201,14 +208,39 @@ theorem compression_sigmaNormSq_le_one [DecidableEq G]
     (hsigmatr : Matrix.trace sigma = 1)
     (hrho : ∀ y, rho y ∈ Matrix.unitaryGroup (Fin d) Complex) :
     sigmaNormSq sigma (regularCompression G rho x) ≤ 1 := by
+  letI : SeminormedAddCommGroup (Matrix (Fin d) (Fin d) Complex) :=
+    Matrix.toMatrixSeminormedAddCommGroup sigma hsigma
+  letI : InnerProductSpace Complex (Matrix (Fin d) (Fin d) Complex) :=
+    Matrix.toMatrixInnerProductSpace sigma hsigma
   unfold regularCompression
   rw [compression_eq_average G rho x]
-  apply sigmaNormSq_average_le_one G sigma hsigma
-  intro y
-  have hy_unitary :
-      (rho y)ᴴ * rho (y * x) ∈ Matrix.unitaryGroup (Fin d) Complex :=
-    unitary_conjTranspose_mul (hrho y) (hrho (y * x))
-  rw [sigmaNormSq_unitary sigma ((rho y)ᴴ * rho (y * x)) hsigmatr hy_unitary]
+  have hnormF : ∀ y : G, ‖(rho y)ᴴ * rho (y * x)‖ ≤ 1 := by
+    intro y
+    have hy_unitary :
+        (rho y)ᴴ * rho (y * x) ∈ Matrix.unitaryGroup (Fin d) Complex :=
+      unitary_conjTranspose_mul (hrho y) (hrho (y * x))
+    have hsq :
+        ‖(rho y)ᴴ * rho (y * x)‖ ^ 2 = 1 := by
+      calc
+        ‖(rho y)ᴴ * rho (y * x)‖ ^ 2
+            = sigmaNormSq sigma ((rho y)ᴴ * rho (y * x)) := by
+              simp [sigmaNormSq_eq_matrix_norm_sq sigma
+                ((rho y)ᴴ * rho (y * x)) hsigma]
+        _ = 1 :=
+              sigmaNormSq_unitary sigma ((rho y)ᴴ * rho (y * x)) hsigmatr
+                hy_unitary
+    nlinarith [norm_nonneg ((rho y)ᴴ * rho (y * x)), hsq]
+  have hsq_avg :
+      ‖((Fintype.card G : Complex)⁻¹ • ∑ y : G,
+          (rho y)ᴴ * rho (y * x))‖ ^ 2 ≤ 1 := by
+    have h := norm_average_le_one G (fun y : G =>
+        (rho y)ᴴ * rho (y * x)) hnormF
+    nlinarith [h,
+      norm_nonneg ((Fintype.card G : Complex)⁻¹ • ∑ y : G,
+        (rho y)ᴴ * rho (y * x))]
+  simpa [sigmaNormSq_eq_matrix_norm_sq sigma
+    ((Fintype.card G : Complex)⁻¹ • ∑ y : G,
+      (rho y)ᴴ * rho (y * x)) hsigma] using hsq_avg
 
 /-- The compressed correlation is the average approximate-representation correlation. -/
 theorem sigmaInner_compression [DecidableEq G]
@@ -227,6 +259,10 @@ theorem sigmaInner_compression [DecidableEq G]
   apply Finset.sum_congr rfl
   intro y _
   simp [Matrix.conjTranspose_mul, Matrix.mul_assoc]
+
+
+
+
 
 /-- The approximate-representation hypothesis gives high average compressed correlation. -/
 theorem average_correlation [DecidableEq G]
@@ -273,11 +309,15 @@ theorem sigmaNormSq_sub_regularCompression_le [DecidableEq G]
     (x : G) :
     sigmaNormSq sigma (rho x - regularCompression G rho x) ≤
       2 - 2 * (sigmaInner sigma (rho x) (regularCompression G rho x)).re := by
-  exact sigmaNormSq_sub_le_of_sigmaNormSq_le sigma (rho x) (regularCompression G rho x) hsigma
-    (by rw [sigmaNormSq_unitary sigma (rho x) hsigmatr (hrho x)])
-    (compression_sigmaNormSq_le_one G sigma rho x hsigma hsigmatr hrho)
+  have hA : sigmaNormSq sigma (rho x) ≤ 1 := by
+    rw [sigmaNormSq_unitary sigma (rho x) hsigmatr (hrho x)]
+  have hB : sigmaNormSq sigma (regularCompression G rho x) ≤ 1 :=
+    compression_sigmaNormSq_le_one G sigma rho x hsigma hsigmatr hrho
+  rw [sigmaNormSq_sub_eq sigma (rho x) (regularCompression G rho x) hsigma]
+  linarith
 
-/-- The right-regular compression is close to the approximate representation on average. -/
+
+/-- This is the key identity: The right-regular compression is close to the approximate representation on average. -/
 theorem regularCompression_proximity [DecidableEq G]
     (sigma : Matrix (Fin d) (Fin d) Complex)
     (hsigma : Matrix.PosSemidef sigma) (hsigmatr : Matrix.trace sigma = 1)
