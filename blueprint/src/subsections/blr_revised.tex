@@ -364,6 +364,26 @@ The distance from $f:\bbF_q^n\to\bbF_q$ to linearity is
 \]
 \end{definition}
 
+
+
+\begin{lemma}[Well-separatedness of $\lin$]
+For any distincit $f,g \in \lin$, one has $\delta(f,g)= 1-1/|\bbF|$.
+\end{lemma}
+\begin{proof}
+Let $a,b \in \bbF^n$ be the unique vectors such that $f(x) = \langle a, x\rangle$ and $g(x) = \langle b, x\rangle$ for each $x$.
+Let $c = a-b$, which must be a non-zero vector. In particular, there exists $i \in [n]$ such that $c_i \neq 0$. Take any permutation $\sigma: [n] \rightarrow [n]$ such that $\sigma(i)=n$. Then
+\begin{align*}
+    \delta(f,g) & = 1- \Pr_{x \sim \bbF^n}[\langle c, x\rangle =0] \\
+    & = 1 - \frac{1}{|\bbF|^{n-1}}\sum_{x_1,\dots,x_{n-1} \in \bbF}\frac{1}{|\bbF|}\sum_{x_n \in \bbF} \ind[c_i \cdot x_n = -\sum_{j \in [n]\setminus {i}} c_j \cdot x_{\sigma(j)}] \\
+    & = 1 - \frac{1}{|\bbF|^{n-1}}\sum_{x_1,\dots,x_{n-1} \in \bbF}\frac{1}{|\bbF|}\sum_{x_n \in \bbF} \ind[x_n = -c_i^{-1} \cdot \sum_{j \in [n]\setminus {i}} c_j \cdot x_{\sigma(j)}] 
+\end{align*}
+where the last equality follows because $c_i \neq 0$. Now note that  $\ind[x_n = -c_i^{-1} \cdot \sum_{j \in [n]\setminus {i}} c_j \cdot x_{\sigma(j)}]$ evaluates to $1$ for exactly one value of $x_n$. Thus we continue from above and get
+\begin{align*}
+    \delta(f,g) = 1-\frac{1}{|\bbF|^{n-1}}\sum_{x_1,\dots,x_{n-1} \in \bbF}\frac{1}{|\bbF|} = 1-\frac{1}{|\bbF|} \, .
+\end{align*}
+\end{proof}
+
+
 \begin{lemma}[Distance formula]
 \label{lem:distance-formula}
 Let $f,g:\bbF_q^n\to\bbF_q$.

@@ -16,7 +16,53 @@ r'=r+(2+\lceil\log100q\rceil)\ell
 \]
 \end{lemma}
 \begin{proof}\uses{LINEQ_LPCP, BLR.basicVerifier, BLR_basic_completeness_ZMod2, BLR_basic_soundness_ZMod2}
-TODO
+Let $L \in \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$, and let $V$ be the LPCP verifier for $L$. Set $t=3\lceil\log100q\rceil$. We define a PCP verifier as follows, for any $\bar{pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ and $x \in \{0,1\}^*$.
+
+\vspace{1em}
+\noindent \textbf{Verifier} $\bar{V}^{\bar{\pi}} (x)$:
+\begin{enumerate}
+    \item If $V_{\text{BLR}}^{\bar{\pi}}=0$ output $0$ and halt, otherwise proceed with the next step.
+    \item Independently for each $i \in [t]$, sample $r_i \gets \mathbb{F}_2^\ell$.
+    \item Simulate $V$ by answering each linear query $a$ with $\text{plurality}(\bar{\pi}(a+r_i)-\bar{\pi}(r_i))_{i \in [t]}$.
+\end{enumerate}
+
+\begin{claim}[Completeness]
+  For every $x \in L$, there exists $\bar{\pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ such that $\Pr[\bar{V}^{\bar{\pi}}(x)=1]\ge 1-\varepsilon_c$.
+\end{claim}
+\begin{proof}
+Since $x \in L$ and $L \in  \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$, let $\pi \in \mathbb{F}_2^\ell$ such that $\Pr[V^{\langle \pi, \cdot \rangle}(x)=1]\ge 1-\varepsilon_c$.
+Then we construct $\bar{\pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ as follows: we define $\bar{\pi}(x)= \langle \pi, x \rangle$ for each $x \in \mathbb{F}^\ell$.
+Using the completeness of $V_{\text{BLR}}$ we know that $V_{\text{BLR}}^{\bar{\pi}}=1$ with probability $1$.
+Also, $\text{plurality}(\bar{\pi}(a+r_i)-\bar{\pi}(r_i))_{i \in [t]}=\langle \pi, a\rangle$ for any query $a$ and any $r_i$.
+We then conclude that $V^{\langle \pi, \cdot \rangle}(x)=\bar{V}^{\bar{\pi}} (x)$ for any $r_1,\dots, r_t$. Thus $\Pr[\bar{V}^{\bar{\pi}}(x)=1]=\Pr[V^{\langle \pi, \cdot \rangle}(x)=1]\ge 1-\varepsilon_c$.
+\end{proof}
+\begin{claim}[Soundness]
+  For every $x \notin L$ and every $\hat{\pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$, one has $\Pr[\bar{V}^{\hat{\pi}}(x)=1]\le \max\{7/8,\varepsilon_s+1/100\}$.
+\end{claim}
+\begin{proof}
+  Let $x \notin L$ and $\hat{\pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$. We consider two cases.
+
+  \paragraph{Case $\delta(\hat{\pi}, \text{LIN}) \ge 1/8$}. Using the soundness of $V_{\text{BLR}}$, we know that $\Pr[V_{\text{BLR}}^{\bar{\pi}}=0]\ge 1/8$. Since $\Pr[\bar{V}^{\hat{\pi}}(x)=1] \le \Pr[V_{\text{BLR}}^{\bar{\pi}}=1]$
+  we conclude $\Pr[\bar{V}^{\hat{\pi}}(x)=1] \le 1-1/8=7/8$.
+
+
+  \paragraph{Case $\delta(\hat{\pi}, \text{LIN}) < 1/8$}
+  Let $S = \{\tilde{\pi} \in \lin: \, \delta(\hat{\pi},\tilde{\pi} \le \delta(\hat{\pi}, \text{LIN}))\}$.
+  Suppose for a contradiction that $|S| \ge 2$, and let $\bar{\pi},\tilde{\pi} \in S$ be distinct: since 
+  $\delta(\hat{\pi},\bar{\pi} \le \delta(\hat{\pi}, \text{LIN})) < 1/8$ and $\delta(\hat{\pi},\tilde{\pi} \le \delta(\hat{\pi}, \text{LIN})) < 1/8$,
+  by triangle inequality we have $\delta(\bar{\pi},\tilde{\pi}) < 1/4$;
+  since $|\bbF_2|=2$, this contradicts the fact that any two distinct $\bar{\pi},\tilde{\pi} \in \lin$ satisfy $\delta(\bar{\pi},\tilde{\pi}) \ge 1/2$.
+
+  Let then $\tilde{\pi}$ be the unique element of $\lin$ with minimal distance to $\hat{\pi}$, and let $z \in \bbF^\ell$ the unique vector such that $\tilde{\pi}(x)=\langle z, x \rangle$ for all $x$.
+  If for every query $a$ that $V$ asks we have $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}=\tilde{\pi}(a)$, then $\bar{V}^{\hat{\pi}}(x)=V^{\langle z, \cdot \rangle}(x)$, so
+  provided that the $r_i$ satisfy this condition we have that $\Pr[\bar{V}^{\hat{\pi}}(x)=1]=\Pr[V^{\langle z, \cdot \rangle}(x)=1] \le \varepsilon_s$.
+  We are only left to bound the probability that for each of the $q$ queries that $V$ asks we have $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}=\tilde{\pi}(a)$.
+  Note that for any $a$ and $r_i$, if $\hat{\pi}(a+r_i)=\tilde{\pi}(a+r_i)$ and $\hat{\pi}(r_i)=\tilde{\pi}(r_i)$ then $\hat{\pi}(a+r_i)-\hat{\pi}(r_i)=\tilde{\pi}(a)$.
+  Hence, the proabability over one $r_i$ that $\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)$ is at most $2\cdot \delta(\hat{\pi},\tilde{\pi})\le 1/4$ by a union bound.
+  Also note that $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}\neq \tilde{\pi}(a)$ means that $\hat{\pi}(a+r_i)-\hat{\pi}(r_i)$ for at least $\lceil t/2 \rceil \ge t/2$ of the $i$'s.
+  Since the expected number of such $i$'s is at most $t/4$, by a Chernoff bound the probability over the choice of $r_1,\dots, r_t$ that there are at least $t/2$ of such $i$'s is at most $\exp(-t/3)$.
+  Union bounding over the $q$ queries that $V$ asks, we have that the local correction fails with probability at most $q\cdot \exp(-3t) \le 1/100$ by our choice of $t$.
+\end{proof}
 \end{proof}
 
 \begin{theorem}\label{QESAT_poly_LPCP}\lean{QESAT_poly_LPCP}\uses{QESAT, LPCP}\leanok
