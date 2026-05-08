@@ -1,3 +1,10 @@
+\begin{lemma}[Chernoff bound]
+  Let $X_1,\dots, X_N$ be random variables over $\{0,1\}$, and let $\mu=\EE\left[\sum_{i = 1}^N X_i\right]$. For any $\Delta > 0$ one has
+  \begin{equation*}
+    \Pr\left[\sum_{i = 1}^N X_i \ge \mu+\Delta\right] \le \exp(-2\Delta^2/N)
+  \end{equation*}
+\end{lemma}
+
 \begin{lemma}
 \uses{LPCP,PCP}
 \label{LPCP_to_PCP_ZMod2}
@@ -16,7 +23,7 @@ r'=r+(2+\lceil\log100q\rceil)\ell
 \]
 \end{lemma}
 \begin{proof}\uses{LINEQ_LPCP, BLR.basicVerifier, BLR_basic_completeness_ZMod2, BLR_basic_soundness_ZMod2}
-Let $L \in \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$, and let $V$ be the LPCP verifier for $L$. Set $t=3\lceil\log100q\rceil$. We define a PCP verifier as follows, for any $\bar{pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ and $x \in \{0,1\}^*$.
+Let $L \in \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$, and let $V$ be the LPCP verifier for $L$. Set $t=16\lceil\log100q\rceil$. We define a PCP verifier as follows, for any $\bar{pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ and $x \in \{0,1\}^*$.
 
 \vspace{1em}
 \noindent \textbf{Verifier} $\bar{V}^{\bar{\pi}} (x)$:
@@ -59,9 +66,9 @@ We then conclude that $V^{\langle \pi, \cdot \rangle}(x)=\bar{V}^{\bar{\pi}} (x)
   We are only left to bound the probability that for each of the $q$ queries that $V$ asks we have $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}=\tilde{\pi}(a)$.
   Note that for any $a$ and $r_i$, if $\hat{\pi}(a+r_i)=\tilde{\pi}(a+r_i)$ and $\hat{\pi}(r_i)=\tilde{\pi}(r_i)$ then $\hat{\pi}(a+r_i)-\hat{\pi}(r_i)=\tilde{\pi}(a)$.
   Hence, the proabability over one $r_i$ that $\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)$ is at most $2\cdot \delta(\hat{\pi},\tilde{\pi})\le 1/4$ by a union bound.
-  Also note that $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}\neq \tilde{\pi}(a)$ means that $\hat{\pi}(a+r_i)-\hat{\pi}(r_i)$ for at least $\lceil t/2 \rceil \ge t/2$ of the $i$'s.
-  Since the expected number of such $i$'s is at most $t/4$, by a Chernoff bound the probability over the choice of $r_1,\dots, r_t$ that there are at least $t/2$ of such $i$'s is at most $\exp(-t/3)$.
-  Union bounding over the $q$ queries that $V$ asks, we have that the local correction fails with probability at most $q\cdot \exp(-3t) \le 1/100$ by our choice of $t$.
+  Also note that $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}\neq \tilde{\pi}(a)$ means that $\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)$ for at least $\lceil t/2 \rceil \ge t/2$ of the $i$'s.
+  Let $X_i = \ind[\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)]$. Then $\mu = \EE[\sum_{i \in [t]}X_i] \le t/4$. Applying Chernoff bound with $\Delta = t/4$, the probability over the choice of $r_1,\dots, r_t$ that there are at least $t/2$ $i$'s with $X_i=1$ is at most $\exp(-t/8)$.
+  Union bounding over the $q$ queries that $V$ asks, we have that the local correction fails with probability at most $q\cdot \exp(-t/8) \le 1/100$ by our choice of $t$.
 \end{proof}
 \end{proof}
 
