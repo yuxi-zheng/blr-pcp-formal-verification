@@ -1,6 +1,6 @@
 import Architect
+import BlrPcp.Basic
 import BlrPcp.Oracle
-import BlrPcp.Problems.BLR
 import BlrPcp.Problems.LinEq
 import Mathlib.Algebra.MvPolynomial.SchwartzZippel
 
@@ -75,30 +75,30 @@ def verifier {n : ℕ} :
     let (a, b) := x
     let s ← LINEQ.sampleRandomVector n (n + n * n) F
     let t ← LINEQ.sampleRandomVector n (n + n * n) F
-    let yA : F ← query (spec := LPCP.spec F (n + n * n)) (.inr (queryA s))
-    let yA' : F ← query (spec := LPCP.spec F (n + n * n)) (.inr (queryA t))
-    let yB : F ← query (spec := LPCP.spec F (n + n * n)) (.inr (queryB s t))
+    let yA : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA s))
+    let yA' : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA t))
+    let yB : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryB s t))
     pure (yA = a ⬝ᵥ s ∧ yA' = a ⬝ᵥ t ∧ yB = ∑ i, ∑ j, b (i, j) * (s i * t j) ∧
           yB = yA * yA')
 
 omit [Inhabited F] [SampleableType F] in
 lemma verifier_queryBound {n : ℕ}
     (x : (Fin n → F) × (Fin n × Fin n → F)) :
-    QueryBound (verifier (F := F) x) 3 (2 * n) := by
+    QueryBound (verifier (F := F) x) (2 * n) 3 := by
   have hQuery : ∀ s t : Fin n → F,
       QueryBound
         (do
           let yA : F ←
-            (liftM (query (spec := LPCP.spec F (n + n * n)) (.inr (queryA s))) :
-              OracleComp (LPCP.spec F (n + n * n)) F)
+            (liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA s))) :
+              OracleComp (fullSpec_fin_vector F (n + n * n)) F)
           let yA' : F ←
-            (liftM (query (spec := LPCP.spec F (n + n * n)) (.inr (queryA t))) :
-              OracleComp (LPCP.spec F (n + n * n)) F)
+            (liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA t))) :
+              OracleComp (fullSpec_fin_vector F (n + n * n)) F)
           let yB : F ←
-            (liftM (query (spec := LPCP.spec F (n + n * n)) (.inr (queryB s t))) :
-              OracleComp (LPCP.spec F (n + n * n)) F)
+            (liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryB s t))) :
+              OracleComp (fullSpec_fin_vector F (n + n * n)) F)
           pure (decide (yA = x.1 ⬝ᵥ s ∧ yA' = x.1 ⬝ᵥ t ∧
-                yB = ∑ i, ∑ j, x.2 (i, j) * (s i * t j) ∧ yB = yA * yA'))) 3 0 := by
+                yB = ∑ i, ∑ j, x.2 (i, j) * (s i * t j) ∧ yB = yA * yA'))) 0 3 := by
     intro s t
     simp only [QueryBound]
     rw [OracleComp.isQueryBound_query_bind_iff]
@@ -523,7 +523,7 @@ theorem TENSORQ_LPCP_weak {n : ℕ} :
     intro hab π
     simp [TENSORQ.verifier]
     rw [← probEvent_eq_eq_probOutput]
-    rw [LINEQ.simulateQ_sampleRandomVector (F := F) n (n + n*n) (LPCP.proof π).impl]
+    rw [LINEQ.simulateQ_sampleRandomVector (F := F) n (n + n*n) (LPCP.proofOracle π).impl]
     exact TENSORQ.verifier_soundness_after_sampling_weak (F := F) a b π hab
 
 
@@ -545,7 +545,7 @@ theorem TENSORQ_LPCP {n : ℕ} :
       intro hab π
       simp [TENSORQ.verifier]
       rw [← probEvent_eq_eq_probOutput]
-      rw [LINEQ.simulateQ_sampleRandomVector (F := F) n (n + n*n) (LPCP.proof π).impl]
+      rw [LINEQ.simulateQ_sampleRandomVector (F := F) n (n + n*n) (LPCP.proofOracle π).impl]
       exact TENSORQ.verifier_soundness_after_sampling (F := F) a b π hab
 
 theorem TENSORQ_LPCP_Zmod2 {n : ℕ} :

@@ -220,19 +220,19 @@ def vectorEquiv (F : Type) (m : ℕ) : Vector F m ≃ (Fin m → F) where
     simp only [Vector.get, Vector.ofFn, Fin.val_cast, Array.getElem_ofFn, Fin.eta]
 
 def sampleRandomVectorAux (F : Type) : (m n : ℕ) →
-    OracleComp (LPCP.spec F n) (Vector F m)
+    OracleComp (LPCP.fullSpec F n) (Vector F m)
   | 0, _ => pure #v[]
   | m + 1, n => Vector.push <$> sampleRandomVectorAux F m n <*>
-      query (spec := LPCP.spec F n) (.inl ())
+      query (spec := LPCP.fullSpec F n) (.inl ())
 
 def sampleRandomVector (m n : ℕ) (F : Type) :
-    OracleComp (LPCP.spec F n) (Fin m → F) :=
+    OracleComp (LPCP.fullSpec F n) (Fin m → F) :=
   vectorEquiv F m <$> sampleRandomVectorAux F m n
 
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] in
 lemma simulateQ_sampleRandomVectorAux (m n : ℕ)
     (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp) :
-    simulateQ ((rand F).impl + impl) (sampleRandomVectorAux F m n) =
+    simulateQ ((randOracle F).impl + impl) (sampleRandomVectorAux F m n) =
       ($ᵗ Vector F m : ProbComp (Vector F m)) := by
   induction m with
   | zero =>
@@ -240,7 +240,7 @@ lemma simulateQ_sampleRandomVectorAux (m n : ℕ)
   | succ m ih =>
       simp only [sampleRandomVectorAux, simulateQ_seq, simulateQ_map, simulateQ_query,
         OracleQuery.cont_query, id_map, OracleQuery.input_query]
-      change Vector.push <$> simulateQ ((rand F).impl + impl) (sampleRandomVectorAux F m n) <*>
+      change Vector.push <$> simulateQ ((randOracle F).impl + impl) (sampleRandomVectorAux F m n) <*>
           ($ᵗ F) = (instSampleableTypeVector F (m + 1)).selectElem
       rw [ih]
       rfl
@@ -248,10 +248,10 @@ lemma simulateQ_sampleRandomVectorAux (m n : ℕ)
 omit [Field F] [Fintype F] [Inhabited F] in
 lemma simulateQ_sampleRandomVector (m n : ℕ)
     (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp) :
-    simulateQ ((rand F).impl + impl) (sampleRandomVector m n F) =
+    simulateQ ((randOracle F).impl + impl) (sampleRandomVector m n F) =
       ($ᵗ (Fin m → F) : ProbComp (Fin m → F)) := by
   simp only [sampleRandomVector, simulateQ_map]
-  change vectorEquiv F m <$> simulateQ ((rand F).impl + impl) (sampleRandomVectorAux F m n) =
+  change vectorEquiv F m <$> simulateQ ((randOracle F).impl + impl) (sampleRandomVectorAux F m n) =
     (instSampleableTypeFinFunc (n := m) (α := F)).selectElem
   rw [simulateQ_sampleRandomVectorAux (F := F) m n impl]
   simp [instSampleableTypeFinFunc, vectorEquiv, SampleableType.ofEquiv, uniformSample]
@@ -261,12 +261,12 @@ def verifier {m n : ℕ} :
   fun x => do
     let r ← sampleRandomVector m n F
     let u : Fin n → F := x.1ᵀ *ᵥ r
-    let y ← query (spec := LPCP.spec F n) (.inr u)
+    let y ← query (spec := LPCP.fullSpec F n) (.inr u)
     pure (y = x.2 ⬝ᵥ r)
 
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
 lemma sampleRandomVectorAux_queryBound (m n : ℕ) :
-    QueryBound (sampleRandomVectorAux F m n) 0 m := by
+    QueryBound (sampleRandomVectorAux F m n) m 0 := by
   induction m with
   | zero =>
       simp [sampleRandomVectorAux, QueryBound]
@@ -278,20 +278,20 @@ lemma sampleRandomVectorAux_queryBound (m n : ℕ) :
 
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
 lemma sampleRandomVector_queryBound (m n : ℕ) :
-    QueryBound (sampleRandomVector m n F) 0 m := by
+    QueryBound (sampleRandomVector m n F) m 0 := by
   simpa [sampleRandomVector] using sampleRandomVectorAux_queryBound (F := F) m n
 
 omit [Inhabited F] [SampleableType F] in
 lemma verifier_queryBound {m n : ℕ}
     (x : Matrix (Fin m) (Fin n) F × (Fin m → F)) :
-    QueryBound (verifier (F := F) x) 1 m := by
+    QueryBound (verifier (F := F) x) m 1 := by
   have hQuery : ∀ r : Fin m → F,
       QueryBound
         (do
           let y ←
-            (liftM (query (spec := LPCP.spec F n) (.inr (x.1ᵀ *ᵥ r))) :
-              OracleComp (LPCP.spec F n) F)
-          pure (decide (y = x.2 ⬝ᵥ r))) 1 0 := by
+            (liftM (query (spec := LPCP.fullSpec F n) (.inr (x.1ᵀ *ᵥ r))) :
+              OracleComp (LPCP.fullSpec F n) F)
+          pure (decide (y = x.2 ⬝ᵥ r))) 0 1 := by
     intro r
     simp only [QueryBound]
     rw [OracleComp.isQueryBound_query_bind_iff]
@@ -325,7 +325,7 @@ theorem LINEQ_LPCP {m n : ℕ} :
       rw [probEvent_map]
       let accept : (Fin m → F) → Prop := fun r =>
         decide (π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r) = true
-      rw [LINEQ.simulateQ_sampleRandomVector (F := F) m n (LPCP.proof π).impl]
+      rw [LINEQ.simulateQ_sampleRandomVector (F := F) m n (LPCP.proofOracle π).impl]
       change
         Pr[accept | ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] *
           (Fintype.card F : ENNReal) ≤ 1
