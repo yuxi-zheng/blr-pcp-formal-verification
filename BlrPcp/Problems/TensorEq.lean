@@ -31,7 +31,7 @@ and accepts iff `⟨b, flat (s ⊗ t)⟩ = ⟨a, s⟩ * ⟨a, t⟩`.
   `(2 |F| - 1) / |F|^2`.
 -/
 
-open OracleComp
+open OracleComp OracleUtil
 open scoped Matrix
 
 variable {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F]
@@ -73,8 +73,8 @@ def verifier {n : ℕ} :
     LPCPVerifier ((Fin n → F) × (Fin n × Fin n → F)) size F (fun _ => n + n * n) :=
   fun x => do
     let (a, b) := x
-    let s ← LINEQ.sampleRandomVector n (n + n * n) F
-    let t ← LINEQ.sampleRandomVector n (n + n * n) F
+    let s ← OracleUtil.sampleVector ((liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inl ())) : OracleComp (fullSpec_fin_vector F (n + n * n)) F)) n
+    let t ← OracleUtil.sampleVector ((liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inl ())) : OracleComp (fullSpec_fin_vector F (n + n * n)) F)) n
     let yA : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA s))
     let yA' : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA t))
     let yB : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryB s t))
@@ -108,8 +108,8 @@ lemma verifier_queryBound {n : ℕ}
     rw [OracleComp.isQueryBound_query_bind_iff]
     exact ⟨by simp, fun _ => trivial⟩
   simpa [verifier, two_mul, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using
-    queryBound_bind (LINEQ.sampleRandomVector_queryBound (F := F) n (n + n * n)) fun s =>
-      queryBound_bind (LINEQ.sampleRandomVector_queryBound (F := F) n (n + n * n)) fun t =>
+    queryBound_bind (OracleUtil.sampleVector_queryBound n (n + n * n) (F := F)) fun s =>
+      queryBound_bind (OracleUtil.sampleVector_queryBound n (n + n * n) (F := F)) fun t =>
         hQuery s t
 
 /-- Project an oracle of length `n + n*n` to its first `n` entries (the
@@ -515,7 +515,7 @@ theorem TENSORQ_LPCP_weak {n : ℕ} :
     rintro hab
     refine ⟨TENSORQ.honestProof (a, b), ?_⟩
     have hb : b = fun (i, j) => a i * a j := hab
-    simp [TENSORQ.verifier, LINEQ.sampleRandomVector,
+    simp [TENSORQ.verifier, OracleUtil.sampleVector,
           TENSORQ.dotProduct_queryA, TENSORQ.dotProduct_queryB,
           TENSORQ.projA_honestProof, TENSORQ.projB_honestProof, hb,
           TENSORQ.tensor_check_complete]
@@ -523,7 +523,7 @@ theorem TENSORQ_LPCP_weak {n : ℕ} :
     intro hab π
     simp [TENSORQ.verifier]
     rw [← probEvent_eq_eq_probOutput]
-    rw [LINEQ.simulateQ_sampleRandomVector (F := F) n (n + n*n) (LPCP.proofOracle π).impl]
+    rw [OracleUtil.simulateQ_sampleVector (F := F) n (n + n*n) (LPCP.proofOracle π).impl]
     exact TENSORQ.verifier_soundness_after_sampling_weak (F := F) a b π hab
 
 
@@ -537,7 +537,7 @@ theorem TENSORQ_LPCP {n : ℕ} :
       rintro hab
       refine ⟨TENSORQ.honestProof (a, b), ?_⟩
       have hb : b = fun (i, j) => a i * a j := hab
-      simp [TENSORQ.verifier, LINEQ.sampleRandomVector,
+      simp [TENSORQ.verifier, OracleUtil.sampleVector,
             TENSORQ.dotProduct_queryA, TENSORQ.dotProduct_queryB,
             TENSORQ.projA_honestProof, TENSORQ.projB_honestProof, hb,
             TENSORQ.tensor_check_complete]
@@ -545,7 +545,7 @@ theorem TENSORQ_LPCP {n : ℕ} :
       intro hab π
       simp [TENSORQ.verifier]
       rw [← probEvent_eq_eq_probOutput]
-      rw [LINEQ.simulateQ_sampleRandomVector (F := F) n (n + n*n) (LPCP.proofOracle π).impl]
+      rw [OracleUtil.simulateQ_sampleVector (F := F) n (n + n*n) (LPCP.proofOracle π).impl]
       exact TENSORQ.verifier_soundness_after_sampling (F := F) a b π hab
 
 theorem TENSORQ_LPCP_Zmod2 {n : ℕ} :
