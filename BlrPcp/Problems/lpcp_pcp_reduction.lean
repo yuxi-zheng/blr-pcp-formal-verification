@@ -18,15 +18,15 @@ open scoped ENNReal
 namespace LPCPToPCP
 
 /-- Index the truth table of a function `F₂^n → F₂` by `Fin (2^n)`. -/
-noncomputable def truthTableIndex (n : ℕ) : (Fin n → ZMod 2) → Fin (2 ^ n) :=
-  fun v => Fin.cast (by simp [ZMod.card]) ((Fintype.equivFin (Fin n → ZMod 2)) v)
+def truthTableIndex (n : ℕ) : (Fin n → ZMod 2) → Fin (2 ^ n) :=
+  finFunctionFinEquiv
 
-/-- `⌈log (100q)⌉`, where `log` is the natural logarithm. -/
-noncomputable def logFactor (q : ℕ → ℕ) (n : ℕ) : ℕ :=
-  ⌈Real.log (100 * q n)⌉₊
+/-- `⌊log₂ (100 q)⌋ + 1`, a computable `Θ(log q)` surrogate for `⌈ln (100q)⌉`. -/
+def logFactor (q : ℕ → ℕ) (n : ℕ) : ℕ :=
+  Nat.log 2 (100 * q n) + 1
 
 /-- Number of random shifts used to decode a linear query by plurality. -/
-noncomputable def numShifts (q : ℕ → ℕ) (n : ℕ) : ℕ :=
+def numShifts (q : ℕ → ℕ) (n : ℕ) : ℕ :=
   8 * logFactor q n
 
 /-- Plurality over `ZMod 2`, with ties broken toward `0`. -/
@@ -221,13 +221,13 @@ theorem chernoff_bound {N : ℕ} (hN : 0 < N) (X : Fin N → ProbComp Bool)
   exact (ENNReal.le_ofReal_iff_toReal_le probEvent_ne_top (Real.exp_pos _).le).2 hreal
 
 /-- Run an LPCP-style vector query against a PCP truth table. -/
-noncomputable def truthTableImpl (n : ℕ) :
+def truthTableImpl (n : ℕ) :
     QueryImpl (LPCP.fullSpec (ZMod 2) n) (OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)))
   | .inl () => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inl ())
   | .inr a => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inr (truthTableIndex n a))
 
 /-- Answer one LPCP linear query using the sampled shifts and plurality decoding. -/
-noncomputable def decodedLinearQuery {n t : ℕ}
+def decodedLinearQuery {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
     OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2) := do
   let ys : Fin t → ZMod 2 ← Fin.mOfFn t fun i => do
@@ -239,14 +239,14 @@ noncomputable def decodedLinearQuery {n t : ℕ}
   pure (pluralityZMod2 ys)
 
 /-- Simulate LPCP oracle queries using a PCP truth table and fixed random shifts. -/
-noncomputable def decodedImpl {n t : ℕ}
+def decodedImpl {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) :
     QueryImpl (LPCP.fullSpec (ZMod 2) n) (OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)))
   | .inl () => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inl ())
   | .inr a => decodedLinearQuery shifts a
 
 /-- The PCP verifier obtained from an LPCP verifier over `ZMod 2`. -/
-noncomputable def verifier {α : Type} (size : α → ℕ) (ℓ q : ℕ → ℕ)
+def verifier {α : Type} (size : α → ℕ) (ℓ q : ℕ → ℕ)
     (V : LPCPVerifier α size (ZMod 2) ℓ) :
     PCPVerifier α size (ZMod 2) (fun n => 2 ^ (ℓ n)) :=
   fun x => do
