@@ -16,7 +16,7 @@ linear PCP theorem for LINEQ.
 - `LINEQ_LPCP`: LINEQ has a one-query LPCP verifier with soundness `1 / |F|`.
 -/
 
-open OracleComp
+open OracleComp OracleUtil
 open scoped Matrix
 
 variable {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F]
@@ -219,67 +219,56 @@ def vectorEquiv (F : Type) (m : ℕ) : Vector F m ≃ (Fin m → F) where
     funext i
     simp only [Vector.get, Vector.ofFn, Fin.val_cast, Array.getElem_ofFn, Fin.eta]
 
-def sampleRandomVectorAux (F : Type) : (m n : ℕ) →
-    OracleComp (LPCP.fullSpec F n) (Vector F m)
-  | 0, _ => pure #v[]
-  | m + 1, n => Vector.push <$> sampleRandomVectorAux F m n <*>
-      query (spec := LPCP.fullSpec F n) (.inl ())
-
-def sampleRandomVector (m n : ℕ) (F : Type) :
-    OracleComp (LPCP.fullSpec F n) (Fin m → F) :=
-  vectorEquiv F m <$> sampleRandomVectorAux F m n
-
-omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] in
-lemma simulateQ_sampleRandomVectorAux (m n : ℕ)
+omit [Inhabited F] in
+lemma simulateQ_sampleVector (m n : ℕ)
     (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp) :
-    simulateQ ((randOracle F).impl + impl) (sampleRandomVectorAux F m n) =
-      ($ᵗ Vector F m : ProbComp (Vector F m)) := by
+    simulateQ ((randOracle F).impl + impl)
+        (OracleUtil.sampleVector ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) : OracleComp (LPCP.fullSpec F n) F)) m) =
+      ($ᵗ (Fin m → F) : ProbComp (Fin m → F)) := by
+  simp only [OracleUtil.sampleVector]
+  suffices h : ∀ m, simulateQ ((randOracle F).impl + impl)
+      (OracleUtil.sampleVectorAux ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) : OracleComp (LPCP.fullSpec F n) F)) m) =
+      ($ᵗ Vector F m : ProbComp (Vector F m)) by
+    simp [simulateQ_map, h m]
+    simp [instSampleableTypeFinFunc, SampleableType.ofEquiv, uniformSample]
+  intro m
   induction m with
-  | zero =>
-      rfl
+  | zero => rfl
   | succ m ih =>
-      simp only [sampleRandomVectorAux, simulateQ_seq, simulateQ_map, simulateQ_query,
+      simp only [OracleUtil.sampleVectorAux, simulateQ_seq, simulateQ_map, simulateQ_query,
         OracleQuery.cont_query, id_map, OracleQuery.input_query]
-      change Vector.push <$> simulateQ ((randOracle F).impl + impl) (sampleRandomVectorAux F m n) <*>
+      change Vector.push <$> simulateQ ((randOracle F).impl + impl)
+          (OracleUtil.sampleVectorAux ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) : OracleComp (LPCP.fullSpec F n) F)) m) <*>
           ($ᵗ F) = (instSampleableTypeVector F (m + 1)).selectElem
       rw [ih]
       rfl
 
-omit [Field F] [Fintype F] [Inhabited F] in
-lemma simulateQ_sampleRandomVector (m n : ℕ)
-    (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp) :
-    simulateQ ((randOracle F).impl + impl) (sampleRandomVector m n F) =
-      ($ᵗ (Fin m → F) : ProbComp (Fin m → F)) := by
-  simp only [sampleRandomVector, simulateQ_map]
-  change vectorEquiv F m <$> simulateQ ((randOracle F).impl + impl) (sampleRandomVectorAux F m n) =
-    (instSampleableTypeFinFunc (n := m) (α := F)).selectElem
-  rw [simulateQ_sampleRandomVectorAux (F := F) m n impl]
-  simp [instSampleableTypeFinFunc, vectorEquiv, SampleableType.ofEquiv, uniformSample]
-
 def verifier {m n : ℕ} :
     LPCPVerifier (Matrix (Fin m) (Fin n) F × (Fin m → F)) size F (fun _ => n) :=
   fun x => do
-    let r ← sampleRandomVector m n F
+    let r ← OracleUtil.sampleVector ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) : OracleComp (LPCP.fullSpec F n) F)) m
     let u : Fin n → F := x.1ᵀ *ᵥ r
     let y ← query (spec := LPCP.fullSpec F n) (.inr u)
     pure (y = x.2 ⬝ᵥ r)
 
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma sampleRandomVectorAux_queryBound (m n : ℕ) :
-    QueryBound (sampleRandomVectorAux F m n) m 0 := by
+lemma sampleVectorAux_queryBound (m n : ℕ) :
+    QueryBound (OracleUtil.sampleVectorAux ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) : OracleComp (LPCP.fullSpec F n) F)) m) m 0 := by
   induction m with
-  | zero =>
-      simp [sampleRandomVectorAux, QueryBound]
+  | zero => simp [OracleUtil.sampleVectorAux, QueryBound]
   | succ m ih =>
-      simpa [sampleRandomVectorAux, seq_eq_bind_map, Nat.add_comm, Nat.add_left_comm,
-        Nat.add_assoc] using
-        queryBound_bind ih fun _ => by
-          simp [QueryBound]
+      simp only [OracleUtil.sampleVectorAux, seq_eq_bind_map]
+      simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using
+        queryBound_bind ih fun _ => by simp [QueryBound]
 
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma sampleRandomVector_queryBound (m n : ℕ) :
-    QueryBound (sampleRandomVector m n F) m 0 := by
-  simpa [sampleRandomVector] using sampleRandomVectorAux_queryBound (F := F) m n
+lemma sampleVector_queryBound (m n : ℕ) :
+    QueryBound (OracleUtil.sampleVector ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) : OracleComp (LPCP.fullSpec F n) F)) m) m 0 := by
+  simp only [OracleUtil.sampleVector, map_eq_bind_pure_comp]
+  exact queryBound_mono
+    (queryBound_bind (q₂ := 0) (r₂ := 0) (sampleVectorAux_queryBound (F := F) m n)
+      fun _ => by simp [QueryBound])
+    (by omega) (by omega)
 
 omit [Inhabited F] [SampleableType F] in
 lemma verifier_queryBound {m n : ℕ}
@@ -297,7 +286,7 @@ lemma verifier_queryBound {m n : ℕ}
     rw [OracleComp.isQueryBound_query_bind_iff]
     exact ⟨by simp, fun _ => trivial⟩
   simpa [verifier] using
-    queryBound_bind (sampleRandomVector_queryBound (F := F) m n) hQuery
+    queryBound_bind (sampleVector_queryBound (F := F) m n) hQuery
 
 end LINEQ
 
@@ -310,7 +299,7 @@ theorem LINEQ_LPCP {m n : ℕ} :
     LINEQ.verifier_queryBound (F := F) (M, c), ?_, ?_⟩
   · rintro ⟨b, hb⟩
     exact ⟨b, by
-      simp [LINEQ.verifier, LINEQ.sampleRandomVector,
+      simp [LINEQ.verifier, OracleUtil.sampleVector,
         LINEQ.dotProduct_transpose_mulVec_eq, hb]⟩
   · intro hx π
     by_cases hm : m = 0
@@ -325,7 +314,7 @@ theorem LINEQ_LPCP {m n : ℕ} :
       rw [probEvent_map]
       let accept : (Fin m → F) → Prop := fun r =>
         decide (π ⬝ᵥ (Mᵀ *ᵥ r) = c ⬝ᵥ r) = true
-      rw [LINEQ.simulateQ_sampleRandomVector (F := F) m n (LPCP.proofOracle π).impl]
+      rw [LINEQ.simulateQ_sampleVector (F := F) m n (LPCP.proofOracle π).impl]
       change
         Pr[accept | ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] *
           (Fintype.card F : ENNReal) ≤ 1

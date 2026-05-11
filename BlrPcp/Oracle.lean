@@ -1,4 +1,5 @@
 import Architect
+import BlrPcp.Basic
 import VCVio.OracleComp.Constructions.SampleableType
 import VCVio.OracleComp.OracleComp
 import VCVio.OracleComp.OracleContext
@@ -31,6 +32,7 @@ This file defines the BLR test, PCPs and LPCPs in terms of oracle computations.
 
 open OracleComp
 open scoped Matrix
+open BlrPcp (Vec ScalarFn linearFn IsLinear LinearSet distance)
 
 /-- Specification of oracles that sample a random element from `F`. -/
 abbrev randOracleSpec_unit_fin (F : Type) : OracleSpec Unit :=
@@ -44,7 +46,19 @@ abbrev randOracle (F : Type) [SampleableType F] : OracleContext Unit ProbComp wh
   spec := randOracleSpec F
   impl := fun _ => $ᵗ F
 
--- TODO: implement a mechanism to sample a random vector, ideally sample a random vector from a "unit random oracle"
+namespace OracleUtil
+
+def sampleVectorAux {ι F : Type} {spec : OracleSpec ι} (query1 : OracleComp spec F) :
+    (m : ℕ) → OracleComp spec (Vector F m)
+  | 0     => pure #v[]
+  | m + 1 => Vector.push <$> sampleVectorAux query1 m <*> query1
+
+/-- Sample `m` independent draws from `query1`, returning the result as `Fin m → F`. -/
+def sampleVector {ι F : Type} {spec : OracleSpec ι} (query1 : OracleComp spec F) (m : ℕ) :
+    OracleComp spec (Vec F (Fin m)) :=
+  (·.get) <$> sampleVectorAux query1 m
+
+end OracleUtil
 
 abbrev proofOracleSpec_fin (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ) :=
   Fin ℓ →ₒ F
@@ -120,7 +134,7 @@ lemma queryBound_bind {ρ ι α β : Type} {randOracleSpec : OracleSpec ρ}
 
 namespace PCP
 
-/-- A proof is represented as a function `π : [ℓ] → F`.
+/-- A proof is represented as a function `π : [ℓ] → F`, i.e. a vector of size ℓ in field F.
 `π(q)` is the answer to query `q`. -/
 abbrev proofOracle {F : Type} {ℓ : ℕ}
     (π : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp where
