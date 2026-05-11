@@ -2193,7 +2193,7 @@ private lemma distance_congr_right {f g h : ScalarFn F Idx} (hgh : ∀ x, g x = 
   simp [distance, hgh]
 
 omit [Nonempty Idx] in
-private lemma distanceToLinear_eq_inf_linearFn (f : ScalarFn F Idx) :
+lemma distanceToLinear_eq_inf_linearFn (f : ScalarFn F Idx) :
     distanceToLinear f =
       (Finset.univ.inf' (Finset.univ_nonempty : (Finset.univ : Finset (Vec F Idx)).Nonempty)
         fun α => distance f (linearFn α)) := by
