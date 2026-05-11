@@ -1,23 +1,198 @@
-/* This file contains CSS tweaks for this blueprint.
- * As an example, we included CSS rules that put
- * a vertical line on the left of theorem statements
- * and proofs.
- * */
+@import url("https://fonts.googleapis.com/css?family=Droid+Sans:400,700&display=swap");
 
-div.theorem_thmcontent {
-	border-left: .15rem solid black;
+:root {
+	--text: #172033;
+	--link: #2457a6;
+	--link-hover: #143a78;
+
+	--border: #cfd7e3;
+	--bar: #dfe6ef;
+	--subbar: #f0f3f7;
+	--chrome-hover: #f7f9fc;
+
+	--main-width: 640px;
 }
 
-div.proposition_thmcontent {
-	border-left: .15rem solid black;
+html {
+	font-size: 14px;
 }
 
-div.lemma_thmcontent {
-	border-left: .1rem solid black;
+body,
+div.content,
+div.content-wrapper,
+.main-text,
+table,
+.tabular {
+	font-family: "Droid Sans", Arial, sans-serif;
+	color: var(--text);
+	background-color: #fff;
 }
 
-div.corollary_thmcontent {
-	border-left: .1rem solid black;
+body,
+div.content {
+	font-size: 1rem;
+	line-height: 1.5;
+}
+
+div.content-wrapper {
+	width: 100%;
+	max-width: none;
+}
+
+@media (min-width: 992px) {
+	div.content-wrapper {
+		max-width: var(--main-width);
+		margin-left: auto;
+		margin-right: auto;
+	}
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+h1#doc_title {
+	font-family: "Droid Sans", Arial, sans-serif;
+	color: var(--text);
+}
+
+a,
+a:visited,
+ul.breadcrumbs a,
+div.modal-content a,
+nav.prev_up_next a,
+a.icon {
+	color: var(--link);
+}
+
+a:hover,
+div.modal-content a:hover,
+nav.prev_up_next a:hover,
+a.icon:hover {
+	color: var(--link-hover);
+}
+
+code,
+kbd,
+pre,
+samp,
+.texttt,
+.ttfamily,
+.tt,
+code.verb,
+pre.verbatim {
+	font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.lean,
+.lean_decl,
+.lean_link,
+.latex_link,
+.github_link {
+	font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+mjx-container {
+	color: inherit;
+	font-size: 114% !important;
+}
+
+body>header {
+	background: var(--bar);
+	color: var(--text);
+	text-shadow: none;
+	border-color: var(--border);
+}
+
+nav.prev_up_next,
+div.modal-content header {
+	background: var(--subbar);
+	color: var(--text);
+	text-shadow: none;
+	border-color: var(--border);
+}
+
+#doc_title a,
+#doc_title a:visited {
+	color: var(--text);
+}
+
+nav.toc {
+	background-color: #fff;
+	border-right: 1px solid var(--border);
+}
+
+.toc ul li {
+	background-color: #fff;
+}
+
+.toc ul li.current {
+	background-color: #fff;
+	font-weight: 400;
+}
+
+.toc ul a,
+.toc ul a:visited,
+.local_toc ul a,
+.local_toc ul a:visited,
+nav.prev_up_next a,
+nav.prev_up_next a:visited {
+	color: var(--text);
+}
+
+.toc ul a,
+.local_toc ul a,
+nav.prev_up_next a {
+	text-shadow: none;
+}
+
+.toc ul a:hover {
+	background: var(--chrome-hover);
+	color: var(--text);
+	text-decoration: none;
+}
+
+.local_toc ul a:hover {
+	background: transparent;
+	color: var(--text);
+	text-decoration: none;
+}
+
+span.expand-toc,
+svg.close-toc,
+div.modal-content header button.closebtn,
+div.modal-content header h1 {
+	color: var(--text);
+	text-shadow: none;
+}
+
+span[class$="_thmlabel"] {
+	margin-left: 0;
+	margin-right: 0;
+}
+
+div[class$="_thmheading"] span[class$="_thmcaption"]::after {
+	content: "\00a0";
+}
+
+div[class$="_thmheading"] span[class$="_thmlabel"]::after {
+	content: ".\00a0";
+}
+
+div[class$="_thmheading"] span[class$="_thmtitle"]::after {
+	content: ")\00a0";
+}
+
+div[class$="_thmcontent"] {
+	margin-left: 0;
+	padding-left: 0;
+	border-left: 0;
+}
+
+div.theorem-style-plain div[class$="_thmcontent"] em {
+	font-style: normal;
 }
 
 div.proof_content {
