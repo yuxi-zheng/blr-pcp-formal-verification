@@ -89,14 +89,14 @@ end QESAT
 namespace PCP
 
 private def padImpl (F : Type) {n₀ n₁ : ℕ} (h : n₀ ≤ n₁) :
-    QueryImpl (PCP.spec F n₀) (OracleComp (PCP.spec F n₁))
-  | .inl () => query (spec := PCP.spec F n₁) (.inl ())
-  | .inr i => query (spec := PCP.spec F n₁) (.inr (Fin.castLE h i))
+    QueryImpl (PCP.fullSpec F n₀) (OracleComp (PCP.fullSpec F n₁))
+  | .inl () => query (spec := PCP.fullSpec F n₁) (.inl ())
+  | .inr i => query (spec := PCP.fullSpec F n₁) (.inr (Fin.castLE h i))
 
 private lemma queryBound_simulateQ_padImpl {F : Type} {n₀ n₁ : ℕ} (h : n₀ ≤ n₁)
-    {α : Type} {oa : OracleComp (PCP.spec F n₀) α} {q r : ℕ}
-    (hoa : QueryBound oa q r) :
-    QueryBound (simulateQ (padImpl F h) oa) q r := by
+    {α : Type} {oa : OracleComp (PCP.fullSpec F n₀) α} {q r : ℕ}
+    (hoa : QueryBound oa r q) :
+    QueryBound (simulateQ (padImpl F h) oa) r q := by
   revert q r
   induction oa using OracleComp.inductionOn with
   | pure _ =>
@@ -119,11 +119,11 @@ private lemma queryBound_simulateQ_padImpl {F : Type} {n₀ n₁ : ℕ} (h : n�
           exact ⟨hoa.1, fun y => ih y (hoa.2 y)⟩
 
 private lemma simulateQ_padImpl_eq {F : Type} [SampleableType F] {n₀ n₁ : ℕ}
-    (h : n₀ ≤ n₁) {α : Type} (oa : OracleComp (PCP.spec F n₀) α)
+    (h : n₀ ≤ n₁) {α : Type} (oa : OracleComp (PCP.fullSpec F n₀) α)
     (π₀ : Fin n₀ → F) (π₁ : Fin n₁ → F)
     (hπ : ∀ i, π₁ (Fin.castLE h i) = π₀ i) :
-    simulateQ ((rand F).impl + (PCP.proof π₁).impl) (simulateQ (padImpl F h) oa) =
-      simulateQ ((rand F).impl + (PCP.proof π₀).impl) oa := by
+    simulateQ ((randOracle F).impl + (PCP.proofOracle π₁).impl) (simulateQ (padImpl F h) oa) =
+      simulateQ ((randOracle F).impl + (PCP.proofOracle π₀).impl) oa := by
   rw [← QueryImpl.simulateQ_compose]
   congr 1
   apply QueryImpl.ext
@@ -139,8 +139,8 @@ end PCP
 
 private lemma queryBound_map {ρ ι α β : Type} {randSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι} {oa : OracleComp (randSpec + proofSpec) α}
-    {q r : ℕ} (f : α → β) (hoa : QueryBound oa q r) :
-    QueryBound (f <$> oa) q r := by
+    {q r : ℕ} (f : α → β) (hoa : QueryBound oa r q) :
+    QueryBound (f <$> oa) r q := by
   simpa [QueryBound] using
     (OracleComp.isQueryBound_map_iff oa f (r, q)
       (fun
@@ -152,8 +152,8 @@ private lemma queryBound_map {ρ ι α β : Type} {randSpec : OracleSpec ρ}
 
 private lemma queryBound_replicate {ρ ι α : Type} {randSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι} {oa : OracleComp (randSpec + proofSpec) α}
-    {q r : ℕ} (n : ℕ) (hoa : QueryBound oa q r) :
-    QueryBound (OracleComp.replicate n oa) (n * q) (n * r) := by
+    {q r : ℕ} (n : ℕ) (hoa : QueryBound oa r q) :
+    QueryBound (OracleComp.replicate n oa) (n * r) (n * q) := by
   induction n with
   | zero =>
       simp [OracleComp.replicate, QueryBound]

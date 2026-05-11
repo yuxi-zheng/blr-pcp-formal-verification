@@ -11,21 +11,50 @@ This file defines the BLR test, PCPs and LPCPs in terms of oracle computations.
 
 ## Main declarations
 
-- `rand`: the specification and implementation of a randomness oracle that samples from a type `F`.
+- `randOracleSpec`, `randOracle`: the specification and implementation of a randomness oracle
+  that samples a uniform element from a type `F`.
+- `proofOracleSpec_fin`, `proofOracleSpec_fin_vector`: proof-oracle specs for PCP (queries are
+  indices `Fin ℓ`) and LPCP (queries are vectors `Fin ℓ → F`), both answering in `F`.
+- `PCP.proofOracle`, `LPCP.proofOracle`: implementations of the proof oracles given a proof `π`.
+- `PCP.fullSpec`, `LPCP.fullSpec`: combined randomness + proof oracle specs.
+- `RunsInTime`, `QueryBound`: time and (randomness, proof) query bounds for verifier computations.
 - `PCPVerifier`, `LPCPVerifier`: the type of PCP and LPCP verifiers.
 - `PCP`, `LPCP`: PCP and LPCP complexity classes with query and randomness bounds.
+
+## Design choices
+- For each instance of PCP (LINEQ, TENSORQ, ..), we purposely pass an oracle which generates exactly 1 element. Each
+  instance will use that random oracle to construct their own "whichever" random generator that suit them, e.g. vector
+  of size n, n * 2, n^2 + n, ...
+
+  Of course we can just define everything in simple terms and , as everything is either F or Z/2 now ..
 -/
 
 open OracleComp
 open scoped Matrix
 
-abbrev randSpec (F : Type) : OracleSpec Unit :=
+/-- Specification of oracles that sample a random element from `F`. -/
+abbrev randOracleSpec_unit_fin (F : Type) : OracleSpec Unit :=
   Unit →ₒ F
 
+/-- We only work in finite fields. -/
+abbrev randOracleSpec (F : Type) := randOracleSpec_unit_fin F
+
 /-- An oracle that samples a random element from `F`. -/
-abbrev rand (F : Type) [SampleableType F] : OracleContext Unit ProbComp where
-  spec := randSpec F
+abbrev randOracle (F : Type) [SampleableType F] : OracleContext Unit ProbComp where
+  spec := randOracleSpec F
   impl := fun _ => $ᵗ F
+
+-- TODO: implement a mechanism to sample a random vector, ideally sample a random vector from a "unit random oracle"
+
+abbrev proofOracleSpec_fin (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ) :=
+  Fin ℓ →ₒ F
+
+abbrev proofOracleSpec_fin_vector (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ → F) :=
+  (Fin ℓ → F) →ₒ F
+
+/- Used in LPCP, basic BLR, ... where they both proof-query an F-vector and get back an element. -/
+abbrev fullSpec_fin_vector (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ (Fin ℓ → F)) :=
+  randOracleSpec F + proofOracleSpec_fin_vector F ℓ
 
 /-- `RunsInTime oa n` means `oa` halts in at most `n` steps. -/
 abbrev RunsInTime {ι α : Type} {spec : OracleSpec ι}
@@ -33,10 +62,10 @@ abbrev RunsInTime {ι α : Type} {spec : OracleSpec ι}
   true -- TODO: look into https://api.cslib.io/docs/Cslib/Algorithms/Lean/TimeM.html
        -- or even https://github.com/Shreyas4991/Algolean
 
-/-- `QueryBound oa q r` means `oa` makes at most `q` proof queries
-and at most `r` randomness queries. -/
-abbrev QueryBound {ρ ι α : Type} {randSpec : OracleSpec ρ} {proofSpec : OracleSpec ι}
-    (oa : OracleComp (randSpec + proofSpec) α) (q r : ℕ) : Prop :=
+/-- `QueryBound oa r q` means `oa` makes at most `r` randomness queries
+and at most `q` proof queries. -/
+abbrev QueryBound {ρ ι α : Type} {randOracleSpec : OracleSpec ρ} {proofSpec : OracleSpec ι}
+    (oa : OracleComp (randOracleSpec + proofSpec) α) (r q : ℕ) : Prop :=
   OracleComp.IsQueryBound oa (r, q)
     (fun
       | .inl _, (r, _) => 0 < r
@@ -45,10 +74,10 @@ abbrev QueryBound {ρ ι α : Type} {randSpec : OracleSpec ρ} {proofSpec : Orac
       | .inl _, (r, q) => (r - 1, q)
       | .inr _, (r, q) => (r, q - 1))
 
-lemma queryBound_mono {ρ ι α : Type} {randSpec : OracleSpec ρ} {proofSpec : OracleSpec ι}
-    {oa : OracleComp (randSpec + proofSpec) α} {q r q' r' : ℕ}
-    (h : QueryBound oa q r) (hq : q ≤ q') (hr : r ≤ r') :
-    QueryBound oa q' r' := by
+lemma queryBound_mono {ρ ι α : Type} {randOracleSpec : OracleSpec ρ} {proofSpec : OracleSpec ι}
+    {oa : OracleComp (randOracleSpec + proofSpec) α} {q r q' r' : ℕ}
+    (h : QueryBound oa r q) (hq : q ≤ q') (hr : r ≤ r') :
+    QueryBound oa r' q' := by
   revert q r q' r'
   induction oa using OracleComp.inductionOn with
   | pure _ =>
@@ -65,12 +94,12 @@ lemma queryBound_mono {ρ ι α : Type} {randSpec : OracleSpec ρ} {proofSpec : 
           refine ⟨Nat.lt_of_lt_of_le h.1 hq, fun u => ?_⟩
           exact ih u (h.2 u) (Nat.sub_le_sub_right hq _) hr
 
-lemma queryBound_bind {ρ ι α β : Type} {randSpec : OracleSpec ρ}
+lemma queryBound_bind {ρ ι α β : Type} {randOracleSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι}
-    {oa : OracleComp (randSpec + proofSpec) α}
-    {ob : α → OracleComp (randSpec + proofSpec) β} {q₁ r₁ q₂ r₂ : ℕ}
-    (hoa : QueryBound oa q₁ r₁) (hob : ∀ x, QueryBound (ob x) q₂ r₂) :
-    QueryBound (oa >>= ob) (q₁ + q₂) (r₁ + r₂) := by
+    {oa : OracleComp (randOracleSpec + proofSpec) α}
+    {ob : α → OracleComp (randOracleSpec + proofSpec) β} {q₁ r₁ q₂ r₂ : ℕ}
+    (hoa : QueryBound oa r₁ q₁) (hob : ∀ x, QueryBound (ob x) r₂ q₂) :
+    QueryBound (oa >>= ob) (r₁ + r₂) (q₁ + q₂) := by
   revert q₁ r₁
   induction oa using OracleComp.inductionOn with
   | pure x =>
@@ -91,23 +120,21 @@ lemma queryBound_bind {ρ ι α β : Type} {randSpec : OracleSpec ρ}
 
 namespace PCP
 
-abbrev proofSpec (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ) :=
-  Fin ℓ →ₒ F
-
 /-- A proof is represented as a function `π : [ℓ] → F`.
 `π(q)` is the answer to query `q`. -/
-abbrev proof {F : Type} {ℓ : ℕ}
+abbrev proofOracle {F : Type} {ℓ : ℕ}
     (π : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp where
-  spec := proofSpec F ℓ
+  spec := proofOracleSpec_fin F ℓ
   impl := fun q => return π q
 
-abbrev spec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ Fin ℓ) :=
-  randSpec F + proofSpec F ℓ
+/-- Specification of a PCP instance, which includes a random Oracle and a proof Oracle. -/
+abbrev fullSpec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ Fin ℓ) :=
+  randOracleSpec F + proofOracleSpec_fin F ℓ
 
 end PCP
 
 abbrev PCPVerifier (α : Type) (size : α → ℕ) (F : Type) (ℓ : ℕ → ℕ) : Type :=
-  (x : α) → OracleComp (PCP.spec F (ℓ (size x))) Bool
+  (x : α) → OracleComp (PCP.fullSpec F (ℓ (size x))) Bool
 
 /-- The complexity class PCP. Note that we use a randomness oracle that samples elements from `F`
 and not `{0,1}`. To recover the bit randomness compleixty, we need to multiply `r` by `log |F|`.-/
@@ -116,31 +143,27 @@ def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     (ℓ q r : ℕ → ℕ) : Set (Set α) :=
   { L | ∃ (V : PCPVerifier α size F ℓ) (t : Polynomial ℕ), ∀ x,
     RunsInTime (V x) (t.eval (size x)) ∧
-    QueryBound (V x) (q (size x)) (r (size x)) ∧
+    QueryBound (V x) (r (size x)) (q (size x)) ∧
     (x ∈ L → ∃ π : Fin (ℓ (size x)) → F,
-      Pr[= true | simulateQ ((rand F).impl + (PCP.proof π).impl) (V x)] ≥ 1 - ε_c) ∧
+      Pr[= true | simulateQ ((randOracle F).impl + (PCP.proofOracle π).impl) (V x)] ≥ 1 - ε_c) ∧
     (x ∉ L → ∀ π : Fin (ℓ (size x)) → F,
-      Pr[= true | simulateQ ((rand F).impl + (PCP.proof π).impl) (V x)] ≤ ε_s) }
+      Pr[= true | simulateQ ((randOracle F).impl + (PCP.proofOracle π).impl) (V x)] ≤ ε_s) }
 
 namespace LPCP
 
-abbrev proofSpec (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ → F) :=
-  (Fin ℓ → F) →ₒ F
-
 /-- A linear-query proof: a query is a vector `u`,
 and the answer is the inner product `⟨π, u⟩`. -/
-abbrev proof {F : Type} [Field F] {ℓ : ℕ}
+abbrev proofOracle {F : Type} [Field F] {ℓ : ℕ}
     (π : Fin ℓ → F) : OracleContext (Fin ℓ → F) ProbComp where
-  spec := proofSpec F ℓ
+  spec := proofOracleSpec_fin_vector F ℓ
   impl := fun u => return π ⬝ᵥ u
 
-abbrev spec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ (Fin ℓ → F)) :=
-  randSpec F + proofSpec F ℓ
+abbrev fullSpec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ (Fin ℓ → F)) := fullSpec_fin_vector F ℓ
 
 end LPCP
 
 abbrev LPCPVerifier (α : Type) (size : α → ℕ) (F : Type) [Field F] (ℓ : ℕ → ℕ) : Type :=
-  (x : α) → OracleComp (LPCP.spec F (ℓ (size x))) Bool
+  (x : α) → OracleComp (LPCP.fullSpec F (ℓ (size x))) Bool
 
 /-- The complexity class LPCP. Note that we use a randomness oracle that samples elements from `F`
 and not `{0,1}`. To recover the bit randomness compleixty, we need to multiply `r` by `log |F|`.-/
@@ -149,8 +172,8 @@ def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     (ℓ q r : ℕ → ℕ) : Set (Set α) :=
   { L | ∃ (V : LPCPVerifier α size F ℓ) (t : Polynomial ℕ), ∀ x,
     RunsInTime (V x) (t.eval (size x)) ∧
-    QueryBound (V x) (q (size x)) (r (size x)) ∧
+    QueryBound (V x) (r (size x)) (q (size x)) ∧
     (x ∈ L → ∃ π : Fin (ℓ (size x)) → F,
-      Pr[= true | simulateQ ((rand F).impl + (LPCP.proof π).impl) (V x)] ≥ 1 - ε_c) ∧
+      Pr[= true | simulateQ ((randOracle F).impl + (LPCP.proofOracle π).impl) (V x)] ≥ 1 - ε_c) ∧
     (x ∉ L → ∀ π : Fin (ℓ (size x)) → F,
-      Pr[= true | simulateQ ((rand F).impl + (LPCP.proof π).impl) (V x)] ≤ ε_s) }
+      Pr[= true | simulateQ ((randOracle F).impl + (LPCP.proofOracle π).impl) (V x)] ≤ ε_s) }
