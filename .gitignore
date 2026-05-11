@@ -3,6 +3,8 @@
 ## Python venv
 venv/
 .venv/
+__pycache__/
+*.py[cod]
 ## Lake
 .lake/*
 .cache/*
@@ -42,3 +44,4 @@ scripts/build_blueprint.sh
 .vscode/
 .claude/
 .codex/
+.codex
