@@ -40,6 +40,53 @@ def sampleVector (F : Type) (m : ℕ) {N : ℕ} :
     OracleComp (PCP.fullSpec F N) (Fin m → F) :=
   Fin.mOfFn m fun _ => sampleField (F := F) (N := N)
 
+private lemma queryBound_map {ρ ι α β : Type} {randSpec : OracleSpec ρ}
+    {proofSpec : OracleSpec ι} {oa : OracleComp (randSpec + proofSpec) α}
+    {q r : ℕ} (f : α → β) (hoa : QueryBound oa r q) :
+    QueryBound (f <$> oa) r q := by
+  simpa [QueryBound] using
+    (OracleComp.isQueryBound_map_iff oa f (r, q)
+      (fun
+        | .inl _, (r, _) => 0 < r
+        | .inr _, (_, q) => 0 < q)
+      (fun
+        | .inl _, (r, q) => (r - 1, q)
+        | .inr _, (r, q) => (r, q - 1))).2 hoa
+
+private lemma queryBound_mOfFn {ρ ι α : Type} {randSpec : OracleSpec ρ}
+    {proofSpec : OracleSpec ι} {m r q : ℕ}
+    (oa : Fin m → OracleComp (randSpec + proofSpec) α)
+    (hoa : ∀ i, QueryBound (oa i) r q) :
+    QueryBound (Fin.mOfFn m oa) (m * r) (m * q) := by
+  induction m with
+  | zero =>
+      simp [Fin.mOfFn, QueryBound]
+  | succ m ih =>
+      simp only [Fin.mOfFn]
+      simpa [Nat.succ_mul, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using
+        queryBound_bind (hoa 0) fun x =>
+          by
+            simpa [QueryBound] using ih (fun i => oa i.succ) fun i => hoa i.succ
+
+lemma sampleField_queryBound {F : Type} {N : ℕ} :
+    QueryBound (sampleField (F := F) (N := N)) 1 0 := by
+  simp [sampleField, QueryBound]
+
+lemma sampleVector_queryBound (F : Type) (m : ℕ) {N : ℕ} :
+    QueryBound (sampleVector F m (N := N)) m 0 := by
+  simpa [sampleVector] using
+    (queryBound_mOfFn (fun _ : Fin m => sampleField (F := F) (N := N))
+      (fun _ => sampleField_queryBound (F := F) (N := N)))
+
+lemma sampleShifts_queryBound (n t : ℕ) :
+    QueryBound
+      (Fin.mOfFn t fun _ => sampleVector (ZMod 2) n (N := 2 ^ n))
+      (t * n) 0 := by
+  simpa using
+    (queryBound_mOfFn
+      (fun _ : Fin t => sampleVector (ZMod 2) n (N := 2 ^ n))
+      (fun _ => sampleVector_queryBound (ZMod 2) n (N := 2 ^ n)))
+
 /-- The mean of the sum of Boolean random variables sampled independently by `Fin.mOfFn`. -/
 noncomputable def bernoulliSumMean {N : ℕ} (X : Fin N → ProbComp Bool) : ℝ :=
   ∑ i : Fin N, (Pr[= true | X i]).toReal
@@ -226,6 +273,31 @@ noncomputable def truthTableImpl (n : ℕ) :
   | .inl () => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inl ())
   | .inr a => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inr (truthTableIndex n a))
 
+lemma queryBound_simulateQ_truthTableImpl {n : ℕ} {α : Type}
+    {oa : OracleComp (LPCP.fullSpec (ZMod 2) n) α} {r q : ℕ}
+    (hoa : QueryBound oa r q) :
+    QueryBound (simulateQ (truthTableImpl n) oa) r q := by
+  revert q r
+  induction oa using OracleComp.inductionOn with
+  | pure _ =>
+      intro q r hoa
+      simp
+  | query_bind t mx ih =>
+      intro q r hoa
+      rw [QueryBound, OracleComp.isQueryBound_query_bind_iff] at hoa
+      cases t with
+      | inl u =>
+          rcases u
+          simp only [simulateQ_bind, simulateQ_query, OracleQuery.cont_query, id_map,
+            OracleQuery.input_query, truthTableImpl]
+          rw [QueryBound, OracleComp.isQueryBound_query_bind_iff]
+          exact ⟨hoa.1, fun y => ih y (hoa.2 y)⟩
+      | inr _ =>
+          simp only [simulateQ_bind, simulateQ_query, OracleQuery.cont_query, id_map,
+            OracleQuery.input_query, truthTableImpl]
+          rw [QueryBound, OracleComp.isQueryBound_query_bind_iff]
+          exact ⟨hoa.1, fun y => ih y (hoa.2 y)⟩
+
 /-- Answer one LPCP linear query using the sampled shifts and plurality decoding. -/
 noncomputable def decodedLinearQuery {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
@@ -238,12 +310,91 @@ noncomputable def decodedLinearQuery {n t : ℕ}
     pure (y₁ - y₀)
   pure (pluralityZMod2 ys)
 
+private lemma decodedLinearQuery_step_queryBound {n t : ℕ}
+    (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) (i : Fin t) :
+    QueryBound
+      ((do
+        let y₁ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
+          (.inr (truthTableIndex n fun j => a j + shifts i j))
+        let y₀ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
+          (.inr (truthTableIndex n (shifts i)))
+        pure (y₁ - y₀)) :
+        OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2)) 0 2 := by
+  simp only [QueryBound]
+  rw [OracleComp.isQueryBound_query_bind_iff]
+  refine ⟨by simp, fun _ => ?_⟩
+  rw [OracleComp.isQueryBound_query_bind_iff]
+  exact ⟨by simp, fun _ => trivial⟩
+
+lemma decodedLinearQuery_queryBound {n t : ℕ}
+    (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
+    QueryBound (decodedLinearQuery shifts a) 0 (2 * t) := by
+  have hys : QueryBound
+      (Fin.mOfFn t fun i => ((do
+        let y₁ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
+          (.inr (truthTableIndex n fun j => a j + shifts i j))
+        let y₀ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
+          (.inr (truthTableIndex n (shifts i)))
+        pure (y₁ - y₀)) :
+        OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2))) 0 (2 * t) := by
+    simpa [Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using
+      (queryBound_mOfFn
+        (fun i : Fin t => ((do
+          let y₁ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
+            (.inr (truthTableIndex n fun j => a j + shifts i j))
+          let y₀ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
+            (.inr (truthTableIndex n (shifts i)))
+          pure (y₁ - y₀)) :
+          OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2)))
+        (fun i => decodedLinearQuery_step_queryBound shifts a i))
+  simpa [decodedLinearQuery] using hys
+
 /-- Simulate LPCP oracle queries using a PCP truth table and fixed random shifts. -/
 noncomputable def decodedImpl {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) :
     QueryImpl (LPCP.fullSpec (ZMod 2) n) (OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)))
   | .inl () => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inl ())
   | .inr a => decodedLinearQuery shifts a
+
+lemma queryBound_simulateQ_decodedImpl {n t : ℕ}
+    (shifts : Fin t → Fin n → ZMod 2) {α : Type}
+    {oa : OracleComp (LPCP.fullSpec (ZMod 2) n) α} {r q : ℕ}
+    (hoa : QueryBound oa r q) :
+    QueryBound (simulateQ (decodedImpl shifts) oa) r (2 * t * q) := by
+  revert r q
+  induction oa using OracleComp.inductionOn with
+  | pure _ =>
+      intro r q hoa
+      simp
+  | query_bind oracle mx ih =>
+      intro r q hoa
+      rw [QueryBound, OracleComp.isQueryBound_query_bind_iff] at hoa
+      cases oracle with
+      | inl u =>
+          rcases u
+          simp only [simulateQ_bind, simulateQ_query, OracleQuery.cont_query, id_map,
+            OracleQuery.input_query, decodedImpl]
+          rw [QueryBound, OracleComp.isQueryBound_query_bind_iff]
+          refine ⟨hoa.1, fun y => ?_⟩
+          exact queryBound_mono (ih y (hoa.2 y)) (by omega) (by omega)
+      | inr a =>
+          simp only [simulateQ_bind, simulateQ_query, OracleQuery.cont_query, id_map,
+            OracleQuery.input_query, decodedImpl]
+          have htail : ∀ y : ZMod 2,
+              QueryBound (simulateQ (decodedImpl shifts) (mx y)) r (2 * t * (q - 1)) := by
+            intro y
+            exact ih y (hoa.2 y)
+          have hbind :
+              QueryBound
+                (decodedLinearQuery shifts a >>=
+                  fun y => simulateQ (decodedImpl shifts) (mx y))
+                (0 + r) ((2 * t) + (2 * t * (q - 1))) :=
+            queryBound_bind (decodedLinearQuery_queryBound shifts a) htail
+          have hqueries : (2 * t) + (2 * t * (q - 1)) = 2 * t * q := by
+            rw [Nat.add_comm, ← Nat.mul_succ]
+            have hq : (q - 1).succ = q := by omega
+            rw [hq]
+          exact queryBound_mono hbind (by rw [hqueries]) (by omega)
 
 /-- The PCP verifier obtained from an LPCP verifier over `ZMod 2`. -/
 noncomputable def verifier {α : Type} (size : α → ℕ) (ℓ q : ℕ → ℕ)
@@ -259,6 +410,68 @@ noncomputable def verifier {α : Type} (size : α → ℕ) (ℓ q : ℕ → ℕ)
       simulateQ (decodedImpl shifts) (V x)
     else
       pure false
+
+/--
+The constructed verifier has alphabet `ZMod 2` and proof length `2 ^ ℓ n` by its type, and
+it satisfies the claimed query and randomness bounds.
+-/
+lemma verifier_has_claimed_parameters {α : Type} (size : α → ℕ) (ℓ q r : ℕ → ℕ)
+    (V : LPCPVerifier α size (ZMod 2) ℓ)
+    (hV : ∀ x, QueryBound (V x) (r (size x)) (q (size x))) :
+    ∀ x,
+      QueryBound
+        (((verifier size ℓ q V :
+          PCPVerifier α size (ZMod 2) (fun n => 2 ^ ℓ n)) x))
+        (r (size x) + (2 + numShifts q (size x)) * ℓ (size x))
+        (3 + 2 * numShifts q (size x) * q (size x)) := by
+  intro x
+  let n := ℓ (size x)
+  let t := numShifts q (size x)
+  let rx := r (size x)
+  let qx := q (size x)
+  have hBLR :
+      QueryBound
+        (simulateQ (truthTableImpl n)
+          (BLR.basicVerifier (F := ZMod 2) (n := n)))
+        (2 * n) 3 :=
+    queryBound_simulateQ_truthTableImpl (BLR_basic_query_complexity (F := ZMod 2) (n := n))
+  have hDecoded : ∀ shifts : Fin t → Fin n → ZMod 2,
+      QueryBound (simulateQ (decodedImpl shifts) (V x)) rx (2 * t * qx) := by
+    intro shifts
+    exact queryBound_simulateQ_decodedImpl shifts (by simpa [n, rx, qx] using hV x)
+  have hBranch : ∀ ok : Bool,
+      QueryBound
+        (if ok then
+          (do
+            let shifts : Fin t → Fin n → ZMod 2 ←
+              Fin.mOfFn t fun _ => sampleVector (ZMod 2) n (N := 2 ^ n)
+            simulateQ (decodedImpl shifts) (V x))
+        else
+          pure false)
+        (t * n + rx) (2 * t * qx) := by
+    intro ok
+    cases ok
+    · simp [QueryBound]
+    · simpa [Nat.zero_add] using
+        queryBound_bind (sampleShifts_queryBound n t) hDecoded
+  have hAll :
+      QueryBound
+        (do
+          let ok ← simulateQ (truthTableImpl n)
+            (BLR.basicVerifier (F := ZMod 2) (n := n))
+          if ok then
+            (do
+              let shifts : Fin t → Fin n → ZMod 2 ←
+                Fin.mOfFn t fun _ => sampleVector (ZMod 2) n (N := 2 ^ n)
+              simulateQ (decodedImpl shifts) (V x))
+          else
+            pure false)
+        (2 * n + (t * n + rx)) (3 + 2 * t * qx) :=
+    queryBound_bind hBLR hBranch
+  have hrand : 2 * n + (t * n + rx) = rx + (2 + t) * n := by
+    ring
+  simpa [verifier, n, t, rx, qx, Nat.mul_assoc] using
+    queryBound_mono hAll (by simp [t, qx, Nat.mul_assoc]) (by rw [hrand])
 
 end LPCPToPCP
 
@@ -276,6 +489,7 @@ by
   rcases hV x with ⟨hTime, hQuery, hComplete, hSound⟩
   refine ⟨?_, ?_, ?_, ?_⟩
   · simp [RunsInTime]
-  · sorry
+  · exact LPCPToPCP.verifier_has_claimed_parameters size ℓ q r V
+      (fun y => (hV y).2.1) x
   · sorry
   · sorry
