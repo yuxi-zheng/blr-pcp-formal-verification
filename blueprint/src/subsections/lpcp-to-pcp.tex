@@ -1,9 +1,59 @@
 \begin{lemma}[Chernoff bound]
-  Let $X_1,\dots, X_N$ be random variables over $\{0,1\}$, and let $\mu=\EE\left[\sum_{i = 1}^N X_i\right]$. For any $\Delta > 0$ one has
+  Let $X_1,\dots, X_N$ be independent random variables over $\{0,1\}$, and let $\mu=\EE\left[\sum_{i = 1}^N X_i\right]$. For any $\Delta > 0$ one has
   \begin{equation*}
     \Pr\left[\sum_{i = 1}^N X_i \ge \mu+\Delta\right] \le \exp(-2\Delta^2/N)
   \end{equation*}
 \end{lemma}
+\begin{proof}
+  Write $p_i=\EE[X_i]$, so that $\mu=\sum_{i=1}^N p_i$. We first prove the elementary exponential-moment estimate
+  \[
+    \EE[\exp(\lambda(X_i-p_i))]\le \exp(\lambda^2/8)
+  \]
+  for every $\lambda>0$ and every $i$. Since $X_i$ is $\{0,1\}$-valued,
+  \[
+    \EE[\exp(\lambda(X_i-p_i))]
+    = (1-p_i)\exp(-\lambda p_i)+p_i\exp(\lambda(1-p_i)).
+  \]
+  Equivalently, it is enough to show
+  \[
+    \log(1-p_i+p_i\exp(\lambda))-p_i\lambda \le \lambda^2/8.
+  \]
+  For $p\in[0,1]$, set $f(\lambda)=\log(1-p+p\exp(\lambda))-p\lambda$. Then $f(0)=f'(0)=0$, and
+  \[
+    f''(\lambda)
+    = \frac{p\exp(\lambda)}{1-p+p\exp(\lambda)}
+      \left(1-\frac{p\exp(\lambda)}{1-p+p\exp(\lambda)}\right)
+    \le \frac14.
+  \]
+  Hence, for $\lambda>0$,
+  \[
+    f(\lambda)
+    = \int_0^\lambda\int_0^u f''(v)\,dv\,du
+    \le \int_0^\lambda\int_0^u \frac14\,dv\,du
+    = \lambda^2/8.
+  \]
+
+  Let $S=\sum_{i=1}^N X_i$. By independence and the estimate above,
+  \[
+    \EE[\exp(\lambda(S-\mu))]
+    = \prod_{i=1}^N \EE[\exp(\lambda(X_i-p_i))]
+    \le \exp(N\lambda^2/8).
+  \]
+  Markov's inequality gives, for every $\lambda>0$,
+  \[
+    \Pr[S\ge \mu+\Delta]
+    = \Pr[\exp(\lambda(S-\mu))\ge \exp(\lambda\Delta)]
+    \le \exp(-\lambda\Delta)\EE[\exp(\lambda(S-\mu))]
+  \]
+  Using the moment bound above, this is at most
+  \[
+    \exp(-\lambda\Delta+N\lambda^2/8).
+  \]
+  Taking $\lambda=4\Delta/N$ gives
+  \[
+    \Pr[S\ge \mu+\Delta]\le \exp(-2\Delta^2/N).
+  \]
+\end{proof}
 
 \begin{lemma}
 \uses{LPCP,PCP}
@@ -17,13 +67,13 @@
 \varepsilon_s'=\max\{7/8,\varepsilon_s+1/100\},
 \Sigma'=\F_{2},\
 \ell'=2^{\ell},\
-q'=3+2\lceil\log100q\rceil q,\
-r'=r+(2+\lceil\log100q\rceil)\ell
+q'=3+16\lceil\log(100q)\rceil q,\
+r'=r+(2+8\lceil\log(100q)\rceil)\ell
 \right].
 \]
 \end{lemma}
 \begin{proof}\uses{LINEQ_LPCP, BLR.basicVerifier, BLR_basic_completeness_ZMod2, BLR_basic_soundness_ZMod2}
-Let $L \in \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$, and let $V$ be the LPCP verifier for $L$. Set $t=16\lceil\log100q\rceil$. We define a PCP verifier as follows, for any $\bar{pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ and $x \in \{0,1\}^*$.
+Let $L \in \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$, and let $V$ be the LPCP verifier for $L$. Set $t=8\lceil\log(100q)\rceil$, where $\log$ denotes the natural logarithm. We define a PCP verifier as follows, for any $\bar{pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ and $x \in \{0,1\}^*$.
 
 \vspace{1em}
 \noindent \textbf{Verifier} $\bar{V}^{\bar{\pi}} (x)$:

@@ -30,7 +30,140 @@ def linearFn (a : Vec F Idx) : ScalarFn F Idx :=
 def IsLinear (f : ScalarFn F Idx) : Prop :=
   ∃ a : Vec F Idx, ∀ x, f x = linearFn a x
 
+/-- The relative Hamming distance between two scalar functions, i.e. the
+uniform probability that they disagree on a point of `F^Idx`. -/
+noncomputable def distance (f g : ScalarFn F Idx) : Real :=
+  (Fintype.card (Vec F Idx) : Real)⁻¹ *
+    ∑ x : Vec F Idx, if f x ≠ g x then (1 : Real) else 0
+
 def LinearSet : Set (ScalarFn F Idx) := {f | IsLinear f}
+
+/-- Distinct linear scalar functions are separated by exactly
+`1 - 1 / |F|` in relative Hamming distance. -/
+theorem linearSet_wellSeparated {f g : ScalarFn F Idx}
+    (hf : f ∈ LinearSet (F := F) (Idx := Idx))
+    (hg : g ∈ LinearSet (F := F) (Idx := Idx)) (hfg : f ≠ g) :
+    distance f g = 1 - (Fintype.card F : Real)⁻¹ := by
+  classical
+  rcases hf with ⟨a, ha⟩
+  rcases hg with ⟨b, hb⟩
+  let c : Vec F Idx := a - b
+  have hc : c ≠ 0 := by
+    intro hc0
+    apply hfg
+    ext x
+    rw [ha x, hb x]
+    have hab : a = b := sub_eq_zero.mp hc0
+    rw [hab]
+  have hfiber_mul :
+      ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card) *
+        Fintype.card F = Fintype.card (Vec F Idx) := by
+    let L : Vec F Idx →+ F := {
+      toFun := linearFn c
+      map_zero' := by simp [linearFn]
+      map_add' x y := by
+        simp [linearFn, mul_add, Finset.sum_add_distrib]
+    }
+    have hsurj : Function.Surjective L := by
+      obtain ⟨i, hi⟩ : ∃ i, c i ≠ 0 := by
+        by_contra h
+        apply hc
+        ext i
+        by_contra hi
+        exact h ⟨i, hi⟩
+      intro t
+      refine ⟨Pi.single i (t * (c i)⁻¹), ?_⟩
+      change linearFn c (Pi.single i (t * (c i)⁻¹)) = t
+      rw [linearFn, Finset.sum_eq_single i]
+      · simp [Pi.single_eq_same]
+        field_simp [hi]
+      · intro j _ hij
+        simp [Pi.single_eq_of_ne hij]
+      · intro hi_univ
+        simp at hi_univ
+    have hfibers : ∀ u : F,
+        (Finset.univ.filter fun x : Vec F Idx => L x = u).card =
+          (Finset.univ.filter fun x : Vec F Idx => L x = 0).card := by
+      intro u
+      exact AddMonoidHom.card_fiber_eq_of_mem_range L (hsurj u) (hsurj 0)
+    have hpartition :
+        (∑ u : F, (Finset.univ.filter fun x : Vec F Idx => L x = u).card) =
+          Fintype.card (Vec F Idx) := by
+      simpa using
+        (Finset.card_eq_sum_card_fiberwise
+          (s := (Finset.univ : Finset (Vec F Idx)))
+          (t := (Finset.univ : Finset F))
+          (f := fun x : Vec F Idx => L x)
+          (by intro x _; simp)).symm
+    calc
+      ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card) *
+          Fintype.card F =
+        ((Finset.univ.filter fun x : Vec F Idx => L x = 0).card) *
+          Fintype.card F := by rfl
+      _ = ∑ _u : F, (Finset.univ.filter fun x : Vec F Idx => L x = 0).card := by
+          simp [mul_comm]
+      _ = ∑ u : F, (Finset.univ.filter fun x : Vec F Idx => L x = u).card := by
+          apply Finset.sum_congr rfl
+          intro u _
+          exact (hfibers u).symm
+      _ = Fintype.card (Vec F Idx) := hpartition
+  have hagreement :
+      (∑ x : Vec F Idx, (if f x = g x then (1 : Real) else 0)) =
+        ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card : Real) := by
+    calc
+      (∑ x : Vec F Idx, (if f x = g x then (1 : Real) else 0)) =
+          ∑ x : Vec F Idx, (if linearFn a x = linearFn b x then (1 : Real) else 0) := by
+          apply Finset.sum_congr rfl
+          intro x _
+          rw [ha x, hb x]
+      _ = ∑ x : Vec F Idx, (if linearFn c x = 0 then (1 : Real) else 0) := by
+          apply Finset.sum_congr rfl
+          intro x _
+          have hiff : (linearFn a x = linearFn b x) ↔ linearFn c x = 0 := by
+            rw [← sub_eq_zero]
+            simp [c, linearFn, sub_mul, Finset.sum_sub_distrib]
+          by_cases hx : linearFn a x = linearFn b x
+          · simp [hx, hiff.mp hx]
+          · have hcx : linearFn c x ≠ 0 := fun hcx => hx (hiff.mpr hcx)
+            simp [hx, hcx]
+      _ = ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card : Real) := by
+          simp
+  have hN0 : (Fintype.card (Vec F Idx) : Real) ≠ 0 := by
+    exact_mod_cast Fintype.card_ne_zero
+  have hq0 : (Fintype.card F : Real) ≠ 0 := by
+    exact_mod_cast Fintype.card_ne_zero
+  have hfiber_mul_real :
+      ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card : Real) *
+        (Fintype.card F : Real) = (Fintype.card (Vec F Idx) : Real) := by
+    exact_mod_cast hfiber_mul
+  have hfiber_ne :
+      ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card : Real) ≠ 0 := by
+    intro hzero
+    have hNzero : (Fintype.card (Vec F Idx) : Real) = 0 := by
+      rw [← hfiber_mul_real, hzero, zero_mul]
+    exact hN0 hNzero
+  have hratio :
+      (Fintype.card (Vec F Idx) : Real)⁻¹ *
+          ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card : Real) =
+        (Fintype.card F : Real)⁻¹ := by
+    rw [← hfiber_mul_real]
+    field_simp [hfiber_ne, hq0]
+  calc
+    distance f g =
+        (Fintype.card (Vec F Idx) : Real)⁻¹ *
+          ∑ x : Vec F Idx, (if f x ≠ g x then (1 : Real) else 0) := by
+          rfl
+    _ = (Fintype.card (Vec F Idx) : Real)⁻¹ *
+        ∑ x : Vec F Idx, (1 - (if f x = g x then (1 : Real) else 0)) := by
+        congr 1
+        apply Finset.sum_congr rfl
+        intro x _
+        by_cases hx : f x = g x <;> simp [hx]
+    _ = 1 - (Fintype.card (Vec F Idx) : Real)⁻¹ *
+        ∑ x : Vec F Idx, (if f x = g x then (1 : Real) else 0) := by
+        simp [Finset.sum_sub_distrib, mul_sub]
+    _ = 1 - (Fintype.card F : Real)⁻¹ := by
+        rw [hagreement, hratio]
 
 /-- The real-valued indicator of membership in the set of linear scalar functions. -/
 noncomputable def linearSetIndicator (f : ScalarFn F Idx) : Real := by
@@ -70,12 +203,6 @@ noncomputable def acceptanceProbabilityBLR (f : ScalarFn F Idx) : Real := by
 
 noncomputable def rejectionProbabilityBLR (f : ScalarFn F Idx) : Real :=
   1 - acceptanceProbabilityBLR f
-
-/-- The relative Hamming distance between two scalar functions, i.e. the
-uniform probability that they disagree on a point of `F^Idx`. -/
-noncomputable def distance (f g : ScalarFn F Idx) : Real :=
-  (Fintype.card (Vec F Idx) : Real)⁻¹ *
-    ∑ x : Vec F Idx, if f x ≠ g x then (1 : Real) else 0
 
 private noncomputable def linearFunctionsFinset : Finset (ScalarFn F Idx) := by
   classical
