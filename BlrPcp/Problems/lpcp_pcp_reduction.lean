@@ -33,11 +33,11 @@ noncomputable def numShifts (q : ℕ → ℕ) (n : ℕ) : ℕ :=
 def pluralityZMod2 {t : ℕ} (ys : Fin t → ZMod 2) : ZMod 2 :=
   if Fintype.card { i : Fin t // ys i = 1 } * 2 > t then 1 else 0
 
-def sampleField {F : Type} {N : ℕ} : OracleComp (PCP.spec F N) F :=
-  query (spec := PCP.spec F N) (.inl ())
+def sampleField {F : Type} {N : ℕ} : OracleComp (PCP.fullSpec F N) F :=
+  query (spec := PCP.fullSpec F N) (.inl ())
 
 def sampleVector (F : Type) (m : ℕ) {N : ℕ} :
-    OracleComp (PCP.spec F N) (Fin m → F) :=
+    OracleComp (PCP.fullSpec F N) (Fin m → F) :=
   Fin.mOfFn m fun _ => sampleField (F := F) (N := N)
 
 /-- The mean of the sum of Boolean random variables sampled independently by `Fin.mOfFn`. -/
@@ -222,18 +222,18 @@ theorem chernoff_bound {N : ℕ} (hN : 0 < N) (X : Fin N → ProbComp Bool)
 
 /-- Run an LPCP-style vector query against a PCP truth table. -/
 noncomputable def truthTableImpl (n : ℕ) :
-    QueryImpl (LPCP.spec (ZMod 2) n) (OracleComp (PCP.spec (ZMod 2) (2 ^ n)))
-  | .inl () => query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inl ())
-  | .inr a => query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inr (truthTableIndex n a))
+    QueryImpl (LPCP.fullSpec (ZMod 2) n) (OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)))
+  | .inl () => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inl ())
+  | .inr a => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inr (truthTableIndex n a))
 
 /-- Answer one LPCP linear query using the sampled shifts and plurality decoding. -/
 noncomputable def decodedLinearQuery {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
-    OracleComp (PCP.spec (ZMod 2) (2 ^ n)) (ZMod 2) := do
+    OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2) := do
   let ys : Fin t → ZMod 2 ← Fin.mOfFn t fun i => do
-    let y₁ : ZMod 2 ← query (spec := PCP.spec (ZMod 2) (2 ^ n))
+    let y₁ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
       (.inr (truthTableIndex n fun j => a j + shifts i j))
-    let y₀ : ZMod 2 ← query (spec := PCP.spec (ZMod 2) (2 ^ n))
+    let y₀ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
       (.inr (truthTableIndex n (shifts i)))
     pure (y₁ - y₀)
   pure (pluralityZMod2 ys)
@@ -241,8 +241,8 @@ noncomputable def decodedLinearQuery {n t : ℕ}
 /-- Simulate LPCP oracle queries using a PCP truth table and fixed random shifts. -/
 noncomputable def decodedImpl {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) :
-    QueryImpl (LPCP.spec (ZMod 2) n) (OracleComp (PCP.spec (ZMod 2) (2 ^ n)))
-  | .inl () => query (spec := PCP.spec (ZMod 2) (2 ^ n)) (.inl ())
+    QueryImpl (LPCP.fullSpec (ZMod 2) n) (OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)))
+  | .inl () => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inl ())
   | .inr a => decodedLinearQuery shifts a
 
 /-- The PCP verifier obtained from an LPCP verifier over `ZMod 2`. -/
