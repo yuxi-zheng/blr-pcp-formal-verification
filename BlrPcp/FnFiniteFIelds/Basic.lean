@@ -32,6 +32,9 @@ abbrev ScalarFn (F : Type*) (Idx : Type*) := Vec F Idx → F
 /-- Complex-valued functions on `F^Idx`. -/
 abbrev ComplexFn (F : Type*) (Idx : Type*) := Vec F Idx → Complex
 
+/-- The nonzero elements of the finite field `F`. -/
+def nonzeroF : Finset F := Finset.univ.filter fun a => a ≠ 0
+
 /-- The standard dot product between vectors in `F^Idx`. -/
 def dotProduct (x y : Vec F Idx) : F :=
   ∑ i, x i * y i
@@ -385,6 +388,38 @@ noncomputable def normalizedCharOrthonormalBasis :
 
 end HilbertSpaceTranslation
 
+section FourierInversion
+
+/-- Pointwise Fourier inversion in the character basis `χ_α`. -/
+lemma fourier_inversion (g : ComplexFn F Idx) (x : Vec F Idx) :
+    g x = ∑ α, fourierCoeff g α * charFn α x := by
+  classical
+  let b : OrthonormalBasis (Vec F Idx) ℂ (PiLp 2 fun _ : Vec F Idx => ℂ) :=
+    normalizedCharOrthonormalBasis (F := F) (Idx := Idx)
+  have hb := b.sum_repr' (WithLp.toLp 2 g)
+  have hpoint := congrArg (fun v : PiLp 2 fun _ : Vec F Idx => ℂ => v x) hb
+  calc
+    g x = (WithLp.toLp 2 g : PiLp 2 fun _ : Vec F Idx => ℂ) x := rfl
+    _ = (∑ α, inner ℂ (b α) (WithLp.toLp 2 g) • b α) x := hpoint.symm
+    _ = ∑ α, fourierCoeff g α * charFn α x := by
+      simp only [b, normalizedCharOrthonormalBasis, OrthonormalBasis.coe_mk,
+        WithLp.ofLp_sum, WithLp.ofLp_smul]
+      rw [Finset.sum_apply]
+      simp only [Pi.smul_apply, smul_eq_mul]
+      change (∑ α, inner ℂ (normalizedCharLp (F := F) (Idx := Idx) α)
+        (WithLp.toLp 2 g) * (normalizedCharLp (F := F) (Idx := Idx) α x)) =
+          ∑ α, fourierCoeff g α * charFn α x
+      apply Finset.sum_congr rfl
+      intro α _
+      rw [normalizedCharLp_inner_eq_sqrt_card_mul_fnInner]
+      rw [fourierCoeff]
+      simp only [normalizedCharLp, PiLp.smul_apply, smul_eq_mul]
+      have hsqrt0 : (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) ≠ 0 := by
+        exact_mod_cast (Real.sqrt_ne_zero'.2 (Nat.cast_pos.2 card_vec_pos))
+      field_simp [hsqrt0]
+
+end FourierInversion
+
 section ParsevaPlancharel
 
 /-- Parseval's identity for the finite-field Fourier transform. -/
@@ -461,5 +496,194 @@ lemma fourier_plancherel (f g : ComplexFn F Idx) :
   exact mul_left_cancel₀ hcard0 hb'
 
 end ParsevaPlancharel
+
+section DistanceViaPhaseCoeff
+
+/-- Split a sum over all field elements into the zero term and the sum over nonzero elements. -/
+lemma sum_univ_eq_zero_add_sum_nonzero (h : F → ℂ) :
+    ∑ c : F, h c = h 0 + ∑ c ∈ (nonzeroF (F := F)), h c := by
+  classical
+  rw [← Finset.add_sum_erase Finset.univ h (by simp : (0 : F) ∈ Finset.univ)]
+  congr 1
+  apply Finset.sum_congr
+  · ext c
+    simp [nonzeroF]
+  · intro c _
+    rfl
+
+/-- The equality indicator in `F` as an average of additive characters. -/
+lemma character_sum_indicator_eq (u v : F) :
+    (if u = v then (1 : ℂ) else 0) =
+      (Fintype.card F : ℂ)⁻¹ * ∑ c : F, baseChar (F := F) (c * (u - v)) := by
+  classical
+  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
+  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
+  by_cases huv : u = v
+  · have hcard : (Fintype.card F : ℂ) ≠ 0 := by
+      exact_mod_cast Fintype.card_ne_zero
+    simp [huv, hcard]
+  · let ψt : AddChar F ℂ :=
+      (baseChar (F := F)).compAddMonoidHom (AddMonoidHom.mulRight (u - v))
+    have ht : u - v ≠ 0 := sub_ne_zero.mpr huv
+    have hψt_ne_zero : ψt ≠ 0 := by
+      obtain ⟨c, hc⟩ := FiniteField.trace_to_zmod_nondegenerate F (a := u - v) ht
+      intro hψt
+      have hval : baseChar (F := F) (c * (u - v)) = 1 := by
+        simpa [ψt] using congrArg (fun ψ : AddChar F ℂ => ψ c) hψt
+      have htrace_zero :
+          Algebra.trace (ZMod (ringChar F)) F (c * (u - v)) = 0 := by
+        exact ZMod.injective_stdAddChar (N := ringChar F) (by
+          simpa [baseChar] using hval)
+      exact hc (by simpa [mul_comm] using htrace_zero)
+    have hsum_zero : (∑ c : F, baseChar (F := F) (c * (u - v))) = 0 := by
+      have hsumψ : (∑ c : F, ψt c) = 0 := by
+        rw [AddChar.sum_eq_ite ψt]
+        simp [hψt_ne_zero]
+      simpa [ψt] using hsumψ
+    simp [huv, hsum_zero]
+
+omit [DecidableEq F] [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
+/-- Multiplying one phase lift by the conjugate of another collapses to the phase
+of the pointwise difference. -/
+private lemma phaseLift_mul_star (f g : ScalarFn F Idx) (c : F) (x : Vec F Idx) :
+    phaseLift f c x * star (phaseLift g c x) =
+      baseChar (F := F) (c * (f x - g x)) := by
+  classical
+  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
+  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
+  let ψ : AddChar F ℂ := baseChar (F := F)
+  have hstar : star (ψ (c * g x)) = (ψ (c * g x))⁻¹ := by
+    exact (Complex.inv_eq_conj (AddChar.norm_apply ψ (c * g x))).symm
+  calc
+    phaseLift f c x * star (phaseLift g c x)
+        = ψ (c * f x) * star (ψ (c * g x)) := by
+            simp [phaseLift, baseChar, ψ]
+    _ = ψ (c * f x) * (ψ (c * g x))⁻¹ := by rw [hstar]
+    _ = ψ (c * f x) / ψ (c * g x) := by rw [div_eq_mul_inv]
+    _ = ψ (c * f x - c * g x) := by
+            rw [← AddChar.map_sub_eq_div]
+    _ = ψ (c * (f x - g x)) := by rw [mul_sub]
+    _ = baseChar (F := F) (c * (f x - g x)) := rfl
+
+omit [DecidableEq F] [Nonempty Idx] in
+/-- The phase-lift inner product is the average of the character of pointwise differences. -/
+private lemma fnInner_phaseLift_eq_character_average (f g : ScalarFn F Idx) (c : F) :
+    fnInner (phaseLift f c) (phaseLift g c) =
+      (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+        ∑ x : Vec F Idx, baseChar (F := F) (c * (f x - g x)) := by
+  unfold fnInner expectation
+  congr 1
+  · norm_num
+  · exact Finset.sum_congr rfl fun x _ => phaseLift_mul_star f g c x
+
+/-- The agreement probability of two scalar functions as an average of phase-lift inner products. -/
+private lemma agreement_probability_eq_phase_inner (f g : ScalarFn F Idx) :
+    (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) =
+      (Fintype.card F : ℂ)⁻¹ *
+        (1 + ∑ c ∈ (nonzeroF (F := F)),
+          fnInner (phaseLift f c) (phaseLift g c)) := by
+  classical
+  calc
+    (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) =
+      (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+        ∑ x : Vec F Idx,
+          (Fintype.card F : ℂ)⁻¹ *
+            ∑ c : F, baseChar (F := F) (c * (f x - g x)) := by
+        congr 1
+        exact Finset.sum_congr rfl fun x _ => character_sum_indicator_eq (f x) (g x)
+    _ = (Fintype.card F : ℂ)⁻¹ *
+        ((Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+          ∑ x : Vec F Idx, ∑ c : F, baseChar (F := F) (c * (f x - g x))) := by
+        simp [Finset.mul_sum, mul_left_comm]
+    _ = (Fintype.card F : ℂ)⁻¹ *
+        ((Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+          ∑ x : Vec F Idx,
+            (1 + ∑ c ∈ (nonzeroF (F := F)),
+              baseChar (F := F) (c * (f x - g x)))) := by
+        congr 2
+        apply Finset.sum_congr rfl
+        intro x _
+        rw [sum_univ_eq_zero_add_sum_nonzero]
+        simp [baseChar]
+    _ = (Fintype.card F : ℂ)⁻¹ *
+        (1 + ∑ c ∈ (nonzeroF (F := F)),
+          fnInner (phaseLift f c) (phaseLift g c)) := by
+        congr 1
+        calc
+          (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+              ∑ x : Vec F Idx,
+                (1 + ∑ c ∈ (nonzeroF (F := F)),
+                  baseChar (F := F) (c * (f x - g x))) =
+            1 + (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+              ∑ x : Vec F Idx, ∑ c ∈ (nonzeroF (F := F)),
+                baseChar (F := F) (c * (f x - g x)) := by
+              simp [Finset.sum_add_distrib, mul_add, Finset.mul_sum]
+          _ = 1 + (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+              ∑ c ∈ (nonzeroF (F := F)), ∑ x : Vec F Idx,
+                baseChar (F := F) (c * (f x - g x)) := by
+              rw [Finset.sum_comm]
+          _ = 1 + ∑ c ∈ (nonzeroF (F := F)),
+              (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+                ∑ x : Vec F Idx, baseChar (F := F) (c * (f x - g x)) := by
+              rw [Finset.mul_sum]
+          _ = 1 + ∑ c ∈ (nonzeroF (F := F)),
+              fnInner (phaseLift f c) (phaseLift g c) := by
+              congr 1
+              apply Finset.sum_congr rfl
+              intro c _
+              rw [fnInner_phaseLift_eq_character_average]
+
+/-- Distance is one minus the complex-valued agreement probability. -/
+private lemma distance_eq_one_sub_agreement (f g : ScalarFn F Idx) :
+    (distance f g : ℂ) =
+      1 - (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) := by
+  classical
+  calc
+    (distance f g : ℂ) =
+      (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+        ∑ x : Vec F Idx, (if f x ≠ g x then (1 : ℂ) else 0) := by
+        simp [distance]
+        apply Finset.sum_congr rfl
+        intro x _
+        by_cases hx : f x = g x <;> simp [hx]
+    _ = (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+        ∑ x : Vec F Idx, (1 - (if f x = g x then (1 : ℂ) else 0)) := by
+        congr 1
+        apply Finset.sum_congr rfl
+        intro x _
+        by_cases hx : f x = g x <;> simp [hx]
+    _ = 1 - (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) := by
+        simp [Finset.sum_sub_distrib, mul_sub]
+
+/-- Relative Hamming distance in terms of the Fourier coefficients of the
+nonzero phase lifts of `f` and `g`. -/
+lemma distance_formula_via_phase_fourier_coefficients (f g : ScalarFn F Idx) :
+    (distance f g : ℂ) =
+      1 - (Fintype.card F : ℂ)⁻¹ *
+        (1 + ∑ c ∈ (nonzeroF (F := F)), ∑ α : Vec F Idx,
+          fourierCoeff (phaseLift f c) α * star (fourierCoeff (phaseLift g c) α)) := by
+  calc
+    (distance f g : ℂ) =
+      1 - (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
+        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) := by
+        rw [distance_eq_one_sub_agreement]
+    _ = 1 - (Fintype.card F : ℂ)⁻¹ *
+        (1 + ∑ c ∈ (nonzeroF (F := F)),
+          fnInner (phaseLift f c) (phaseLift g c)) := by
+        rw [agreement_probability_eq_phase_inner]
+    _ = 1 - (Fintype.card F : ℂ)⁻¹ *
+        (1 + ∑ c ∈ (nonzeroF (F := F)), ∑ α : Vec F Idx,
+          fourierCoeff (phaseLift f c) α * star (fourierCoeff (phaseLift g c) α)) := by
+        congr 2
+        congr 1
+        apply Finset.sum_congr rfl
+        intro c _
+        rw [← fourier_plancherel (phaseLift f c) (phaseLift g c)]
+
+end DistanceViaPhaseCoeff
 
 end BlrPcp

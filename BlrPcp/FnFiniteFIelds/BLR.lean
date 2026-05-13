@@ -13,21 +13,6 @@ when it samples scalars `a`, `b` and points `x`, `y` -/
 def BLRAcceptsAt (f : ScalarFn F Idx) (a b : F) (x y : Vec F Idx) : Prop :=
   a * f x + b * f y = f (fun i => a * x i + b * y i)
 
-/-- The nonzero field elements used as BLR scalar samples. -/
-def nonzeroF : Finset F :=
-  Finset.univ.filter fun a => a ≠ 0
-
-private lemma sum_univ_eq_zero_add_sum_nonzero (h : F → ℂ) :
-    ∑ c : F, h c = h 0 + ∑ c ∈ (nonzeroF (F := F)), h c := by
-  classical
-  rw [← Finset.add_sum_erase Finset.univ h (by simp : (0 : F) ∈ Finset.univ)]
-  congr 1
-  apply Finset.sum_congr
-  · ext c
-    simp [nonzeroF]
-  · intro c _
-    rfl
-
 /-- The uniform acceptance probability of the finite-field BLR test:
 `a,b` are sampled uniformly from `F \ {0}` and `x,y` from `F^Idx`. -/
 noncomputable def acceptanceProbabilityBLR (f : ScalarFn F Idx) : Real := by
@@ -84,38 +69,6 @@ lemma blr_completeness {f : ScalarFn F Idx}
   field_simp [hnz_card, hvec_card_pow]
 
 end BLRCompleteness
-
-/-- The indicator for equality in `F` can be expressed a sum of phases
-(recall `baseChar` is the Lean encoding of `ω_p^{Tr(·)}` ) -/
-lemma character_sum_indicator_eq (u v : F) :
-    (if u = v then (1 : ℂ) else 0) =
-      (Fintype.card F : ℂ)⁻¹ * ∑ c : F, baseChar (F := F) (c * (u - v)) := by
-  classical
-  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
-  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
-  by_cases huv : u = v
-  · have hcard : (Fintype.card F : ℂ) ≠ 0 := by
-      exact_mod_cast Fintype.card_ne_zero
-    simp [huv, hcard]
-  · let ψt : AddChar F ℂ :=
-      (baseChar (F := F)).compAddMonoidHom (AddMonoidHom.mulRight (u - v))
-    have ht : u - v ≠ 0 := sub_ne_zero.mpr huv
-    have hψt_ne_zero : ψt ≠ 0 := by
-      obtain ⟨c, hc⟩ := FiniteField.trace_to_zmod_nondegenerate F (a := u - v) ht
-      intro hψt
-      have hval : baseChar (F := F) (c * (u - v)) = 1 := by
-        simpa [ψt] using congrArg (fun ψ : AddChar F ℂ => ψ c) hψt
-      have htrace_zero :
-          Algebra.trace (ZMod (ringChar F)) F (c * (u - v)) = 0 := by
-        exact ZMod.injective_stdAddChar (N := ringChar F) (by
-          simpa [baseChar] using hval)
-      exact hc (by simpa [mul_comm] using htrace_zero)
-    have hsum_zero : (∑ c : F, baseChar (F := F) (c * (u - v))) = 0 := by
-      have hsumψ : (∑ c : F, ψt c) = 0 := by
-        rw [AddChar.sum_eq_ite ψt]
-        simp [hψt_ne_zero]
-      simpa [ψt] using hsumψ
-    simp [huv, hsum_zero]
 
 private noncomputable def dotProductLeftAddMonoidHom (x : Vec F Idx) : Vec F Idx →+ F where
   toFun := fun a => dotProduct a x
@@ -358,85 +311,6 @@ private lemma exists_agreementCount_ge [Nonempty Idx] (f : ScalarFn F Idx) :
       (g := agreementCount f) hstrict' with ⟨α, _, hα⟩
   refine ⟨α, ?_⟩
   exact Nat.le_of_pred_lt (by simpa [Nat.pred_eq_sub_one, k] using hα)
-
-
-
-omit [DecidableEq F] [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
-private lemma phaseLift_mul_star (f g : ScalarFn F Idx) (c : F) (x : Vec F Idx) :
-    phaseLift f c x * star (phaseLift g c x) =
-      baseChar (F := F) (c * (f x - g x)) := by
-  classical
-  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
-  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
-  let ψ : AddChar F ℂ := baseChar (F := F)
-  have hstar : star (ψ (c * g x)) = (ψ (c * g x))⁻¹ := by
-    exact (Complex.inv_eq_conj (AddChar.norm_apply ψ (c * g x))).symm
-  calc
-    phaseLift f c x * star (phaseLift g c x)
-        = ψ (c * f x) * star (ψ (c * g x)) := by
-            simp [phaseLift, baseChar, ψ]
-    _ = ψ (c * f x) * (ψ (c * g x))⁻¹ := by rw [hstar]
-    _ = ψ (c * f x) / ψ (c * g x) := by rw [div_eq_mul_inv]
-    _ = ψ (c * f x - c * g x) := by
-            rw [← AddChar.map_sub_eq_div]
-    _ = ψ (c * (f x - g x)) := by rw [mul_sub]
-    _ = baseChar (F := F) (c * (f x - g x)) := rfl
-
-omit [DecidableEq F] [Nonempty Idx] in
-private lemma fnInner_phaseLift_eq_character_average (f g : ScalarFn F Idx) (c : F) :
-    fnInner (phaseLift f c) (phaseLift g c) =
-      (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, baseChar (F := F) (c * (f x - g x)) := by
-  unfold fnInner expectation
-  congr 1
-  · norm_num
-  · exact Finset.sum_congr rfl fun x _ => phaseLift_mul_star f g c x
-
-omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
-/-- The `c`-phase of the linear function `ℓ_α` is the character `χ_{cα}`. -/
-lemma phaseLift_linearFn (α : Vec F Idx) (c : F) :
-    phaseLift (linearFn α) c = charFn (fun i => c * α i) := by
-  classical
-  funext x
-  simp [phaseLift, charFn, linearFn, dotProduct, Finset.mul_sum, mul_assoc]
-
-omit [Nonempty Idx] in
-/-- Fourier expansion of a linear function: the `c`-phase of `ℓ_α` has a
-single Fourier coefficient, at `cα`. -/
-lemma fourierCoeff_phaseLift_linearFn (α β : Vec F Idx) (c : F) :
-    fourierCoeff (phaseLift (linearFn α) c) β =
-      if β = (fun i => c * α i) then 1 else 0 := by
-  rw [phaseLift_linearFn]
-  simpa [fourierCoeff, eq_comm] using
-    (characters_orthonormal_basis (F := F) (Idx := Idx)).1 (fun i => c * α i) β
-
-/-- Pointwise Fourier inversion for the character basis `χ_α`. -/
-lemma fourier_inversion (g : ComplexFn F Idx) (x : Vec F Idx) :
-    g x = ∑ α, fourierCoeff g α * charFn α x := by
-  classical
-  let b : OrthonormalBasis (Vec F Idx) ℂ (PiLp 2 fun _ : Vec F Idx => ℂ) :=
-    normalizedCharOrthonormalBasis (F := F) (Idx := Idx)
-  have hb := b.sum_repr' (WithLp.toLp 2 g)
-  have hpoint := congrArg (fun v : PiLp 2 fun _ : Vec F Idx => ℂ => v x) hb
-  calc
-    g x = (WithLp.toLp 2 g : PiLp 2 fun _ : Vec F Idx => ℂ) x := rfl
-    _ = (∑ α, inner ℂ (b α) (WithLp.toLp 2 g) • b α) x := hpoint.symm
-    _ = ∑ α, fourierCoeff g α * charFn α x := by
-      simp only [b, normalizedCharOrthonormalBasis, OrthonormalBasis.coe_mk,
-        WithLp.ofLp_sum, WithLp.ofLp_smul]
-      rw [Finset.sum_apply]
-      simp only [Pi.smul_apply, smul_eq_mul]
-      change (∑ α, inner ℂ (normalizedCharLp (F := F) (Idx := Idx) α)
-        (WithLp.toLp 2 g) * (normalizedCharLp (F := F) (Idx := Idx) α x)) =
-          ∑ α, fourierCoeff g α * charFn α x
-      apply Finset.sum_congr rfl
-      intro α _
-      rw [normalizedCharLp_inner_eq_sqrt_card_mul_fnInner]
-      rw [fourierCoeff]
-      simp only [normalizedCharLp, PiLp.smul_apply, smul_eq_mul]
-      have hsqrt0 : (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) ≠ 0 := by
-        exact_mod_cast (Real.sqrt_ne_zero'.2 (Nat.cast_pos.2 card_vec_pos))
-      field_simp [hsqrt0]
 
 omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 private lemma charFn_eq_baseChar (α : Vec F Idx) (x : Vec F Idx) :
@@ -781,87 +655,6 @@ private lemma triple_char_average (A B C : Vec F Idx → ℂ) (a b : F) :
     _ = ∑ γ : Vec F Idx, A (fun i => -a * γ i) * B (fun i => -b * γ i) * C γ := by
         rw [x_average_fourier_char_product]
 
-private lemma agreement_probability_eq_phase_inner (f g : ScalarFn F Idx) :
-    (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) =
-      (Fintype.card F : ℂ)⁻¹ *
-        (1 + ∑ c ∈ (nonzeroF (F := F)),
-          fnInner (phaseLift f c) (phaseLift g c)) := by
-  classical
-  calc
-    (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) =
-      (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx,
-          (Fintype.card F : ℂ)⁻¹ *
-            ∑ c : F, baseChar (F := F) (c * (f x - g x)) := by
-        congr 1
-        exact Finset.sum_congr rfl fun x _ => character_sum_indicator_eq (f x) (g x)
-    _ = (Fintype.card F : ℂ)⁻¹ *
-        ((Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-          ∑ x : Vec F Idx, ∑ c : F, baseChar (F := F) (c * (f x - g x))) := by
-        simp [Finset.mul_sum, mul_left_comm]
-    _ = (Fintype.card F : ℂ)⁻¹ *
-        ((Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-          ∑ x : Vec F Idx,
-            (1 + ∑ c ∈ (nonzeroF (F := F)),
-              baseChar (F := F) (c * (f x - g x)))) := by
-        congr 2
-        apply Finset.sum_congr rfl
-        intro x _
-        rw [sum_univ_eq_zero_add_sum_nonzero]
-        simp [baseChar]
-    _ = (Fintype.card F : ℂ)⁻¹ *
-        (1 + ∑ c ∈ (nonzeroF (F := F)),
-          fnInner (phaseLift f c) (phaseLift g c)) := by
-        congr 1
-        calc
-          (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-              ∑ x : Vec F Idx,
-                (1 + ∑ c ∈ (nonzeroF (F := F)),
-                  baseChar (F := F) (c * (f x - g x))) =
-            1 + (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-              ∑ x : Vec F Idx, ∑ c ∈ (nonzeroF (F := F)),
-                baseChar (F := F) (c * (f x - g x)) := by
-              simp [Finset.sum_add_distrib, mul_add, Finset.mul_sum]
-          _ = 1 + (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-              ∑ c ∈ (nonzeroF (F := F)), ∑ x : Vec F Idx,
-                baseChar (F := F) (c * (f x - g x)) := by
-              rw [Finset.sum_comm]
-          _ = 1 + ∑ c ∈ (nonzeroF (F := F)),
-              (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-                ∑ x : Vec F Idx, baseChar (F := F) (c * (f x - g x)) := by
-              rw [Finset.mul_sum]
-          _ = 1 + ∑ c ∈ (nonzeroF (F := F)),
-              fnInner (phaseLift f c) (phaseLift g c) := by
-              congr 1
-              apply Finset.sum_congr rfl
-              intro c _
-              rw [fnInner_phaseLift_eq_character_average]
-
-private lemma distance_eq_one_sub_agreement (f g : ScalarFn F Idx) :
-    (distance f g : ℂ) =
-      1 - (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) := by
-  classical
-  calc
-    (distance f g : ℂ) =
-      (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, (if f x ≠ g x then (1 : ℂ) else 0) := by
-        simp [distance]
-        apply Finset.sum_congr rfl
-        intro x _
-        by_cases hx : f x = g x <;> simp [hx]
-    _ = (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, (1 - (if f x = g x then (1 : ℂ) else 0)) := by
-        congr 1
-        apply Finset.sum_congr rfl
-        intro x _
-        by_cases hx : f x = g x <;> simp [hx]
-    _ = 1 - (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) := by
-        simp [Finset.sum_sub_distrib, mul_sub]
-
 private lemma distance_eq_one_sub_agreement_real (f g : ScalarFn F Idx) :
     distance f g =
       1 - (Fintype.card (Vec F Idx) : Real)⁻¹ *
@@ -889,80 +682,56 @@ private lemma agreement_sum_linearFn_eq_count (f : ScalarFn F Idx) (α : Vec F I
   classical
   simp [agreementCount]
 
-/-- Relative Hamming distance in terms of the Fourier coefficients of the
-nonzero phase lifts of `f` and `g`. -/
-lemma distance_formula_via_phase_fourier_coefficients (f g : ScalarFn F Idx) :
-    (distance f g : ℂ) =
-      1 - (Fintype.card F : ℂ)⁻¹ *
-        (1 + ∑ c ∈ (nonzeroF (F := F)), ∑ α : Vec F Idx,
-          fourierCoeff (phaseLift f c) α * star (fourierCoeff (phaseLift g c) α)) := by
-  calc
-    (distance f g : ℂ) =
-      1 - (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, (if f x = g x then (1 : ℂ) else 0) := by
-        rw [distance_eq_one_sub_agreement]
-    _ = 1 - (Fintype.card F : ℂ)⁻¹ *
-        (1 + ∑ c ∈ (nonzeroF (F := F)),
-          fnInner (phaseLift f c) (phaseLift g c)) := by
-        rw [agreement_probability_eq_phase_inner]
-    _ = 1 - (Fintype.card F : ℂ)⁻¹ *
-        (1 + ∑ c ∈ (nonzeroF (F := F)), ∑ α : Vec F Idx,
-          fourierCoeff (phaseLift f c) α * star (fourierCoeff (phaseLift g c) α)) := by
-        congr 2
-        congr 1
-        apply Finset.sum_congr rfl
-        intro c _
-        rw [← fourier_plancherel (phaseLift f c) (phaseLift g c)]
-
-/-- The Fourier score of `f` against the linear function `ℓ_α`. -/
-noncomputable def linearFourierScore (f : ScalarFn F Idx) (α : Vec F Idx) : ℂ :=
-  ∑ c ∈ (nonzeroF (F := F)), fourierCoeff (phaseLift f c) (fun i => c * α i)
-
-private noncomputable def blrPhaseTerm (f : ScalarFn F Idx) (a b c : F)
+/-- The `c`-phase encoding of the BLR acceptance equation at `(a, b, x, y)`.
+It multiplies the phases of the two left-hand-side terms and the inverse phase
+of the right-hand-side term, so it is `1` when the BLR equation holds. -/
+private noncomputable def blrAccEventPhase (f : ScalarFn F Idx) (a b c : F)
     (x y : Vec F Idx) : ℂ :=
   phaseLift f (c * a) x * phaseLift f (c * b) y *
     phaseLift f (-c) (fun i => a * x i + b * y i)
 
 omit [DecidableEq F] [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
-private lemma blrPhaseTerm_eq_baseChar (f : ScalarFn F Idx) (a b c : F)
+/-- The BLR acceptance phase is exactly the base additive character evaluated
+on the BLR equation defect
+`a * f x + b * f y - f (a • x + b • y)`, scaled by `c`. -/
+private lemma blrAccEventPhase_eq_baseChar (f : ScalarFn F Idx) (a b c : F)
     (x y : Vec F Idx) :
-    blrPhaseTerm f a b c x y =
+    blrAccEventPhase f a b c x y =
       baseChar (F := F)
         (c * (a * f x + b * f y - f (fun i => a * x i + b * y i))) := by
   classical
-  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
-  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
-  let ψ : AddChar F ℂ := baseChar (F := F)
   calc
-    blrPhaseTerm f a b c x y =
-        ψ (c * a * f x) * ψ (c * b * f y) *
-          ψ ((-c) * f (fun i => a * x i + b * y i)) := by
-          simp [blrPhaseTerm, phaseLift, baseChar, ψ]
-    _ = ψ (c * a * f x + c * b * f y + (-c) *
+    blrAccEventPhase f a b c x y =
+        baseChar (F := F) (c * a * f x) * baseChar (F := F) (c * b * f y) *
+          baseChar (F := F) ((-c) * f (fun i => a * x i + b * y i)) := by
+          simp [blrAccEventPhase, phaseLift]
+    _ = baseChar (F := F) (c * a * f x + c * b * f y + (-c) *
           f (fun i => a * x i + b * y i)) := by
           rw [← AddChar.map_add_eq_mul, ← AddChar.map_add_eq_mul]
-    _ = ψ (c * (a * f x + b * f y - f (fun i => a * x i + b * y i))) := by
-          ring_nf
     _ = baseChar (F := F)
-        (c * (a * f x + b * f y - f (fun i => a * x i + b * y i))) := rfl
+        (c * (a * f x + b * f y - f (fun i => a * x i + b * y i))) := by
+          ring_nf
 
 omit [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
+/-- The indicator of the BLR acceptance event is the average of its phase
+encodings over all field characters, with the zero character separated from
+the nonzero scalar phases. -/
 private lemma BLRAcceptsAt_indicator_eq_phase_sum (f : ScalarFn F Idx)
     (a b : F) (x y : Vec F Idx) :
     (if a * f x + b * f y = f (fun i => a * x i + b * y i) then (1 : ℂ) else 0) =
       (Fintype.card F : ℂ)⁻¹ *
-        (1 + ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y) := by
+        (1 + ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y) := by
   classical
   rw [character_sum_indicator_eq (a * f x + b * f y)
     (f (fun i => a * x i + b * y i))]
   rw [sum_univ_eq_zero_add_sum_nonzero]
   congr 1
-  simp [blrPhaseTerm_eq_baseChar]
+  simp [blrAccEventPhase_eq_baseChar]
 
-private lemma blrPhaseTerm_xy_average (f : ScalarFn F Idx) (a b c : F) :
+private lemma blrAccEventPhase_xy_average (f : ScalarFn F Idx) (a b c : F) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
       (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, ∑ y : Vec F Idx, blrPhaseTerm f a b c x y =
+        ∑ x : Vec F Idx, ∑ y : Vec F Idx, blrAccEventPhase f a b c x y =
       ∑ γ : Vec F Idx,
         fourierCoeff (phaseLift f (c * a)) (fun i => -a * γ i) *
           fourierCoeff (phaseLift f (c * b)) (fun i => -b * γ i) *
@@ -972,7 +741,7 @@ private lemma blrPhaseTerm_xy_average (f : ScalarFn F Idx) (a b c : F) :
   let B : Vec F Idx → ℂ := fun β => fourierCoeff (phaseLift f (c * b)) β
   let C : Vec F Idx → ℂ := fun γ => fourierCoeff (phaseLift f (-c)) γ
   have hsum :
-      (∑ x : Vec F Idx, ∑ y : Vec F Idx, blrPhaseTerm f a b c x y) =
+      (∑ x : Vec F Idx, ∑ y : Vec F Idx, blrAccEventPhase f a b c x y) =
       ∑ x : Vec F Idx, ∑ y : Vec F Idx,
         (∑ α : Vec F Idx, A α * charFn α x) *
           (∑ β : Vec F Idx, B β * charFn β y) *
@@ -982,7 +751,7 @@ private lemma blrPhaseTerm_xy_average (f : ScalarFn F Idx) (a b c : F) :
     intro x _
     apply Finset.sum_congr rfl
     intro y _
-    dsimp [blrPhaseTerm, A, B, C]
+    dsimp [blrAccEventPhase, A, B, C]
     rw [fourier_inversion (phaseLift f (c * a)) x]
     rw [fourier_inversion (phaseLift f (c * b)) y]
     rw [fourier_inversion (phaseLift f (-c)) (fun i => a * x i + b * y i)]
@@ -995,9 +764,9 @@ private noncomputable def phaseLinearCoeff (f : ScalarFn F Idx) (d : F)
   fourierCoeff (phaseLift f d) (fun i => d * η i)
 
 omit [Nonempty Idx] in
-private lemma linearFourierScore_eq_phaseLinearCoeff (f : ScalarFn F Idx)
+private lemma linearFourierScoreC_eq_phaseLinearCoeff (f : ScalarFn F Idx)
     (η : Vec F Idx) :
-    linearFourierScore f η =
+    linearFourierScoreC f η =
       ∑ d ∈ (nonzeroF (F := F)), phaseLinearCoeff f d η := by
   rfl
 
@@ -1089,21 +858,21 @@ private lemma sum_norm_sq_phaseLinearCoeff (f : ScalarFn F Idx) {c : F}
     _ = 1 := fnNormSq_phaseLift (F := F) (Idx := Idx) f c
 
 omit [Nonempty Idx] in
-private lemma norm_sq_linearFourierScore_le_card_mul_sum_norm_sq
+private lemma norm_sq_linearFourierScoreC_le_card_mul_sum_norm_sq
     (f : ScalarFn F Idx) (α : Vec F Idx) :
-    ‖linearFourierScore f α‖ ^ 2 ≤
+    ‖linearFourierScoreC f α‖ ^ 2 ≤
       ((nonzeroF (F := F)).card : ℝ) *
         ∑ c ∈ (nonzeroF (F := F)), ‖phaseLinearCoeff f c α‖ ^ 2 := by
   classical
   let nz := nonzeroF (F := F)
   let A : F → ℂ := fun c => phaseLinearCoeff f c α
   have hnorm :
-      ‖linearFourierScore f α‖ ≤ ∑ c ∈ nz, ‖A c‖ := by
-    rw [linearFourierScore_eq_phaseLinearCoeff]
+      ‖linearFourierScoreC f α‖ ≤ ∑ c ∈ nz, ‖A c‖ := by
+    rw [linearFourierScoreC_eq_phaseLinearCoeff]
     dsimp [A, nz]
     exact norm_sum_le _ _
   have hsq :
-      ‖linearFourierScore f α‖ ^ 2 ≤ (∑ c ∈ nz, ‖A c‖) ^ 2 :=
+      ‖linearFourierScoreC f α‖ ^ 2 ≤ (∑ c ∈ nz, ‖A c‖) ^ 2 :=
     (sq_le_sq₀ (norm_nonneg _)
       (Finset.sum_nonneg fun c _ => norm_nonneg (A c))).2 hnorm
   have hsq_norms :
@@ -1113,18 +882,18 @@ private lemma norm_sq_linearFourierScore_le_card_mul_sum_norm_sq
       (sq_sum_le_card_mul_sum_sq (s := nz) (f := fun c : F => ‖A c‖))
   exact hsq.trans hsq_norms
 
-/-- The squared linear Fourier scores have total mass at most `(q - 1)^2`. -/
-lemma linearFourierScore_norm_sq_sum_le (f : ScalarFn F Idx) :
-    ∑ α : Vec F Idx, ‖linearFourierScore f α‖ ^ 2 ≤
+/-- The squared complex linear Fourier scores have total mass at most `(q - 1)^2`. -/
+private lemma sum_linearFourierScoreC_sq_upperbound (f : ScalarFn F Idx) :
+    ∑ α : Vec F Idx, ‖linearFourierScoreC f α‖ ^ 2 ≤
       ((nonzeroF (F := F)).card : ℝ) ^ 2 := by
   classical
   let nz := nonzeroF (F := F)
   calc
-    ∑ α : Vec F Idx, ‖linearFourierScore f α‖ ^ 2 ≤
+    ∑ α : Vec F Idx, ‖linearFourierScoreC f α‖ ^ 2 ≤
         ∑ α : Vec F Idx,
           (nz.card : ℝ) * ∑ c ∈ nz, ‖phaseLinearCoeff f c α‖ ^ 2 := by
           exact Finset.sum_le_sum fun α _ =>
-            norm_sq_linearFourierScore_le_card_mul_sum_norm_sq
+            norm_sq_linearFourierScoreC_le_card_mul_sum_norm_sq
               (F := F) (Idx := Idx) f α
     _ = (nz.card : ℝ) *
         ∑ α : Vec F Idx, ∑ c ∈ nz, ‖phaseLinearCoeff f c α‖ ^ 2 := by
@@ -1143,17 +912,17 @@ lemma linearFourierScore_norm_sq_sum_le (f : ScalarFn F Idx) :
     _ = ((nonzeroF (F := F)).card : ℝ) ^ 2 := by
         simp [nz, pow_two]
 
-private lemma blrPhaseTerm_xy_average_reindexed (f : ScalarFn F Idx)
+private lemma blrAccEventPhase_xy_average_reindexed (f : ScalarFn F Idx)
     (a b c : F) (hc : c ≠ 0) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
       (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-        ∑ x : Vec F Idx, ∑ y : Vec F Idx, blrPhaseTerm f a b c x y =
+        ∑ x : Vec F Idx, ∑ y : Vec F Idx, blrAccEventPhase f a b c x y =
       ∑ η : Vec F Idx,
         phaseLinearCoeff f (c * a) η *
           phaseLinearCoeff f (c * b) η *
             phaseLinearCoeff f (-c) η := by
   classical
-  rw [blrPhaseTerm_xy_average]
+  rw [blrAccEventPhase_xy_average]
   let P : Vec F Idx → ℂ := fun γ =>
     fourierCoeff (phaseLift f (c * a)) (fun i => -a * γ i) *
       fourierCoeff (phaseLift f (c * b)) (fun i => -b * γ i) *
@@ -1180,12 +949,12 @@ private lemma blrPhaseTerm_xy_average_reindexed (f : ScalarFn F Idx)
     ring
   rw [hleftA, hleftB]
 
-private lemma xy_average_one_add_blrPhaseTerm_sum (f : ScalarFn F Idx)
+private lemma xy_average_one_add_blrAccEventPhase_sum (f : ScalarFn F Idx)
     (a b : F) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
       (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
         ∑ x : Vec F Idx, ∑ y : Vec F Idx,
-          (1 + ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y) =
+          (1 + ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y) =
       1 + ∑ c ∈ (nonzeroF (F := F)), ∑ η : Vec F Idx,
         phaseLinearCoeff f (c * a) η *
           phaseLinearCoeff f (c * b) η *
@@ -1197,47 +966,47 @@ private lemma xy_average_one_add_blrPhaseTerm_sum (f : ScalarFn F Idx)
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
         (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
           ∑ x : Vec F Idx, ∑ y : Vec F Idx,
-            (1 + ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y) =
+            (1 + ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y) =
       1 + (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
         (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
           ∑ x : Vec F Idx, ∑ y : Vec F Idx,
-            ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y := by
+            ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y := by
         simp [Finset.sum_add_distrib, mul_add, Finset.mul_sum, mul_assoc]
     _ = 1 + ∑ c ∈ (nonzeroF (F := F)),
         ((Fintype.card (Vec F Idx) : ℂ)⁻¹ *
           (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-            ∑ x : Vec F Idx, ∑ y : Vec F Idx, blrPhaseTerm f a b c x y) := by
+            ∑ x : Vec F Idx, ∑ y : Vec F Idx, blrAccEventPhase f a b c x y) := by
         congr 1
         calc
           (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
               (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
                 ∑ x : Vec F Idx, ∑ y : Vec F Idx,
-                  ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y =
+                  ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y =
             (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
               (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
                 ∑ c ∈ (nonzeroF (F := F)), ∑ x : Vec F Idx,
-                  ∑ y : Vec F Idx, blrPhaseTerm f a b c x y := by
+                  ∑ y : Vec F Idx, blrAccEventPhase f a b c x y := by
               have hsum :
                   (∑ x : Vec F Idx, ∑ y : Vec F Idx,
-                      ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y) =
+                      ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y) =
                     ∑ c ∈ (nonzeroF (F := F)), ∑ x : Vec F Idx,
-                      ∑ y : Vec F Idx, blrPhaseTerm f a b c x y := by
+                      ∑ y : Vec F Idx, blrAccEventPhase f a b c x y := by
                 calc
                   (∑ x : Vec F Idx, ∑ y : Vec F Idx,
-                      ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y) =
+                      ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y) =
                     ∑ x : Vec F Idx, ∑ c ∈ (nonzeroF (F := F)),
-                      ∑ y : Vec F Idx, blrPhaseTerm f a b c x y := by
+                      ∑ y : Vec F Idx, blrAccEventPhase f a b c x y := by
                       apply Finset.sum_congr rfl
                       intro x _
                       rw [Finset.sum_comm]
                   _ = ∑ c ∈ (nonzeroF (F := F)), ∑ x : Vec F Idx,
-                      ∑ y : Vec F Idx, blrPhaseTerm f a b c x y := by
+                      ∑ y : Vec F Idx, blrAccEventPhase f a b c x y := by
                       rw [Finset.sum_comm]
               rw [hsum]
           _ = ∑ c ∈ (nonzeroF (F := F)),
               ((Fintype.card (Vec F Idx) : ℂ)⁻¹ *
                 (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
-                  ∑ x : Vec F Idx, ∑ y : Vec F Idx, blrPhaseTerm f a b c x y) := by
+                  ∑ x : Vec F Idx, ∑ y : Vec F Idx, blrAccEventPhase f a b c x y) := by
               rw [Finset.mul_sum]
     _ = 1 + ∑ c ∈ (nonzeroF (F := F)), ∑ η : Vec F Idx,
         phaseLinearCoeff f (c * a) η *
@@ -1248,14 +1017,14 @@ private lemma xy_average_one_add_blrPhaseTerm_sum (f : ScalarFn F Idx)
         intro c hc
         have hc0 : c ≠ 0 := by
           simpa [nonzeroF] using hc
-        rw [blrPhaseTerm_xy_average_reindexed (F := F) (Idx := Idx) f a b c hc0]
+        rw [blrAccEventPhase_xy_average_reindexed (F := F) (Idx := Idx) f a b c hc0]
 
-private lemma ab_sum_xy_average_one_add_blrPhaseTerm_sum (f : ScalarFn F Idx) :
+private lemma ab_sum_xy_average_one_add_blrAccEventPhase_sum (f : ScalarFn F Idx) :
     (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
       (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
         ∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
           ∑ x : Vec F Idx, ∑ y : Vec F Idx,
-            (1 + ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y) =
+            (1 + ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y) =
       ∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
         (1 + ∑ c ∈ (nonzeroF (F := F)), ∑ η : Vec F Idx,
           phaseLinearCoeff f (c * a) η *
@@ -1267,12 +1036,12 @@ private lemma ab_sum_xy_average_one_add_blrPhaseTerm_sum (f : ScalarFn F Idx) :
         (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
           ∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
             ∑ x : Vec F Idx, ∑ y : Vec F Idx,
-              (1 + ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y) =
+              (1 + ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y) =
       ∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
         ((Fintype.card (Vec F Idx) : ℂ)⁻¹ *
           (Fintype.card (Vec F Idx) : ℂ)⁻¹ *
             ∑ x : Vec F Idx, ∑ y : Vec F Idx,
-              (1 + ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y)) := by
+              (1 + ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y)) := by
         rw [Finset.mul_sum]
         apply Finset.sum_congr rfl
         intro a _
@@ -1286,7 +1055,7 @@ private lemma ab_sum_xy_average_one_add_blrPhaseTerm_sum (f : ScalarFn F Idx) :
         intro a _
         apply Finset.sum_congr rfl
         intro b _
-        rw [xy_average_one_add_blrPhaseTerm_sum]
+        rw [xy_average_one_add_blrAccEventPhase_sum]
 
 omit [Nonempty Idx] in
 private lemma ab_average_one_add_phase_triple_sum (f : ScalarFn F Idx) :
@@ -1344,11 +1113,11 @@ private lemma scalar_phase_triple_sum_fixed (f : ScalarFn F Idx) (η : Vec F Idx
         phaseLinearCoeff f (c * a) η *
           phaseLinearCoeff f (c * b) η *
             phaseLinearCoeff f (-c) η) =
-      (linearFourierScore f η) ^ 3 := by
+      (linearFourierScoreC f η) ^ 3 := by
   classical
   let L : F → ℂ := fun d => phaseLinearCoeff f d η
   let nz : Finset F := nonzeroF (F := F)
-  have hscore : linearFourierScore f η = ∑ d ∈ nz, L d := rfl
+  have hscore : linearFourierScoreC f η = ∑ d ∈ nz, L d := rfl
   calc
     (∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
       ∑ c ∈ (nonzeroF (F := F)),
@@ -1392,7 +1161,7 @@ private lemma scalar_phase_triple_sum_fixed (f : ScalarFn F Idx) (η : Vec F Idx
               rw [hneg]
               ring
           _ = (∑ d ∈ nz, L d) ^ 3 := rfl
-    _ = (linearFourierScore f η) ^ 3 := by
+    _ = (linearFourierScoreC f η) ^ 3 := by
         rw [hscore]
 
 omit [Nonempty Idx] in
@@ -1402,7 +1171,7 @@ private lemma scalar_phase_triple_sum (f : ScalarFn F Idx) :
         phaseLinearCoeff f (c * a) η *
           phaseLinearCoeff f (c * b) η *
             phaseLinearCoeff f (-c) η) =
-      ∑ η : Vec F Idx, (linearFourierScore f η) ^ 3 := by
+      ∑ η : Vec F Idx, (linearFourierScoreC f η) ^ 3 := by
   classical
   calc
     (∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
@@ -1445,20 +1214,20 @@ private lemma scalar_phase_triple_sum (f : ScalarFn F Idx) :
                   phaseLinearCoeff f (c * b) η *
                     phaseLinearCoeff f (-c) η := by
               rw [Finset.sum_comm]
-    _ = ∑ η : Vec F Idx, (linearFourierScore f η) ^ 3 := by
+    _ = ∑ η : Vec F Idx, (linearFourierScoreC f η) ^ 3 := by
         apply Finset.sum_congr rfl
         intro η _
         rw [scalar_phase_triple_sum_fixed]
 
-/-- Exact BLR acceptance formula in terms of the Fourier scores
+/-- Complex form of the exact BLR acceptance formula in terms of the Fourier scores
 `∑ c∈Fˣ, \widehat{f_c}(cα)`. -/
-lemma exact_blr_acceptance_formula (f : ScalarFn F Idx) :
+private lemma exact_blr_acceptance_formulaC (f : ScalarFn F Idx) :
     (acceptanceProbabilityBLR f : ℂ) =
       (Fintype.card F : ℂ)⁻¹ *
         (1 + ((nonzeroF (F := F)).card : ℂ)⁻¹ ^ 2 *
-          ∑ α : Vec F Idx, (linearFourierScore f α) ^ 3) := by
+          ∑ α : Vec F Idx, (linearFourierScoreC f α) ^ 3) := by
   classical
-  let S : Vec F Idx → ℂ := linearFourierScore f
+  let S : Vec F Idx → ℂ := linearFourierScoreC f
   change (acceptanceProbabilityBLR f : ℂ) =
       (Fintype.card F : ℂ)⁻¹ *
         (1 + ((nonzeroF (F := F)).card : ℂ)⁻¹ ^ 2 *
@@ -1480,7 +1249,7 @@ lemma exact_blr_acceptance_formula (f : ScalarFn F Idx) :
         ∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
           ∑ x : Vec F Idx, ∑ y : Vec F Idx,
             (Fintype.card F : ℂ)⁻¹ *
-              (1 + ∑ c ∈ (nonzeroF (F := F)), blrPhaseTerm f a b c x y) := by
+              (1 + ∑ c ∈ (nonzeroF (F := F)), blrAccEventPhase f a b c x y) := by
     apply Finset.sum_congr rfl
     intro a _
     apply Finset.sum_congr rfl
@@ -1510,7 +1279,7 @@ lemma exact_blr_acceptance_formula (f : ScalarFn F Idx) :
                 ∑ x : Vec F Idx, ∑ y : Vec F Idx,
                   (Fintype.card F : ℂ)⁻¹ *
                     (1 + ∑ c ∈ (nonzeroF (F := F)),
-                      blrPhaseTerm f a b c x y) := by
+                      blrAccEventPhase f a b c x y) := by
         rw [hindicator]
     _ = (Fintype.card F : ℂ)⁻¹ *
         (((nonzeroF (F := F)).card : ℂ)⁻¹ *
@@ -1520,7 +1289,7 @@ lemma exact_blr_acceptance_formula (f : ScalarFn F Idx) :
                 ∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
                   ∑ x : Vec F Idx, ∑ y : Vec F Idx,
                     (1 + ∑ c ∈ (nonzeroF (F := F)),
-                      blrPhaseTerm f a b c x y))) := by
+                      blrAccEventPhase f a b c x y))) := by
         simp [Finset.mul_sum, mul_assoc, mul_left_comm, mul_comm]
     _ = (Fintype.card F : ℂ)⁻¹ *
         (((nonzeroF (F := F)).card : ℂ)⁻¹ *
@@ -1530,7 +1299,7 @@ lemma exact_blr_acceptance_formula (f : ScalarFn F Idx) :
                 phaseLinearCoeff f (c * a) η *
                   phaseLinearCoeff f (c * b) η *
                     phaseLinearCoeff f (-c) η)) := by
-        rw [ab_sum_xy_average_one_add_blrPhaseTerm_sum]
+        rw [ab_sum_xy_average_one_add_blrAccEventPhase_sum]
     _ = (Fintype.card F : ℂ)⁻¹ *
         (1 + ((nonzeroF (F := F)).card : ℂ)⁻¹ ^ 2 *
           ∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
@@ -1544,205 +1313,75 @@ lemma exact_blr_acceptance_formula (f : ScalarFn F Idx) :
           ∑ α : Vec F Idx, (S α) ^ 3) := by
         rw [scalar_phase_triple_sum]
 
-/-- The real part of the Fourier score of `f` against `ℓ_α`. The score is
-proved real in `linearFourierScore_im_eq_zero`. -/
-noncomputable def linearFourierScoreReal (f : ScalarFn F Idx) (α : Vec F Idx) : Real :=
-  (linearFourierScore f α).re
-
-/-- Relative Hamming distance from `f` to the linear function `ℓ_α`, written in
-terms of the Fourier coefficients of the nonzero phase lifts of `f`. -/
-lemma distance_linearFn_fourier (f : ScalarFn F Idx) (α : Vec F Idx) :
-    (distance f (linearFn α) : ℂ) =
-      1 - (Fintype.card F : ℂ)⁻¹ * (1 + linearFourierScore f α) := by
-  rw [distance_formula_via_phase_fourier_coefficients]
-  congr 2
-  congr 1
-  simp only [linearFourierScore]
-  apply Finset.sum_congr rfl
-  intro c _
-  rw [Finset.sum_eq_single (fun i => c * α i)]
-  · simp [fourierCoeff_phaseLift_linearFn]
-  · intro β _ hβ
-    rw [fourierCoeff_phaseLift_linearFn]
-    simp [hβ]
-  · intro hβ
-    simp at hβ
-
-/-- The fixed-linear-function Fourier distance formula, with real-valued score. -/
-lemma distance_linearFn_fourier_real (f : ScalarFn F Idx) (α : Vec F Idx) :
-    distance f (linearFn α) =
-      1 - (Fintype.card F : Real)⁻¹ * (1 + linearFourierScoreReal f α) := by
-  have h := congrArg Complex.re (distance_linearFn_fourier (F := F) (Idx := Idx) f α)
-  simpa [linearFourierScoreReal] using h
-
-omit [Field F] [Nonempty Idx] in
-private lemma distance_nonneg (f g : ScalarFn F Idx) : 0 ≤ distance f g := by
-  classical
-  unfold distance
-  exact mul_nonneg (inv_nonneg.mpr (Nat.cast_nonneg _))
-    (Finset.sum_nonneg fun x _ => by
-      by_cases hx : f x ≠ g x <;> simp [hx])
-
-private lemma distance_le_one (f g : ScalarFn F Idx) : distance f g ≤ 1 := by
-  classical
-  unfold distance
-  have hsum :
-      (∑ x : Vec F Idx, if f x ≠ g x then (1 : Real) else 0) ≤
-        ∑ _x : Vec F Idx, (1 : Real) := by
-    exact Finset.sum_le_sum fun x _ => by
-      by_cases hx : f x ≠ g x <;> simp [hx]
-  calc
-    (Fintype.card (Vec F Idx) : Real)⁻¹ *
-        (∑ x : Vec F Idx, if f x ≠ g x then (1 : Real) else 0) ≤
-      (Fintype.card (Vec F Idx) : Real)⁻¹ * (∑ _x : Vec F Idx, (1 : Real)) := by
-        exact mul_le_mul_of_nonneg_left hsum (inv_nonneg.mpr (Nat.cast_nonneg _))
-    _ = 1 := by
-      simp
-
-private lemma linearFourierScore_eq_card_mul_one_sub_distance (f : ScalarFn F Idx)
-    (α : Vec F Idx) :
-    linearFourierScore f α =
-      (((Fintype.card F : Real) * (1 - distance f (linearFn α)) - 1 : Real) : ℂ) := by
-  have hcard0 : (Fintype.card F : ℂ) ≠ 0 := by
-    exact_mod_cast Fintype.card_ne_zero
-  have h := distance_linearFn_fourier (F := F) (Idx := Idx) f α
-  have h' :
-      (Fintype.card F : ℂ) * (1 - (distance f (linearFn α) : ℂ)) =
-        1 + linearFourierScore f α := by
-    rw [h]
-    field_simp [hcard0]
-    ring
-  calc
-    linearFourierScore f α = (1 + linearFourierScore f α) - 1 := by ring
-    _ = (Fintype.card F : ℂ) * (1 - (distance f (linearFn α) : ℂ)) - 1 := by
-      rw [← h']
-    _ = (((Fintype.card F : Real) * (1 - distance f (linearFn α)) - 1 : Real) : ℂ) := by
-      norm_num
-
-lemma linearFourierScore_im_eq_zero (f : ScalarFn F Idx) (α : Vec F Idx) :
-    (linearFourierScore f α).im = 0 := by
-  rw [linearFourierScore_eq_card_mul_one_sub_distance]
-  simp
-
-private lemma linearFourierScore_eq_ofReal_real (f : ScalarFn F Idx)
-    (α : Vec F Idx) :
-    linearFourierScore f α = (linearFourierScoreReal f α : ℂ) := by
-  apply Complex.ext
-  · simp [linearFourierScoreReal]
-  · simp [linearFourierScoreReal,
-      linearFourierScore_im_eq_zero (F := F) (Idx := Idx) f α]
-
-/-- Real-valued form of the exact BLR acceptance formula. -/
-lemma exact_blr_acceptance_formula_real (f : ScalarFn F Idx) :
+/-- Exact BLR acceptance formula in terms of the real linear Fourier scores. -/
+lemma exact_blr_acceptance_formula (f : ScalarFn F Idx) :
     acceptanceProbabilityBLR f =
       (Fintype.card F : Real)⁻¹ *
         (1 + ((nonzeroF (F := F)).card : Real)⁻¹ ^ 2 *
-          ∑ α : Vec F Idx, (linearFourierScoreReal f α) ^ 3) := by
+          ∑ α : Vec F Idx, (linearFourierScore f α) ^ 3) := by
   classical
   apply Complex.ofReal_injective
   have hscore :
-      (∑ α : Vec F Idx, (linearFourierScore f α) ^ 3) =
-        ((∑ α : Vec F Idx, (linearFourierScoreReal f α) ^ 3 : Real) : ℂ) := by
+      (∑ α : Vec F Idx, (linearFourierScoreC f α) ^ 3) =
+        ((∑ α : Vec F Idx, (linearFourierScore f α) ^ 3 : Real) : ℂ) := by
     calc
-      (∑ α : Vec F Idx, (linearFourierScore f α) ^ 3) =
-          ∑ α : Vec F Idx, ((linearFourierScoreReal f α : ℂ) ^ 3) := by
+      (∑ α : Vec F Idx, (linearFourierScoreC f α) ^ 3) =
+          ∑ α : Vec F Idx, ((linearFourierScore f α : ℂ) ^ 3) := by
             apply Finset.sum_congr rfl
             intro α _
-            rw [linearFourierScore_eq_ofReal_real]
-      _ = ((∑ α : Vec F Idx, (linearFourierScoreReal f α) ^ 3 : Real) : ℂ) := by
+            rw [linearFourierScoreC_eq_ofReal_score]
+      _ = ((∑ α : Vec F Idx, (linearFourierScore f α) ^ 3 : Real) : ℂ) := by
             simp
-  simpa [hscore] using exact_blr_acceptance_formula (F := F) (Idx := Idx) f
+  simpa [hscore] using exact_blr_acceptance_formulaC (F := F) (Idx := Idx) f
 
-/-- Real form of `linearFourierScore_norm_sq_sum_le`. -/
-lemma linearFourierScoreReal_sq_sum_le (f : ScalarFn F Idx) :
-    ∑ α : Vec F Idx, (linearFourierScoreReal f α) ^ 2 ≤
+/-- Real form of `sum_linearFourierScoreC_sq_upperbound`. -/
+lemma sum_linearFourierScore_sq_upperbound (f : ScalarFn F Idx) :
+    ∑ α : Vec F Idx, (linearFourierScore f α) ^ 2 ≤
       ((nonzeroF (F := F)).card : ℝ) ^ 2 := by
   classical
   calc
-    ∑ α : Vec F Idx, (linearFourierScoreReal f α) ^ 2 =
-        ∑ α : Vec F Idx, ‖linearFourierScore f α‖ ^ 2 := by
+    ∑ α : Vec F Idx, (linearFourierScore f α) ^ 2 =
+        ∑ α : Vec F Idx, ‖linearFourierScoreC f α‖ ^ 2 := by
           apply Finset.sum_congr rfl
           intro α _
+          rw [linearFourierScoreC_eq_ofReal_score]
           rw [Complex.sq_norm, Complex.normSq_apply]
-          simp [linearFourierScoreReal,
-            linearFourierScore_im_eq_zero (F := F) (Idx := Idx) f α, pow_two]
+          simp [pow_two]
     _ ≤ ((nonzeroF (F := F)).card : ℝ) ^ 2 :=
-        linearFourierScore_norm_sq_sum_le (F := F) (Idx := Idx) f
+        sum_linearFourierScoreC_sq_upperbound (F := F) (Idx := Idx) f
 
-private lemma linearFourierScoreReal_eq_card_mul_one_sub_distance (f : ScalarFn F Idx)
-    (α : Vec F Idx) :
-    linearFourierScoreReal f α =
-      (Fintype.card F : Real) * (1 - distance f (linearFn α)) - 1 := by
-  have h := congrArg Complex.re
-    (linearFourierScore_eq_card_mul_one_sub_distance (F := F) (Idx := Idx) f α)
-  simpa [linearFourierScoreReal] using h
-
-private lemma linearFourierScoreReal_eq_card_mul_agreement_ratio_sub_one
+private lemma linearFourierScore_eq_card_mul_agreement_ratio_sub_one
     (f : ScalarFn F Idx) (α : Vec F Idx) :
-    linearFourierScoreReal f α =
+    linearFourierScore f α =
       (Fintype.card F : Real) *
         ((Fintype.card (Vec F Idx) : Real)⁻¹ * (agreementCount f α : Real)) - 1 := by
-  rw [linearFourierScoreReal_eq_card_mul_one_sub_distance]
+  rw [linearFourierScore_eq_card_mul_one_sub_distance]
   rw [distance_eq_one_sub_agreement_real]
   rw [agreement_sum_linearFn_eq_count]
   ring
 
-omit [DecidableEq F] in
-private lemma card_vec_eq_card_field_mul_div :
-    Fintype.card (Vec F Idx) =
-      Fintype.card F * (Fintype.card (Vec F Idx) / Fintype.card F) := by
-  classical
-  let q := Fintype.card F
-  let m := Fintype.card Idx
-  have hq : 1 < q := by
-    dsimp [q]
-    exact Fintype.one_lt_card
-  have hm : 0 < m := by
-    dsimp [m]
-    exact Fintype.card_pos_iff.mpr inferInstance
-  have hcard : Fintype.card (Vec F Idx) = q ^ m := by
-    dsimp [q, m]
-    simp
-  have hdiv : q ^ m / q = q ^ (m - 1) := by
-    rw [← Nat.succ_pred_eq_of_pos hm, pow_succ, Nat.succ_sub_one]
-    exact Nat.mul_div_left _ (Nat.zero_lt_of_lt hq)
-  calc
-    Fintype.card (Vec F Idx) = q ^ m := hcard
-    _ = q * (q ^ m / q) := by
-        rw [hdiv]
-        rw [← Nat.succ_pred_eq_of_pos hm, pow_succ, Nat.succ_sub_one]
-        rw [mul_comm]
-    _ = Fintype.card F * (Fintype.card (Vec F Idx) / Fintype.card F) := by
-        simp [q, hcard]
-
-private lemma linearFourierScoreReal_sup_nonneg (f : ScalarFn F Idx) :
+/-- The maximum linear Fourier score is nonnegative. This follows by choosing
+a linear function whose agreement set with `f` has at least the average fiber
+size, so its score is at least zero. -/
+private lemma linearFourierScore_sup_nonneg (f : ScalarFn F Idx) :
     0 ≤ (Finset.univ.sup'
       (Finset.univ_nonempty : (Finset.univ : Finset (Vec F Idx)).Nonempty)
-      (linearFourierScoreReal f)) := by
+      (linearFourierScore f)) := by
   classical
   rcases exists_agreementCount_ge (F := F) (Idx := Idx) f with ⟨α, hα⟩
   have hscore :=
-    linearFourierScoreReal_eq_card_mul_agreement_ratio_sub_one
+    linearFourierScore_eq_card_mul_agreement_ratio_sub_one
       (F := F) (Idx := Idx) f α
   have hqpos : 0 < (Fintype.card F : Real) := by
     exact_mod_cast Fintype.card_pos (α := F)
   have hNpos : 0 < (Fintype.card (Vec F Idx) : Real) := by
     exact_mod_cast Fintype.card_pos (α := Vec F Idx)
-  have hkpos :
-      ((Fintype.card (Vec F Idx) / Fintype.card F : ℕ) : Real) ≠ 0 := by
-    exact_mod_cast
-      (card_vec_div_card_field_pos (F := F) (Idx := Idx)).ne'
-  have hcard_real :
-      (Fintype.card (Vec F Idx) : Real) =
-        (Fintype.card F : Real) *
-          ((Fintype.card (Vec F Idx) / Fintype.card F : ℕ) : Real) := by
-    exact_mod_cast card_vec_eq_card_field_mul_div (F := F) (Idx := Idx)
   have hbase :
       (Fintype.card F : Real) *
         ((Fintype.card (Vec F Idx) : Real)⁻¹ *
           ((Fintype.card (Vec F Idx) / Fintype.card F : ℕ) : Real)) = 1 := by
-    rw [hcard_real]
-    field_simp [hqpos.ne', hkpos]
+    simp
+    field_simp [hqpos.ne']
   have hα_real :
       ((Fintype.card (Vec F Idx) / Fintype.card F : ℕ) : Real) ≤
         (agreementCount f α : Real) := by
@@ -1760,95 +1399,12 @@ private lemma linearFourierScoreReal_sup_nonneg (f : ScalarFn F Idx) :
           exact mul_le_mul_of_nonneg_left
             (mul_le_mul_of_nonneg_left hα_real (inv_nonneg.mpr hNpos.le))
             hqpos.le
-  have hαscore_nonneg : 0 ≤ linearFourierScoreReal f α := by
+  have hαscore_nonneg : 0 ≤ linearFourierScore f α := by
     rw [hscore]
     linarith
   exact hαscore_nonneg.trans
     (Finset.le_sup' (s := (Finset.univ : Finset (Vec F Idx)))
-      (f := linearFourierScoreReal f) (by simp))
-
-lemma linearFourierScoreReal_bounds (f : ScalarFn F Idx) (α : Vec F Idx) :
-    -1 ≤ linearFourierScoreReal f α ∧
-      linearFourierScoreReal f α ≤ (Fintype.card F : Real) - 1 := by
-  have hd0 : 0 ≤ distance f (linearFn α) := distance_nonneg (F := F) (Idx := Idx) f (linearFn α)
-  have hd1 : distance f (linearFn α) ≤ 1 := distance_le_one (F := F) (Idx := Idx) f (linearFn α)
-  have hcard_nonneg : 0 ≤ (Fintype.card F : Real) := Nat.cast_nonneg _
-  have hscore :=
-    linearFourierScoreReal_eq_card_mul_one_sub_distance (F := F) (Idx := Idx) f α
-  constructor
-  · rw [hscore]
-    have hprod_nonneg :
-        0 ≤ (Fintype.card F : Real) * (1 - distance f (linearFn α)) :=
-      mul_nonneg hcard_nonneg (sub_nonneg.mpr hd1)
-    linarith
-  · rw [hscore]
-    have hprod_le :
-        (Fintype.card F : Real) * (1 - distance f (linearFn α)) ≤
-          (Fintype.card F : Real) * 1 :=
-      mul_le_mul_of_nonneg_left (by linarith) hcard_nonneg
-    linarith
-
-/-- Distance to linearity in Fourier form. -/
-lemma distanceToLinear_fourier (f : ScalarFn F Idx) :
-    distanceToLinear f =
-      1 - (Fintype.card F : Real)⁻¹ *
-        (1 + (Finset.univ.sup'
-          (Finset.univ_nonempty : (Finset.univ : Finset (Vec F Idx)).Nonempty)
-          (linearFourierScoreReal f))) := by
-  classical
-  rw [distanceToLinear_eq_inf_linearFn]
-  let score := linearFourierScoreReal (F := F) (Idx := Idx) f
-  let coeffs := (Finset.univ : Finset (Vec F Idx))
-  let hcoeffs : coeffs.Nonempty := Finset.univ_nonempty
-  let maxScore := coeffs.sup' hcoeffs score
-  change coeffs.inf' hcoeffs (fun α => distance f (linearFn α)) =
-    1 - (Fintype.card F : Real)⁻¹ * (1 + maxScore)
-  apply le_antisymm
-  · rcases Finset.exists_mem_eq_sup' (s := coeffs) (H := hcoeffs) score with
-      ⟨α, hα_mem, hα_eq⟩
-    have hdist := distance_linearFn_fourier_real (F := F) (Idx := Idx) f α
-    have hle : coeffs.inf' hcoeffs (fun α => distance f (linearFn α)) ≤
-        distance f (linearFn α) := by
-      rw [Finset.inf'_le_iff]
-      exact ⟨α, hα_mem, le_rfl⟩
-    refine hle.trans_eq ?_
-    rw [hdist]
-    dsimp [maxScore]
-    change 1 - (Fintype.card F : Real)⁻¹ * (1 + score α) =
-      1 - (Fintype.card F : Real)⁻¹ * (1 + coeffs.sup' hcoeffs score)
-    rw [← hα_eq]
-  · apply Finset.le_inf'
-    intro α hα_mem
-    have hscore_le : score α ≤ maxScore :=
-      Finset.le_sup' (s := coeffs) (f := score) hα_mem
-    have hinv_nonneg : 0 ≤ (Fintype.card F : Real)⁻¹ :=
-      inv_nonneg.mpr (Nat.cast_nonneg _)
-    have hterm :
-        1 - (Fintype.card F : Real)⁻¹ * (1 + maxScore) ≤
-          1 - (Fintype.card F : Real)⁻¹ * (1 + score α) := by
-      have hmul :
-          (Fintype.card F : Real)⁻¹ * (1 + score α) ≤
-            (Fintype.card F : Real)⁻¹ * (1 + maxScore) :=
-        mul_le_mul_of_nonneg_left (by linarith) hinv_nonneg
-      linarith
-    simpa [distance_linearFn_fourier_real (F := F) (Idx := Idx) f α] using hterm
-
-/-- Distance to linearity in Fourier form, together with the realness and
-range of each linear Fourier score. -/
-lemma distance_to_linearity_fourier (f : ScalarFn F Idx) :
-    distanceToLinear f =
-        1 - (Fintype.card F : Real)⁻¹ *
-          (1 + (Finset.univ.sup'
-            (Finset.univ_nonempty : (Finset.univ : Finset (Vec F Idx)).Nonempty)
-            (linearFourierScoreReal f))) ∧
-      ∀ α : Vec F Idx,
-        (linearFourierScore f α).im = 0 ∧
-          -1 ≤ linearFourierScoreReal f α ∧
-            linearFourierScoreReal f α ≤ (Fintype.card F : Real) - 1 := by
-  refine ⟨distanceToLinear_fourier (F := F) (Idx := Idx) f, ?_⟩
-  intro α
-  exact ⟨linearFourierScore_im_eq_zero (F := F) (Idx := Idx) f α,
-    linearFourierScoreReal_bounds (F := F) (Idx := Idx) f α⟩
+      (f := linearFourierScore f) (by simp))
 
 /-- Soundness of the finite-field BLR test in the Fourier-score form used by
 the proof: acceptance is at most `1 - distanceToLinear f`. -/
@@ -1857,12 +1413,12 @@ theorem finite_field_blr_soundness (f : ScalarFn F Idx) :
   classical
   let nz : Finset F := nonzeroF (F := F)
   let coeffs : Finset (Vec F Idx) := Finset.univ
-  let score : Vec F Idx → Real := linearFourierScoreReal (F := F) (Idx := Idx) f
+  let score : Vec F Idx → Real := linearFourierScore (F := F) (Idx := Idx) f
   let M : Real := coeffs.sup' (Finset.univ_nonempty :
     (Finset.univ : Finset (Vec F Idx)).Nonempty) score
   have hM_nonneg' : 0 ≤ M := by
     simpa [M, coeffs, score] using
-      linearFourierScoreReal_sup_nonneg (F := F) (Idx := Idx) f
+      linearFourierScore_sup_nonneg (F := F) (Idx := Idx) f
   have hnz_nonempty : nz.Nonempty := by
     exact ⟨1, by simp [nz, nonzeroF]⟩
   have hnz_pos : 0 < (nz.card : Real) := by
@@ -1888,7 +1444,7 @@ theorem finite_field_blr_soundness (f : ScalarFn F Idx) :
           rw [Finset.mul_sum]
   have hsumsq :
       ∑ α : Vec F Idx, (score α) ^ 2 ≤ (nz.card : Real) ^ 2 := by
-    simpa [score, nz] using linearFourierScoreReal_sq_sum_le (F := F) (Idx := Idx) f
+    simpa [score, nz] using sum_linearFourierScore_sq_upperbound (F := F) (Idx := Idx) f
   have hcube_le_M :
       ((nz.card : Real)⁻¹ ^ 2) * ∑ α : Vec F Idx, (score α) ^ 3 ≤ M := by
     have hcube_bound :
@@ -1911,7 +1467,7 @@ theorem finite_field_blr_soundness (f : ScalarFn F Idx) :
         (Fintype.card F : Real)⁻¹ *
           (1 + ((nz.card : Real)⁻¹ ^ 2) *
             ∑ α : Vec F Idx, (score α) ^ 3) := by
-          simpa [score, nz] using exact_blr_acceptance_formula_real (F := F) (Idx := Idx) f
+          simpa [score, nz] using exact_blr_acceptance_formula (F := F) (Idx := Idx) f
     _ ≤ (Fintype.card F : Real)⁻¹ * (1 + M) := by
           exact mul_le_mul_of_nonneg_left hinner hq_inv_nonneg
     _ = 1 - distanceToLinear f := by
@@ -1919,6 +1475,7 @@ theorem finite_field_blr_soundness (f : ScalarFn F Idx) :
           simp [M, coeffs, score]
 
 omit [Nonempty Idx] in
+/-- The acceptance probability of the BLR test is non-negative. -/
 private lemma acceptanceProbabilityBLR_nonneg (f : ScalarFn F Idx) :
     0 ≤ acceptanceProbabilityBLR f := by
   classical
