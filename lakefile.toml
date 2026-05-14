@@ -28,3 +28,7 @@ git = "https://github.com/PatrickMassot/checkdecls.git"
 
 [[lean_lib]]
 name = "BlrPcp"
+
+[[lean_exe]]
+name = "qesat_test"
+root = "BlrPcp.Test.QESAT"

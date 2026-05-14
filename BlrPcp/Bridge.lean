@@ -1,9 +1,9 @@
-import BlrPcp.Basic
+import BlrPcp.FnFiniteFIelds.BLR
 
 /-!
 # Bridges from the analytical BLR theorem to oracle probabilities
 
-The analytical development in `Basic.lean` uses real-valued probabilities.  The
+The analytical finite-field BLR development uses real-valued probabilities.  The
 oracle-computation side uses `ENNReal`, so this file keeps the conversion in one
 place.
 -/

@@ -1,5 +1,4 @@
 import Architect
-import BlrPcp.Basic
 import BlrPcp.Oracle
 import BlrPcp.Problems.LinEq
 import Mathlib.Algebra.MvPolynomial.SchwartzZippel
@@ -437,7 +436,7 @@ lemma verifier_soundness_after_sampling {n : ℕ} (a : Fin n → F)
   have hpred_eq :
       (fun p : (Fin n → F) × (Fin n → F) => p_poly_t_to_i p.1 ⬝ᵥ p.2 = 0) =
         (fun p : (Fin n → F) × (Fin n → F) => ¬ p_poly_t_to_i p.1 ⬝ᵥ p.2 ≠ 0) := by
-    funext p; simp [not_not]
+    funext p; simp
   have hcompl :
       Pr[fun p : (Fin n → F) × (Fin n → F) => p_poly_t_to_i p.1 ⬝ᵥ p.2 = 0 | do
           let t ← ($ᵗ (Fin n → F) : ProbComp (Fin n → F))

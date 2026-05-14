@@ -1,4 +1,4 @@
-import BlrPcp.Basic
+import BlrPcp.FnFiniteFIelds.FnFiniteFields
 import BlrPcp.GH2
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 
@@ -24,6 +24,12 @@ open Finset
 variable {F Idx : Type*}
 variable [Field F] [Fintype F] [DecidableEq F]
 variable [Fintype Idx] [DecidableEq Idx] [Nonempty Idx]
+
+noncomputable def linearSetIndicator (f : ScalarFn F Idx) : Real :=
+  if f ∈ LinearSet (F := F) (Idx := Idx) then 1 else 0
+
+noncomputable def rejectionProbabilityBLR (f : ScalarFn F Idx) : Real :=
+  1 - acceptanceProbabilityBLR f
 
 /-- For a finite field `F` of prime cardinality, the algebra map
 `ZMod (ringChar F) → F` is bijective: it is injective (a ring hom out of a
@@ -172,17 +178,17 @@ private lemma badCount_le
       ((Fintype.card F : ℝ) - 1) ^ 2 *
         ((Fintype.card (Vec F Idx) : ℝ) ^ 2) * ε := by
   classical
-  set K : ℝ := ((nonzeroScalars (F := F)).card : ℝ) with hK_def
+  set K : ℝ := ((nonzeroF (F := F)).card : ℝ) with hK_def
   set N : ℝ := (Fintype.card (Vec F Idx) : ℝ) with hN_def
   have hK_eq : K = (Fintype.card F : ℝ) - 1 := by
-    have heq : (nonzeroScalars (F := F)) = (Finset.univ : Finset F).erase 0 := by
-      ext c; simp [nonzeroScalars]
+    have heq : (nonzeroF (F := F)) = (Finset.univ : Finset F).erase 0 := by
+      ext c; simp [nonzeroF]
     rw [hK_def, heq, Finset.card_erase_of_mem (by simp), Finset.card_univ,
       Nat.cast_sub Fintype.card_pos]; simp
   have hN_pos : 0 < N := by
     rw [hN_def]; exact_mod_cast (Fintype.card_pos : 0 < Fintype.card (Vec F Idx))
   have hK_pos : 0 < K := by
-    have : (nonzeroScalars (F := F)).Nonempty := ⟨1, by simp [nonzeroScalars]⟩
+    have : (nonzeroF (F := F)).Nonempty := ⟨1, by simp [nonzeroF]⟩
     rw [hK_def]; exact_mod_cast this.card_pos
   have hKne : K ≠ 0 := ne_of_gt hK_pos
   have hNne : N ≠ 0 := ne_of_gt hN_pos
@@ -200,7 +206,7 @@ private lemma badCount_le
       simp [h, h']
   -- Acceptance sum equals `acc · K²N²` (definition of `acceptanceProbabilityBLR`).
   have hsum_acc :
-      (∑ a ∈ (nonzeroScalars (F := F)), ∑ b ∈ (nonzeroScalars (F := F)),
+      (∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
           ∑ x : Vec F Idx, ∑ y : Vec F Idx,
             (if BLRAcceptsAt f a b x y then (1 : ℝ) else 0)) =
         acceptanceProbabilityBLR f * (K * K * N * N) := by
@@ -208,7 +214,7 @@ private lemma badCount_le
     field_simp
   -- Failure sum = K²N² − acceptance sum = (1 − acc) · K²N².
   have hsum_fail :
-      (∑ a ∈ (nonzeroScalars (F := F)), ∑ b ∈ (nonzeroScalars (F := F)),
+      (∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
           ∑ x : Vec F Idx, ∑ y : Vec F Idx,
             (if BLRAcceptsAt f a b x y then (0 : ℝ) else 1)) =
         (1 - acceptanceProbabilityBLR f) * (K * K * N * N) := by
@@ -219,7 +225,7 @@ private lemma badCount_le
       nsmul_eq_mul, mul_one]
     rw [hsum_acc]; show K * (K * (N * N)) - _ = _; ring
   -- Drop the failure sum to its `(a,b) = (1,1)` summand and combine.
-  have hone : (1 : F) ∈ (nonzeroScalars (F := F)) := by simp [nonzeroScalars]
+  have hone : (1 : F) ∈ (nonzeroF (F := F)) := by simp [nonzeroF]
   have hnn : ∀ a b : F, 0 ≤ ∑ x : Vec F Idx, ∑ y : Vec F Idx,
       (if BLRAcceptsAt f a b x y then (0 : ℝ) else 1) := fun a b =>
     Finset.sum_nonneg fun _ _ =>
@@ -228,15 +234,15 @@ private lemma badCount_le
           (if f (x + y) = f x + f y then (0 : ℝ) else 1))
       = ∑ x : Vec F Idx, ∑ y : Vec F Idx,
           (if BLRAcceptsAt f 1 1 x y then (0 : ℝ) else 1) := by simp_rw [hbad_eq]
-    _ ≤ ∑ b ∈ (nonzeroScalars (F := F)),
+    _ ≤ ∑ b ∈ (nonzeroF (F := F)),
           ∑ x : Vec F Idx, ∑ y : Vec F Idx,
             (if BLRAcceptsAt f 1 b x y then (0 : ℝ) else 1) :=
         Finset.single_le_sum (f := fun b => _) (fun b _ => hnn 1 b) hone
-    _ ≤ ∑ a ∈ (nonzeroScalars (F := F)), ∑ b ∈ (nonzeroScalars (F := F)),
+    _ ≤ ∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
           ∑ x : Vec F Idx, ∑ y : Vec F Idx,
             (if BLRAcceptsAt f a b x y then (0 : ℝ) else 1) :=
         Finset.single_le_sum
-          (f := fun a => ∑ b ∈ (nonzeroScalars (F := F)),
+          (f := fun a => ∑ b ∈ (nonzeroF (F := F)),
                 ∑ x : Vec F Idx, ∑ y : Vec F Idx,
                   (if BLRAcceptsAt f a b x y then (0 : ℝ) else 1))
           (fun a _ => Finset.sum_nonneg fun _ _ => hnn _ _) hone
@@ -916,7 +922,7 @@ any specific linear function `ℓ`. Proved by unfolding `distanceToLinear`
 (an `inf'` over the finset of linear functions) and exhibiting `ℓ` as a
 member of that finset.
 
-(Local copy: this lemma was previously in `BlrPcp.Basic` but was removed.) -/
+(Local copy retained for this GH-oriented proof path.) -/
 private lemma distanceToLinear_le_of_isLinear
     {f ℓ : ScalarFn F Idx} (hℓ : IsLinear ℓ) :
     distanceToLinear f ≤ distance f ℓ := by
@@ -924,8 +930,6 @@ private lemma distanceToLinear_le_of_isLinear
   unfold distanceToLinear
   rw [Finset.inf'_le_iff]
   refine ⟨ℓ, ?_, le_rfl⟩
-  -- After unfolding, the underlying finset is `Finset.univ.filter (· ∈ LinearSet)`.
-  show ℓ ∈ Finset.univ.filter (fun g => g ∈ (LinearSet : Set (ScalarFn F Idx)))
   simp [LinearSet, hℓ]
 
 /-- **Equivalence for the BLR test** (`prop:equiv_blr` in the blueprint).
@@ -1002,7 +1006,7 @@ theorem blr_gh_soundness
 completeness for linear functions and the GH-flavoured soundness bound, with
 constant `C := 2 (q - 1)² / (1 - cos(2π/q))` and `q = |F|`.
 
-GH-flavoured analogue of the `blr` theorem in `BlrPcp.Basic` (which has the
+GH-flavoured analogue of the finite-field `blr` theorem (which has the
 sharper Fourier-form bound `acceptance ≤ 1 - δ(f, Lin)`, no constant). -/
 theorem blr_gh
     [Fact (Nat.Prime (Fintype.card F))]
@@ -1012,7 +1016,7 @@ theorem blr_gh
         1 - distanceToLinear f /
           (2 * ((Fintype.card F : ℝ) - 1) ^ 2 /
             (1 - Real.cos (2 * Real.pi / (Fintype.card F : ℝ)))) := by
-  refine ⟨(blr f).1, ?_⟩
+  refine ⟨by simpa [linearSetIndicator] using (blr f).1, ?_⟩
   -- Convert `rejection ≥ δ/C` (from `blr_gh_soundness`) into `acceptance ≤ 1 - δ/C`.
   have hsound := blr_gh_soundness f
   unfold rejectionProbabilityBLR at hsound

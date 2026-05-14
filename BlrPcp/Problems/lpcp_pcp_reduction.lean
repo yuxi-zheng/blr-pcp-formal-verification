@@ -497,9 +497,8 @@ lemma blrPrecheck_encodedProof_accepts {n : ℕ} (π : Fin n → ZMod 2) :
     have hlin :
         (fun u : Fin n → ZMod 2 => π ⬝ᵥ u) ∈
           BlrPcp.LinearSet (F := ZMod 2) (Idx := Fin n) := by
-      refine ⟨π, ?_⟩
-      intro u
-      rfl
+      simp [BlrPcp.LinearSet, BlrPcp.IsLinear, BlrPcp.linearFn, BlrPcp.dotProduct]
+      exact ⟨π, fun _ => by simp [dotProduct]⟩
     simpa [LPCP.proofOracle] using
       (BLR_basic_completeness_ZMod2 (n := n) (f := fun u : Fin n → ZMod 2 => π ⬝ᵥ u) hlin)
 

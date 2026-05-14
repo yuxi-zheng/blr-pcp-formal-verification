@@ -1,4 +1,4 @@
-import BlrPcp.Basic
+import BlrPcp.FnFiniteFIelds.FnFiniteFields
 import BlrPcp.Bridge
 import BlrPcp.Oracle
 import BlrPcp.Problems.QESAT

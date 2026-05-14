@@ -1,5 +1,5 @@
 import Architect
-import BlrPcp.Basic
+import BlrPcp.FnFiniteFIelds.Linear
 import VCVio.OracleComp.Constructions.SampleableType
 import VCVio.OracleComp.OracleComp
 import VCVio.OracleComp.OracleContext

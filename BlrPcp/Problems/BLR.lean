@@ -372,25 +372,25 @@ private lemma ite_classical_eq {α : Type} [Zero α] [One α] {p : Prop} [Decida
 
 private lemma sum_units_eq_sum_nonzero {F : Type} [Field F] [Fintype F] [DecidableEq F]
     (G : F → ENNReal) :
-    (∑ a : Fˣ, G a) = ∑ a ∈ BlrPcp.nonzeroScalars (F := F), G a := by
+    (∑ a : Fˣ, G a) = ∑ a ∈ BlrPcp.nonzeroF (F := F), G a := by
   calc
     (∑ a : Fˣ, G a) =
         ∑ a : {a : F // a ≠ 0}, G a := by
           exact Fintype.sum_equiv unitsEquivNeZero _ _ fun _ => rfl
-    _ = ∑ a ∈ BlrPcp.nonzeroScalars (F := F), G a := by
-          simpa [BlrPcp.nonzeroScalars] using
+    _ = ∑ a ∈ BlrPcp.nonzeroF (F := F), G a := by
+          simpa [BlrPcp.nonzeroF] using
             (Finset.sum_subtype_eq_sum_filter (s := Finset.univ)
               (f := G) (p := fun a : F => a ≠ 0))
 
-private lemma card_units_eq_card_nonzeroScalars {F : Type}
+private lemma card_units_eq_card_nonzeroF {F : Type}
     [Field F] [Fintype F] [DecidableEq F] :
-    (Fintype.card Fˣ : ENNReal) = ((BlrPcp.nonzeroScalars (F := F)).card : ENNReal) := by
-  have h : Fintype.card Fˣ = (BlrPcp.nonzeroScalars (F := F)).card := by
+    (Fintype.card Fˣ : ENNReal) = ((BlrPcp.nonzeroF (F := F)).card : ENNReal) := by
+  have h : Fintype.card Fˣ = (BlrPcp.nonzeroF (F := F)).card := by
     rw [Fintype.card_congr unitsEquivNeZero]
     exact Fintype.card_of_subtype (p := fun a : F => a ≠ 0)
-      (BlrPcp.nonzeroScalars (F := F)) (by
+      (BlrPcp.nonzeroF (F := F)) (by
         intro a
-        simp [BlrPcp.nonzeroScalars])
+        simp [BlrPcp.nonzeroF])
   exact_mod_cast h
 
 private lemma sum_units_nested_eq_nonzero {F V : Type}
@@ -403,11 +403,11 @@ private lemma sum_units_nested_eq_nonzero {F V : Type}
             (Fintype.card Fˣ : ENNReal)⁻¹ * I a b x y) =
       ∑ x : V,
         c * ∑ y : V,
-          c * ∑ a ∈ BlrPcp.nonzeroScalars (F := F),
-            ((BlrPcp.nonzeroScalars (F := F)).card : ENNReal)⁻¹ *
-              ∑ b ∈ BlrPcp.nonzeroScalars (F := F),
-                ((BlrPcp.nonzeroScalars (F := F)).card : ENNReal)⁻¹ * I a b x y := by
-  rw [card_units_eq_card_nonzeroScalars (F := F)]
+          c * ∑ a ∈ BlrPcp.nonzeroF (F := F),
+            ((BlrPcp.nonzeroF (F := F)).card : ENNReal)⁻¹ *
+              ∑ b ∈ BlrPcp.nonzeroF (F := F),
+                ((BlrPcp.nonzeroF (F := F)).card : ENNReal)⁻¹ * I a b x y := by
+  rw [card_units_eq_card_nonzeroF (F := F)]
   apply Finset.sum_congr rfl
   intro x _
   congr 1
@@ -416,15 +416,15 @@ private lemma sum_units_nested_eq_nonzero {F V : Type}
   congr 1
   rw [sum_units_eq_sum_nonzero (F := F)
     (G := fun a =>
-      ((BlrPcp.nonzeroScalars (F := F)).card : ENNReal)⁻¹ *
+      ((BlrPcp.nonzeroF (F := F)).card : ENNReal)⁻¹ *
         ∑ b : Fˣ,
-          ((BlrPcp.nonzeroScalars (F := F)).card : ENNReal)⁻¹ * I a b x y)]
+          ((BlrPcp.nonzeroF (F := F)).card : ENNReal)⁻¹ * I a b x y)]
   apply Finset.sum_congr rfl
   intro a _
   congr 1
   rw [sum_units_eq_sum_nonzero (F := F)
     (G := fun b =>
-      ((BlrPcp.nonzeroScalars (F := F)).card : ENNReal)⁻¹ * I a b x y)]
+      ((BlrPcp.nonzeroF (F := F)).card : ENNReal)⁻¹ * I a b x y)]
 
 private lemma blrAcceptance_sum_normalize {F V : Type}
     [Fintype F] [Fintype V] [DecidableEq F]
@@ -483,13 +483,13 @@ private lemma ofReal_BLR_acceptance_sum {F : Type} {n : ℕ}
     (f : (Fin n → F) → F)
     [∀ a b x y, Decidable (BlrPcp.BLRAcceptsAt (F := F) (Idx := Fin n) f a b x y)] :
     ENNReal.ofReal
-      (∑ a ∈ BlrPcp.nonzeroScalars (F := F),
-        ∑ b ∈ BlrPcp.nonzeroScalars (F := F),
+      (∑ a ∈ BlrPcp.nonzeroF (F := F),
+        ∑ b ∈ BlrPcp.nonzeroF (F := F),
           ∑ x : Fin n → F, ∑ y : Fin n → F,
             if BlrPcp.BLRAcceptsAt (F := F) (Idx := Fin n) f a b x y
             then (1 : Real) else 0) =
-      ∑ a ∈ BlrPcp.nonzeroScalars (F := F),
-        ∑ b ∈ BlrPcp.nonzeroScalars (F := F),
+      ∑ a ∈ BlrPcp.nonzeroF (F := F),
+        ∑ b ∈ BlrPcp.nonzeroF (F := F),
           ∑ x : Fin n → F, ∑ y : Fin n → F,
             if BlrPcp.BLRAcceptsAt (F := F) (Idx := Fin n) f a b x y
             then (1 : ENNReal) else 0 := by
@@ -520,18 +520,18 @@ private lemma acceptanceProbabilityBLR_eq_sum {F : Type} {n : ℕ}
     (f : (Fin n → F) → F)
     [∀ a b x y, Decidable (BlrPcp.BLRAcceptsAt (F := F) (Idx := Fin n) f a b x y)] :
     acceptanceProbabilityBLR f =
-      ((BlrPcp.nonzeroScalars (F := F)).card : ENNReal)⁻¹ *
-        ((BlrPcp.nonzeroScalars (F := F)).card : ENNReal)⁻¹ *
+      ((BlrPcp.nonzeroF (F := F)).card : ENNReal)⁻¹ *
+        ((BlrPcp.nonzeroF (F := F)).card : ENNReal)⁻¹ *
           (Fintype.card (Fin n → F) : ENNReal)⁻¹ *
             (Fintype.card (Fin n → F) : ENNReal)⁻¹ *
-              ∑ a ∈ BlrPcp.nonzeroScalars (F := F),
-                ∑ b ∈ BlrPcp.nonzeroScalars (F := F),
+              ∑ a ∈ BlrPcp.nonzeroF (F := F),
+                ∑ b ∈ BlrPcp.nonzeroF (F := F),
                   ∑ x : Fin n → F, ∑ y : Fin n → F,
                     if BlrPcp.BLRAcceptsAt (F := F) (Idx := Fin n) f a b x y
                     then (1 : ENNReal) else 0 := by
-  have hnz_nonempty : (BlrPcp.nonzeroScalars (F := F)).Nonempty := by
-    exact ⟨1, by simp [BlrPcp.nonzeroScalars]⟩
-  have hnz_pos : 0 < ((BlrPcp.nonzeroScalars (F := F)).card : Real) := by
+  have hnz_nonempty : (BlrPcp.nonzeroF (F := F)).Nonempty := by
+    exact ⟨1, by simp [BlrPcp.nonzeroF]⟩
+  have hnz_pos : 0 < ((BlrPcp.nonzeroF (F := F)).card : Real) := by
     exact_mod_cast hnz_nonempty.card_pos
   have hvec_pos : 0 < (Fintype.card (Fin n → F) : Real) := by
     exact_mod_cast Fintype.card_pos_iff.mpr ⟨0⟩
@@ -548,8 +548,8 @@ private lemma acceptanceProbabilityBLR_eq_sum {F : Type} {n : ℕ}
           simpa only [ENNReal.ofReal_inv_of_pos hnz_pos, ENNReal.ofReal_inv_of_pos hvec_pos,
             ENNReal.ofReal_natCast] using congrArg
               (fun z =>
-                ENNReal.ofReal (((BlrPcp.nonzeroScalars (F := F)).card : Real)⁻¹) *
-                  ENNReal.ofReal (((BlrPcp.nonzeroScalars (F := F)).card : Real)⁻¹) *
+                ENNReal.ofReal (((BlrPcp.nonzeroF (F := F)).card : Real)⁻¹) *
+                  ENNReal.ofReal (((BlrPcp.nonzeroF (F := F)).card : Real)⁻¹) *
                     ENNReal.ofReal ((Fintype.card (Fin n → F) : Real)⁻¹) *
                       ENNReal.ofReal ((Fintype.card (Fin n → F) : Real)⁻¹) * z)
               hsum
