@@ -233,6 +233,40 @@ free-monad `OracleComp` produced by the `Fin.mOfFn` correction loop grows
 roughly exponentially in `t` around the `t=20..30` range, so the formal
 constant is already too large.
 
+## Optimization Follow-Up
+
+After replacing `decodedLinearQuery`'s `Fin.mOfFn` result-vector construction
+and cardinality-based plurality with a direct proved-equivalent count loop,
+the fixed-shift decoded path no longer exhibits the cliff:
+
+| Component | Post-fix result, `vars=1`, `rows=1`, `trials=1` | Status |
+| --- | ---: | --- |
+| `PCP.decodedSingleQuery.t72` with fixed zero shifts | 0ms measured, 0.04s wall | Fixed |
+| `PCP.decodedLineq` with fixed zero shifts | 1ms measured, 0.04s wall | Fixed |
+| `PCP.decodedTensor` with fixed zero shifts | 2ms measured, 0.05s wall | Fixed |
+| `PCP.decodedQESAT` with fixed zero shifts | 4ms measured, 0.05s wall | Fixed |
+| `PCP.BLRPrecheck`, `vars=1` | 0ms measured, 0.04s wall | Not a blocker at this size |
+
+The final verifier is still slow because the real pre-round samples random
+shift vectors and then repeatedly evaluates the function value returned by
+`sampleShifts`. The focused sampled-shift probes show that the remaining issue
+appears before proof-oracle queries dominate:
+
+| Component | Post-fix result, `vars=1`, `rows=1`, `trials=1` | Status |
+| --- | ---: | --- |
+| `PCP.sampledShiftAccess` | timed out after 20s | Remaining bottleneck |
+| `PCP.sampledShiftIndex` | timed out after 20s | Remaining bottleneck |
+| `PCP.decodedSingleQuery.sampled.t32` | timed out after 30s | Remaining bottleneck |
+| `PCP.decodedQESAT.sampledShifts` | timed out after 30s | Remaining bottleneck |
+| `PCP.preRound` | timed out after 30s | Inherits sampled-shift bottleneck |
+
+Two additional implementation attempts did not produce a mergeable fix under
+the proof constraints. A direct BLR precheck did not show reproducible speedup,
+so the verifier was left on the original proved `simulateQ (truthTableImpl n)`
+path. Wrapping sampled vectors and shifts in `Vector.ofFn` with equivalence
+proofs preserved the theorems but did not remove the sampled-shift timeout; a
+deeper executable representation for sampled shifts is still needed.
+
 ## Raw Files
 
 - `benchmark_results/qesat_component_benchmarks.tsv`: light sweep of atomic,
@@ -254,15 +288,12 @@ constant is already too large.
 
 ## Conclusion
 
-The concrete final verifier is slow because the LPCP-to-PCP local-correction
-layer uses `decodedLinearQuery` with `t=72`, and the concrete `OracleComp`
-execution of that correction loop is not polynomial-in-practice. The first full
-decoded query already fails to complete within 180 seconds for the smallest
-case. Every composed verifier above it inherits that cost.
+The original fixed-shift decoded-query cliff is fixed by the direct count loop
+in `decodedLinearQuery`. The current concrete final verifier is still slow
+because the sampled pre-round materializes shifts as functions, and evaluating
+those sampled function values at scale is not polynomial-in-practice.
 
-The most promising fix is to avoid interpreting this particular `Fin.mOfFn`
-correction loop through the generic free-monad `OracleComp` structure in
-executable benchmarks. A specialized tail-recursive executable path, or a
-different concrete representation for repeated oracle queries, should preserve
-the same formal query behavior while avoiding the current exponential runtime
-cliff.
+The next promising fix is a deeper sampled-shift representation change: for
+example, an explicit array-backed shift structure used by the executable
+decoded path, with formal equivalence, distribution, and query-bound proofs
+carried through without `sorry`, `implemented_by`, or `@[csimp]`.

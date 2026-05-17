@@ -18,6 +18,9 @@ open scoped ENNReal
 
 namespace LPCPToPCP
 
+private def zmod2OneCount (y : ZMod 2) : ℕ :=
+  y.val
+
 /-- Index the truth table of a function `F₂^n → F₂` by `Fin (2^n)`. -/
 def truthTableIndex (n : ℕ) : (Fin n → ZMod 2) → Fin (2 ^ n) :=
   finFunctionFinEquiv
@@ -58,6 +61,48 @@ lemma numShifts_pos (q : ℕ → ℕ) (n : ℕ) : 0 < numShifts q n := by
 /-- Plurality over `ZMod 2`, with ties broken toward `0`. -/
 def pluralityZMod2 {t : ℕ} (ys : Fin t → ZMod 2) : ZMod 2 :=
   if Fintype.card { i : Fin t // ys i = 1 } * 2 > t then 1 else 0
+
+private def countOnesZMod2 : (t : ℕ) → (Fin t → ZMod 2) → ℕ
+  | 0, _ => 0
+  | t + 1, ys => zmod2OneCount (ys 0) + countOnesZMod2 t (fun i => ys i.succ)
+
+/-- Plurality over `ZMod 2` computed by a concrete count rather than a subtype cardinality. -/
+private def pluralityZMod2Fast {t : ℕ} (ys : Fin t → ZMod 2) : ZMod 2 :=
+  if countOnesZMod2 t ys * 2 > t then 1 else 0
+
+private lemma countOnesZMod2_eq_sum {t : ℕ} (ys : Fin t → ZMod 2) :
+    countOnesZMod2 t ys = ∑ i : Fin t, zmod2OneCount (ys i) := by
+  induction t with
+  | zero =>
+      simp [countOnesZMod2]
+  | succ t ih =>
+      simp [countOnesZMod2, Fin.sum_univ_succ, ih]
+
+private lemma sum_zmod2OneCount_eq_card {t : ℕ} (ys : Fin t → ZMod 2) :
+    (∑ i : Fin t, zmod2OneCount (ys i)) =
+      Fintype.card { i : Fin t // ys i = 1 } := by
+  rw [Fintype.card_subtype]
+  change (∑ i : Fin t, zmod2OneCount (ys i)) =
+    (Finset.univ.filter fun i : Fin t => ys i = 1).card
+  rw [Finset.card_eq_sum_ones, Finset.sum_filter]
+  apply Finset.sum_congr rfl
+  intro i _hi
+  by_cases h : ys i = 1
+  · simp [zmod2OneCount, h, ZMod.val_one]
+  · have hzero : ys i = 0 := by
+      generalize hy : ys i = y
+      fin_cases y
+      · simp
+      · simp [hy] at h
+    simp [zmod2OneCount, hzero, ZMod.val_zero]
+
+private lemma countOnesZMod2_eq_card {t : ℕ} (ys : Fin t → ZMod 2) :
+    countOnesZMod2 t ys = Fintype.card { i : Fin t // ys i = 1 } := by
+  rw [countOnesZMod2_eq_sum, sum_zmod2OneCount_eq_card]
+
+private lemma pluralityZMod2Fast_eq_pluralityZMod2 {t : ℕ} (ys : Fin t → ZMod 2) :
+    pluralityZMod2Fast ys = pluralityZMod2 ys := by
+  simp [pluralityZMod2Fast, pluralityZMod2, countOnesZMod2_eq_card]
 
 lemma pluralityZMod2_const {t : ℕ} (ht : 0 < t) (b : ZMod 2) :
     pluralityZMod2 (fun _ : Fin t => b) = b := by
@@ -502,17 +547,30 @@ lemma blrPrecheck_encodedProof_accepts {n : ℕ} (π : Fin n → ZMod 2) :
     simpa [LPCP.proofOracle] using
       (BLR_basic_completeness_ZMod2 (n := n) (f := fun u : Fin n → ZMod 2 => π ⬝ᵥ u) hlin)
 
+private def decodedLinearQueryStep {n t : ℕ}
+    (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) (i : Fin t) :
+    OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2) := do
+  let y₁ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
+    (.inr (truthTableIndex n fun j => a j + shifts i j))
+  let y₀ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
+    (.inr (truthTableIndex n (shifts i)))
+  pure (y₁ - y₀)
+
+private def decodedLinearQueryCount {n : ℕ} :
+    (t : ℕ) → (Fin t → Fin n → ZMod 2) → (Fin n → ZMod 2) →
+      OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) ℕ
+  | 0, _shifts, _a => pure 0
+  | t + 1, shifts, a => do
+      let y ← decodedLinearQueryStep shifts a 0
+      let rest ← decodedLinearQueryCount t (fun i => shifts i.succ) a
+      pure (zmod2OneCount y + rest)
+
 /-- Answer one LPCP linear query using the sampled shifts and plurality decoding. -/
 def decodedLinearQuery {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
     OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2) := do
-  let ys : Fin t → ZMod 2 ← Fin.mOfFn t fun i => do
-    let y₁ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
-      (.inr (truthTableIndex n fun j => a j + shifts i j))
-    let y₀ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
-      (.inr (truthTableIndex n (shifts i)))
-    pure (y₁ - y₀)
-  pure (pluralityZMod2 ys)
+  let ones ← decodedLinearQueryCount t shifts a
+  pure (if ones * 2 > t then 1 else 0)
 
 def correctedAnswer {n t : ℕ} (πhat : Fin (2 ^ n) → ZMod 2)
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) : ZMod 2 :=
@@ -528,42 +586,45 @@ def localCorrectionBad {n : ℕ} (πhat : Fin (2 ^ n) → ZMod 2)
 
 private lemma decodedLinearQuery_step_queryBound {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) (i : Fin t) :
-    QueryBound
-      ((do
-        let y₁ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
-          (.inr (truthTableIndex n fun j => a j + shifts i j))
-        let y₀ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
-          (.inr (truthTableIndex n (shifts i)))
-        pure (y₁ - y₀)) :
-        OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2)) 0 2 := by
+    QueryBound (decodedLinearQueryStep shifts a i) 0 2 := by
   simp only [QueryBound]
+  simp only [decodedLinearQueryStep]
   rw [OracleComp.isQueryBound_query_bind_iff]
   refine ⟨by simp, fun _ => ?_⟩
   rw [OracleComp.isQueryBound_query_bind_iff]
   exact ⟨by simp, fun _ => trivial⟩
 
+private lemma decodedLinearQueryCount_queryBound {n t : ℕ}
+    (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
+    QueryBound (decodedLinearQueryCount t shifts a) 0 (2 * t) := by
+  induction t with
+  | zero =>
+      simp [decodedLinearQueryCount, QueryBound]
+  | succ t ih =>
+      have htail : ∀ y : ZMod 2,
+          QueryBound
+          ((fun rest => zmod2OneCount y + rest) <$>
+              decodedLinearQueryCount t (fun i => shifts i.succ) a)
+            0 (2 * t) := by
+        intro y
+        exact queryBound_map (fun rest => zmod2OneCount y + rest)
+          (ih (fun i => shifts i.succ))
+      have hbind :
+          QueryBound
+            (decodedLinearQueryStep shifts a 0 >>=
+              fun y => (fun rest => zmod2OneCount y + rest) <$>
+                decodedLinearQueryCount t (fun i => shifts i.succ) a)
+            (0 + 0) (2 + 2 * t) :=
+        queryBound_bind
+          (decodedLinearQuery_step_queryBound shifts a 0) htail
+      simpa [decodedLinearQueryCount, map_eq_bind_pure_comp, Nat.mul_succ,
+        Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using hbind
+
 lemma decodedLinearQuery_queryBound {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
     QueryBound (decodedLinearQuery shifts a) 0 (2 * t) := by
-  have hys : QueryBound
-      (Fin.mOfFn t fun i => ((do
-        let y₁ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
-          (.inr (truthTableIndex n fun j => a j + shifts i j))
-        let y₀ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
-          (.inr (truthTableIndex n (shifts i)))
-        pure (y₁ - y₀)) :
-        OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2))) 0 (2 * t) := by
-    simpa [Nat.mul_comm, Nat.mul_left_comm, Nat.mul_assoc] using
-      (queryBound_mOfFn
-        (fun i : Fin t => ((do
-          let y₁ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
-            (.inr (truthTableIndex n fun j => a j + shifts i j))
-          let y₀ : ZMod 2 ← query (spec := PCP.fullSpec (ZMod 2) (2 ^ n))
-            (.inr (truthTableIndex n (shifts i)))
-          pure (y₁ - y₀)) :
-          OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (ZMod 2)))
-        (fun i => decodedLinearQuery_step_queryBound shifts a i))
-  simpa [decodedLinearQuery] using hys
+  exact queryBound_map (fun ones : ℕ => (if ones * 2 > t then 1 else 0 : ZMod 2))
+    (decodedLinearQueryCount_queryBound shifts a)
 
 private lemma mOfFn_pure_const {M : Type → Type} [Monad M] [LawfulMonad M]
     {α : Type} (k : ℕ) (a : α) :
@@ -645,17 +706,48 @@ private lemma dotProduct_add_sub_shift {n : ℕ}
   rw [dotProduct_add]
   ring
 
+private lemma simulateQ_decodedLinearQueryStep_table_eq {n t : ℕ}
+    (πhat : Fin (2 ^ n) → ZMod 2)
+    (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) (i : Fin t) :
+    simulateQ ((randOracle (ZMod 2)).impl + (PCP.proofOracle πhat).impl)
+      (decodedLinearQueryStep shifts a i) =
+      pure
+        (πhat (truthTableIndex n fun j => a j + shifts i j) -
+          πhat (truthTableIndex n (shifts i))) := by
+  simp [decodedLinearQueryStep, simulateQ_bind, simulateQ_query,
+    OracleQuery.cont_query, OracleQuery.input_query, PCP.proofOracle]
+
+private lemma simulateQ_decodedLinearQueryCount_table_eq {n t : ℕ}
+    (πhat : Fin (2 ^ n) → ZMod 2)
+    (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
+    simulateQ ((randOracle (ZMod 2)).impl + (PCP.proofOracle πhat).impl)
+      (decodedLinearQueryCount t shifts a) =
+      pure (countOnesZMod2 t fun i : Fin t =>
+        πhat (truthTableIndex n fun j => a j + shifts i j) -
+          πhat (truthTableIndex n (shifts i))) := by
+  induction t with
+  | zero =>
+      simp [decodedLinearQueryCount, countOnesZMod2]
+  | succ t ih =>
+      rw [decodedLinearQueryCount, simulateQ_bind,
+        simulateQ_decodedLinearQueryStep_table_eq (πhat := πhat)]
+      simp [ih, countOnesZMod2]
+
 lemma simulateQ_decodedLinearQuery_encodedProof_eq {n t : ℕ}
     (ht : 0 < t) (π : Fin n → ZMod 2)
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
     simulateQ ((randOracle (ZMod 2)).impl + (PCP.proofOracle (encodedProof π)).impl)
       (decodedLinearQuery shifts a) =
       pure (π ⬝ᵥ a) := by
-  rw [decodedLinearQuery, simulateQ_bind, simulateQ_mOfFn_prob]
-  simp [simulateQ_bind, simulateQ_query,
-    OracleQuery.cont_query, OracleQuery.input_query, PCP.proofOracle,
-    encodedProof_truthTableIndex, dotProduct_add_sub_shift, mOfFn_pure_const,
-    pluralityZMod2_const ht]
+  rw [decodedLinearQuery, simulateQ_bind,
+    simulateQ_decodedLinearQueryCount_table_eq (πhat := encodedProof π)]
+  change
+    ((pure (pluralityZMod2Fast (fun i : Fin t =>
+      encodedProof π (truthTableIndex n fun j => a j + shifts i j) -
+        encodedProof π (truthTableIndex n (shifts i)))) : ProbComp (ZMod 2)) =
+      (pure (π ⬝ᵥ a) : ProbComp (ZMod 2)))
+  simp [pluralityZMod2Fast_eq_pluralityZMod2, encodedProof_truthTableIndex,
+    dotProduct_add_sub_shift, pluralityZMod2_const ht]
 
 lemma simulateQ_decodedLinearQuery_table_eq {n t : ℕ}
     (πhat : Fin (2 ^ n) → ZMod 2)
@@ -663,9 +755,14 @@ lemma simulateQ_decodedLinearQuery_table_eq {n t : ℕ}
     simulateQ ((randOracle (ZMod 2)).impl + (PCP.proofOracle πhat).impl)
       (decodedLinearQuery shifts a) =
       pure (correctedAnswer πhat shifts a) := by
-  rw [decodedLinearQuery, correctedAnswer, simulateQ_bind, simulateQ_mOfFn_prob]
-  simp [simulateQ_bind, simulateQ_query,
-    OracleQuery.cont_query, OracleQuery.input_query, PCP.proofOracle, mOfFn_pure]
+  rw [decodedLinearQuery, simulateQ_bind,
+    simulateQ_decodedLinearQueryCount_table_eq (πhat := πhat)]
+  change
+    ((pure (pluralityZMod2Fast (fun i : Fin t =>
+      πhat (truthTableIndex n fun j => a j + shifts i j) -
+        πhat (truthTableIndex n (shifts i)))) : ProbComp (ZMod 2)) =
+      (pure (correctedAnswer πhat shifts a) : ProbComp (ZMod 2)))
+  simp [correctedAnswer, pluralityZMod2Fast_eq_pluralityZMod2]
 
 /-- Simulate LPCP oracle queries using a PCP truth table and fixed random shifts. -/
 def decodedImpl {n t : ℕ}

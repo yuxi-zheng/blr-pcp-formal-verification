@@ -48,7 +48,7 @@ def lpcpHonestProof {vars : ℕ} : Fin (proofDim vars) → F :=
   TENSORQ.honestProof (F := F) (allOnes, tensorSquareOnes)
 
 def pcpHonestProof {vars : ℕ} : Fin (2 ^ proofDim vars) → F :=
-  LPCPToPCP.encodedProof lpcpHonestProof
+  (Vector.ofFn (LPCPToPCP.encodedProof lpcpHonestProof)).get
 
 def paddedHonestProof {vars : ℕ} (x : List (CMvPolynomial vars F)) :
     Fin (2 ^ QESAT.size x) → F :=
@@ -119,6 +119,11 @@ def decodedQESATLpcpComp (vars rows : ℕ) :
   simulateQ (LPCPToPCP.decodedImpl (zeroShifts (proofDim vars) shiftCount))
     (qesatLpcpComp vars rows)
 
+def decodedQESATLpcpSampledShiftsComp (vars rows : ℕ) :
+    OracleComp (PCP.fullSpec F (2 ^ proofDim vars)) Bool := do
+  let shifts ← LPCPToPCP.sampleShifts (proofDim vars) shiftCount
+  simulateQ (LPCPToPCP.decodedImpl shifts) (qesatLpcpComp vars rows)
+
 def blrComp (vars : ℕ) :
     OracleComp (PCP.fullSpec F (2 ^ proofDim vars)) Bool :=
   simulateQ (LPCPToPCP.truthTableImpl (proofDim vars))
@@ -128,6 +133,31 @@ def sampleShiftsComp (vars : ℕ) :
     OracleComp (PCP.fullSpec F (2 ^ proofDim vars))
       (Fin shiftCount → Fin (proofDim vars) → F) :=
   LPCPToPCP.sampleShifts (proofDim vars) shiftCount
+
+private def sampledShiftIndexSum {n : ℕ} :
+    (t : ℕ) → (Fin t → Fin n → F) → (Fin n → F) → ℕ
+  | 0, _shifts, _a => 0
+  | t + 1, shifts, a =>
+      (LPCPToPCP.truthTableIndex n (fun j => a j + shifts 0 j)).val +
+        (LPCPToPCP.truthTableIndex n (shifts 0)).val +
+        sampledShiftIndexSum t (fun i => shifts i.succ) a
+
+private def sampledShiftAccessSum {n : ℕ} :
+    (t : ℕ) → (Fin t → Fin n → F) → ℕ
+  | 0, _shifts => 0
+  | t + 1, shifts =>
+      (∑ j : Fin n, if shifts 0 j = 1 then 1 else 0) +
+        sampledShiftAccessSum t (fun i => shifts i.succ)
+
+def sampledShiftIndexComp (vars : ℕ) :
+    OracleComp (PCP.fullSpec F (2 ^ proofDim vars)) ℕ := do
+  let shifts ← LPCPToPCP.sampleShifts (proofDim vars) shiftCount
+  pure (sampledShiftIndexSum shiftCount shifts (fun _ => 1))
+
+def sampledShiftAccessComp (vars : ℕ) :
+    OracleComp (PCP.fullSpec F (2 ^ proofDim vars)) ℕ := do
+  let shifts ← LPCPToPCP.sampleShifts (proofDim vars) shiftCount
+  pure (sampledShiftAccessSum shiftCount shifts)
 
 def decodedSingleQueryComp (vars : ℕ) :
     OracleComp (PCP.fullSpec F (2 ^ proofDim vars)) F :=
@@ -140,6 +170,16 @@ def decodedSingleQueryCompT (vars t : ℕ) :
   LPCPToPCP.decodedLinearQuery
     (zeroShifts (proofDim vars) t)
     (fun _ => 1)
+
+def decodedSingleQuerySampledShiftsComp (vars : ℕ) :
+    OracleComp (PCP.fullSpec F (2 ^ proofDim vars)) F := do
+  let shifts ← LPCPToPCP.sampleShifts (proofDim vars) shiftCount
+  LPCPToPCP.decodedLinearQuery shifts (fun _ => 1)
+
+def decodedSingleQuerySampledShiftsCompT (vars t : ℕ) :
+    OracleComp (PCP.fullSpec F (2 ^ proofDim vars)) F := do
+  let shifts ← LPCPToPCP.sampleShifts (proofDim vars) t
+  LPCPToPCP.decodedLinearQuery shifts (fun _ => 1)
 
 def decodedCorrectionStepComp (vars : ℕ) :
     OracleComp (PCP.fullSpec F (2 ^ proofDim vars)) F := do
@@ -373,6 +413,10 @@ def runOneComponent (component : String) (vars rows trials : ℕ) : IO UInt32 :=
   let x := repeatedSatInstanceN vars rows
   IO.println BenchRow.tsvHeader
   match component with
+  | "blr" =>
+      emitBoolRow "PCP.BLRPrecheck" vars rows trials do
+        runPcpComp (pcpHonestProof (vars := vars)) (blrComp vars)
+      pure 0
   | "decoded-step" =>
       emitBoolRow "PCP.decodedCorrectionStep" vars rows trials do
         let y ← runPcpComp (pcpHonestProof (vars := vars)) (decodedCorrectionStepComp vars)
@@ -393,6 +437,22 @@ def runOneComponent (component : String) (vars rows trials : ℕ) : IO UInt32 :=
         let y ← runPcpComp (pcpHonestProof (vars := vars)) (decodedSingleQueryComp vars)
         pure (y = 0 ∨ y = 1)
       pure 0
+  | "decoded-single-sampled" =>
+      emitBoolRow "PCP.decodedSingleQuery.sampledShifts" vars rows trials do
+        let y ← runPcpComp (pcpHonestProof (vars := vars))
+          (decodedSingleQuerySampledShiftsComp vars)
+        pure (y = 0 ∨ y = 1)
+      pure 0
+  | "sampled-shift-index" =>
+      emitUnitRow "PCP.sampledShiftIndex" vars rows trials do
+        let _ ← runPcpComp (pcpHonestProof (vars := vars)) (sampledShiftIndexComp vars)
+        pure ()
+      pure 0
+  | "sampled-shift-access" =>
+      emitUnitRow "PCP.sampledShiftAccess" vars rows trials do
+        let _ ← runPcpComp (pcpHonestProof (vars := vars)) (sampledShiftAccessComp vars)
+        pure ()
+      pure 0
   | "decoded-lineq" =>
       emitBoolRow "PCP.decodedLineq" vars rows trials do
         runPcpComp (pcpHonestProof (vars := vars)) (decodedLineqComp vars rows)
@@ -404,6 +464,11 @@ def runOneComponent (component : String) (vars rows trials : ℕ) : IO UInt32 :=
   | "decoded-qesat" =>
       emitBoolRow "PCP.decodedQESAT" vars rows trials do
         runPcpComp (pcpHonestProof (vars := vars)) (decodedQESATLpcpComp vars rows)
+      pure 0
+  | "decoded-qesat-sampled" =>
+      emitBoolRow "PCP.decodedQESAT.sampledShifts" vars rows trials do
+        runPcpComp (pcpHonestProof (vars := vars))
+          (decodedQESATLpcpSampledShiftsComp vars rows)
       pure 0
   | "pre-round" =>
       emitBoolRow "PCP.preRound" vars rows trials do
@@ -425,6 +490,14 @@ def runDecodedT (t vars rows trials : ℕ) : IO UInt32 := do
   IO.println BenchRow.tsvHeader
   emitBoolRow s!"PCP.decodedSingleQuery.t{t}" vars rows trials do
     let y ← runPcpComp (pcpHonestProof (vars := vars)) (decodedSingleQueryCompT vars t)
+    pure (y = 0 ∨ y = 1)
+  pure 0
+
+def runDecodedSampledT (t vars rows trials : ℕ) : IO UInt32 := do
+  IO.println BenchRow.tsvHeader
+  emitBoolRow s!"PCP.decodedSingleQuery.sampled.t{t}" vars rows trials do
+    let y ← runPcpComp (pcpHonestProof (vars := vars))
+      (decodedSingleQuerySampledShiftsCompT vars t)
     pure (y = 0 ∨ y = 1)
   pure 0
 
@@ -491,6 +564,13 @@ def main (args : List String) : IO UInt32 := do
           QESATComponentBench.runDecodedT shifts vars rows trials
       | _, _, _, _ =>
           IO.eprintln "usage: lake exe qesat_component_bench [wide|case vars rows|component name vars rows trials|decoded-t shifts vars rows trials|plurality-t shifts vars rows trials|mofn-t shifts vars rows trials|mofn-plurality-t shifts vars rows trials|fixed-loop-t shifts vars rows trials]"
+          pure 1
+  | ["decoded-sampled-t", shifts, vars, rows, trials] =>
+      match parseNat? shifts, parseNat? vars, parseNat? rows, parseNat? trials with
+      | some shifts, some vars, some rows, some trials =>
+          QESATComponentBench.runDecodedSampledT shifts vars rows trials
+      | _, _, _, _ =>
+          IO.eprintln "usage: lake exe qesat_component_bench [wide|case vars rows|component name vars rows trials|decoded-t shifts vars rows trials|decoded-sampled-t shifts vars rows trials|plurality-t shifts vars rows trials|mofn-t shifts vars rows trials|mofn-plurality-t shifts vars rows trials|fixed-loop-t shifts vars rows trials]"
           pure 1
   | ["plurality-t", shifts, vars, rows, trials] =>
       match parseNat? shifts, parseNat? vars, parseNat? rows, parseNat? trials with
