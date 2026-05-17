@@ -1,25 +1,29 @@
-\begin{definition}\label{BLR.basicVerifier}\lean{BLR.basicVerifier}\leanok 
+\begin{definition}\label{BLR.basicVerifier}\lean{BLR.basicVerifier}\leanok
 Let \(V_{\mathrm{BLR}(\F_{2}, n)}^{f}\) be the verifier with oracle access to \(f: \F_{2}^n \to \F_{2}\) defined as follows:
 \begin{enumerate}
-  \item Sample \(x, y \leftarrow \F^n\).
+  \item Sample \(x, y \leftarrow \F_2^n\).
   \item Accept if and only if \(f(x) + f(y) = f(x+y)\).
 \end{enumerate}
 \end{definition}
 
 \begin{theorem}\label{BLR_basic_completeness_ZMod2}\lean{BLR_basic_completeness_ZMod2}\uses{BLR.basicVerifier}\leanok
-% TODO: uses `BlrPcp.LinearSet' 
 Let \(n > 0\). For every linear function \(f: \F_{2}^n \to \F_{2}\), we have
 \[\Pr \left[V_{\mathrm{BLR}(\F_{2}, n)}^{f} = 1\right] = 1.\]
 \end{theorem}
 \begin{proof}\leanok
-% TODO: uses `blrBasicVerifier_acceptanceProbability_eq_verifier_ZMod2' and `BLR_completeness`''
+For every sampled pair \(x,y\), linearity gives
+\(f(x+y)=f(x)+f(y)\). Hence the verifier accepts for every random choice.
 \end{proof}
 
 \begin{theorem}\label{BLR_basic_soundness_ZMod2}\lean{BLR_basic_soundness_ZMod2}\uses{BLR.basicVerifier}\leanok
-% TODO: uses `distanceToLin'
 Let \(n > 0\) and \(f: \F_{2}^n \to \F_{2}\).
 \[\Pr \left[V_{\mathrm{BLR}(\F_{2}, n)}^{f} = 0\right] \geq \Delta(f, \mathcal{LIN}).\]
 \end{theorem}
 \begin{proof}\leanok
-% TODO: uses `blrBasicVerifier_rejectionProbability_eq_verifier_ZMod2' and `BLR_soundness`
+% Lecture 07 first proves a weaker BLR bound and then gives this sharper
+% finite-field bound by Fourier analysis; the Lean statement uses the sharper
+% version specialized to \(\F_2\).
+This is the \(F=\F_2\) specialization of the BLR soundness theorem: a function
+that is \(\Delta(f,\mathcal{LIN})\)-far from linear violates the additive
+identity \(f(x)+f(y)=f(x+y)\) with probability at least that distance.
 \end{proof}

@@ -47,29 +47,6 @@ uses at most $r(|x|)$ bits of randomness, and the following holds:
 \end{itemize}
 \end{definition}
 
-The following theorem is the main goal of this chapter.
-
-\begin{theorem}
-\uses{QESAT,PCP}
-\label{QESAT_exp_PCP}
-\lean{QESAT_exp_PCP}
-\leanok
-\[
-  \mathrm{QESAT}(\F_2,n) \in
-  \mathrm{PCP}[
-    \varepsilon_c = 0,
-    \varepsilon_s = 1/2,
-    \Sigma = \F_2,
-    \ell = 2^{|x|},
-    q = O(1),
-    r = |x|^{O(1)}
-  ].
-\]
-\end{theorem}
-\begin{proof}\uses{QESAT_poly_LPCP,LPCP_to_PCP_ZMod2}\leanok
-TODO
-\end{proof}
-
 \begin{definition}
 \label{LPCPVerifier}
 \lean{LPCPVerifier}
@@ -101,3 +78,7 @@ uses at most $r(|x|)$ bits of randomness, and the following holds:
   \leq \varepsilon_s$.
 \end{itemize}
 \end{definition}
+
+The remaining sections construct the exponential-length PCP for
+\(\QESAT(\F_2,n)\) by first giving an LPCP and then converting that LPCP proof
+oracle into an ordinary PCP proof oracle.

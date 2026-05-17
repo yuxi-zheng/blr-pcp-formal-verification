@@ -7,9 +7,7 @@ is the matrix defined by
 We write \(\mathrm{flat}(a \otimes b) \in \F^{n \cdot m}\) for the row-concatenation of \(a \otimes b\).
 \end{definition}
 
-For our purposes, we would love to test to check if $\mathrm{flat}(a \otimes a) = b$
-
-\begin{definition}\label{tensor-language}\lean{TENSORQ}\leanok
+\begin{definition}\label{TENSORQ}\lean{TENSORQ}\leanok
 For a field \(\F\) and \(n \in \N\), define the tensor test language
 \[
   \mathrm{TENSORQ}(\F, n) :=
@@ -17,7 +15,82 @@ For a field \(\F\) and \(n \in \N\), define the tensor test language
 \]
 \end{definition}
 
-\begin{theorem}\label{tensor-lpcp}\uses{tensor-product, tensor-language}\lean{TENSORQ_LPCP}\leanok
+\begin{definition}\label{TENSORQ.verifier}\lean{TENSORQ.verifier}\uses{LPCPVerifier,tensor-product,TENSORQ}\leanok
+% Lecture 08 presents this as a subcheck inside the QESAT verifier, where the
+% queried proof oracles are already named \(a\) and \(b\). The standalone Lean
+% language has explicit input \((a,b)\), so its verifier also checks that the
+% proof's two linear parts agree with that input before running the tensor
+% multiplicativity check.
+Given input \((a,b) \in \F^n \times \F^{n^2}\), the LPCP verifier
+\(V_{\mathrm{TENSORQ}(\F,n)}^{\langle \pi,\cdot\rangle}(a,b)\) uses a proof
+\(\pi \in \F^{n+n^2}\), viewed as a pair of linear oracles for the \(a\)-part
+and the \(b\)-part. It proceeds as follows:
+\begin{enumerate}
+  \item Sample \(s,t \leftarrow \F^n\).
+  \item Query \(\pi\) at \(q_A(s)=(s,0)\) and at \(q_A(t)=(t,0)\), obtaining
+    \(y_s\) and \(y_t\).
+  \item Query \(\pi\) at \(q_B(s,t)=(0,\mathrm{flat}(s\otimes t))\), obtaining
+    \(y_{s,t}\).
+  \item Accept if and only if
+    \[
+      y_s=\langle a,s\rangle,\qquad
+      y_t=\langle a,t\rangle,\qquad
+      y_{s,t}=\langle b,\mathrm{flat}(s\otimes t)\rangle,\qquad
+      y_{s,t}=y_s y_t.
+    \]
+\end{enumerate}
+\end{definition}
+
+\begin{lemma}\label{TENSORQ.tensor_check_complete}\lean{TENSORQ.tensor_check_complete}\uses{tensor-product}\leanok
+For every \(a,s,t\in\F^n\),
+\[
+  \langle \mathrm{flat}(a\otimes a),\mathrm{flat}(s\otimes t)\rangle
+  = \langle a,s\rangle \langle a,t\rangle.
+\]
+\end{lemma}
+\begin{proof}\leanok
+\begin{align*}
+  \langle \mathrm{flat}(a\otimes a),\mathrm{flat}(s\otimes t)\rangle
+    &= \sum_{i,j} a_i a_j s_i t_j
+     = \left(\sum_i a_i s_i\right)\left(\sum_j a_j t_j\right)
+     = \langle a,s\rangle \langle a,t\rangle.
+\end{align*}
+\end{proof}
+
+\begin{lemma}\label{TENSORQ.verifier_soundness_after_sampling}\lean{TENSORQ.verifier_soundness_after_sampling}\uses{TENSORQ.verifier,LINEQ.linear_form_uniform_prob_mul_card_le_one}\leanok
+Let \(\F\) be a finite field. If \(b \neq \mathrm{flat}(a\otimes a)\), then for every proof
+\(\pi\in \F^{n+n^2}\),
+\[
+  \Pr_{s,t}\!\left[
+    V_{\mathrm{TENSORQ}(\F,n)}^{\langle\pi,\cdot\rangle}(a,b)=1
+  \right]
+  \leq \frac{2|\F|-1}{|\F|^2}.
+\]
+\end{lemma}
+\begin{proof}\leanok
+Let \(D_{ij}=b_{ij}-a_i a_j\). Since \(D\neq 0\), choose
+\((i^*,j^*)\) with \(D_{i^*j^*}\neq 0\). If the verifier accepts on samples
+\((s,t)\), its consistency checks imply
+\[
+  \sum_{i,j} D_{ij}s_i t_j=0.
+\]
+For each \(i\), set \(p_i(t)=\sum_j D_{ij}t_j\). The polynomial
+\(p_{i^*}\) is a nonzero linear form, so
+\[
+  \Pr_t[p_{i^*}(t)\neq 0]\geq 1-\frac{1}{|\F|}
+\]
+by \ref{LINEQ.linear_form_uniform_prob_mul_card_le_one}. Conditioned on this
+event, \(s\mapsto \sum_i p_i(t)s_i\) is also a nonzero linear form, so the same
+lemma gives
+\[
+  \Pr_s\!\left[\sum_i p_i(t)s_i\neq 0\mid p_{i^*}(t)\neq 0\right]
+  \geq 1-\frac{1}{|\F|}.
+\]
+Thus the verifier rejects with probability at least
+\((1-1/|\F|)^2\), and the claimed acceptance bound follows.
+\end{proof}
+
+\begin{theorem}\label{TENSORQ_LPCP}\uses{TENSORQ, LPCP, TENSORQ.verifier}\lean{TENSORQ_LPCP}\leanok
 For every finite field \(\F\) and \(n \in \N\),
 \[
   \mathrm{TENSORQ}(\F, n) \in
@@ -31,63 +104,18 @@ For every finite field \(\F\) and \(n \in \N\),
   \right].
 \]
 \end{theorem}
-\begin{proof}
-Consider the following LPCP verifier \(V^{\langle a,\cdot\rangle, \langle b,\cdot\rangle}\) proceeds as follows:
-\begin{enumerate}
-  \item Sample \(s, t \leftarrow \F^n\).
-  \item Query \(a\) at \(s\) and at \(t\), obtaining \(\langle a, s \rangle\) and \(\langle a, t \rangle\).
-  \item Query \(b\) at \(\mathrm{flat}(s \otimes t)\), obtaining \(\langle b, \mathrm{flat}(s \otimes t) \rangle\).
-  \item Check if \(\langle b, \mathrm{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle\).
-\end{enumerate}
-
-\emph{Completeness.}
-Suppose \(b = \mathrm{flat}(a \otimes a)\). Then  \(\forall s, t \in \F^n\),
-\begin{align*}
-  \langle b,\, \mathrm{flat}(s \otimes t) \rangle
-    &= \langle \mathrm{flat}(a \otimes a),\, \mathrm{flat}(s \otimes t) \rangle
-     = \sum_{i,j \in [n]} a_i a_j s_i t_j \\
-    &= \Bigl(\sum_{i \in [n]} a_i s_i\Bigr) \cdot \Bigl(\sum_{j \in [n]} a_j t_j\Bigr)
-     = \langle a, s \rangle \cdot \langle a, t \rangle,
-\end{align*}
-
-\emph{Soundness.}
-Suppose \(b \neq \mathrm{flat}(a \otimes a)\), i.e., there exists \(i^*, j^* \in [n]\) such that
-\(b_{i^* j^*} \neq a_{i^*} \cdot a_{j^*}\).
-For each \(i \in [n]\) define the linear polynomial \(p_i(t) := \sum_{j \in [n]} (b_{ij} - a_i a_j)\, t_j\).
-The check can be rewritten as
-\[
-  \langle b, \mathrm{flat}(s \otimes t) \rangle - \langle a,s\rangle\langle a,t\rangle
-  = \sum_{i \in [n]}  \sum_{j \in [n]} (b_{ij} - a_i a_j)\, s_i t_j
-  = \sum_{i \in [n]} p_i(t)\, s_i.
-\]
-
-Immediate application of Polynomial Identity Testing yields a lower bound of $1 - \tfrac{2}{|\F|}$ but we can do better.
-Since \(b_{i^* j^*} \neq a_{i^*} a_{j^*}\), the polynomial \(p_{i^*}\) is nonzero, so by the
-Schwartz--Zippel lemma applied to \(t\),
-\[
-  \Pr_{t}\!\bigl[p_{i^*}(t) \neq 0\bigr] \geq 1 - \tfrac{1}{|\F|}.
-\]
-Conditioned on \(p_{i^*}(t) \neq 0\), the expression \(\sum_i p_i(t)\,s_i\) is a nonzero linear polynomial
-in \(s\), so by the Schwartz--Zippel lemma applied to \(s\),
-\[
-  \Pr_{s \leftarrow \F^n}\!\Bigl[\sum_i p_i(t)\,s_i \neq 0 \;\Big|\; p_{i^*}(t) \neq 0\Bigr]
-  \geq 1 - \tfrac{1}{|\F|}.
-\]
-Hence
-\[
-  \Pr_{s,t}\!\bigl[\text{verifier rejects}\bigr]
-  \;\geq\; \Bigl(1 - \tfrac{1}{|\F|}\Bigr)^{\!2},
-\]
-and therefore
-\[
-  \Pr_{s,t}\!\bigl[\text{verifier accepts}\bigr]
-  \;\leq\; 1 - \Bigl(1 - \tfrac{1}{|\F|}\Bigr)^{\!2}
-  = \frac{2|\F|-1}{|\F|^2}. \qedhere
-\]
+\begin{proof}\uses{TENSORQ.tensor_check_complete,TENSORQ.verifier_soundness_after_sampling}\leanok
+Use the verifier of \ref{TENSORQ.verifier}. If
+\((a,b)\in\mathrm{TENSORQ}(\F,n)\), the honest proof \(\pi=(a,b)\) passes the
+three input-consistency checks identically, and the multiplicativity check is
+\ref{TENSORQ.tensor_check_complete}. Soundness is
+\ref{TENSORQ.verifier_soundness_after_sampling}. The verifier makes three proof
+queries and uses two random vectors in \(\F^n\), which gives the displayed query
+and randomness bounds.
 \end{proof}
 
 
-\begin{corollary}\label{tensor-lpcp-binary}\uses{tensor-product, tensor-language}\lean{TENSORQ_LPCP_Zmod2}\leanok
+\begin{corollary}\label{TENSORQ_LPCP_Zmod2}\uses{TENSORQ_LPCP}\lean{TENSORQ_LPCP_Zmod2}\leanok
 \[
   \mathrm{TENSORQ}(\F_2, n) \in
   \LPCP\!\left[
@@ -100,6 +128,6 @@ and therefore
   \right].
 \]
 \end{corollary}
-\begin{proof}
-  Immediate.
+\begin{proof}\leanok
+Specialize \ref{TENSORQ_LPCP} to \(\F_2\), where \(|\F_2|=2\).
 \end{proof}
