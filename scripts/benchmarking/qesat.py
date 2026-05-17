@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "out"
 CSV_FIELDS = ["verifier", "vars", "polys", "trials", "accepts", "elapsed_ms", "avg_ms"]
+HARD_FAMILIES = ("pin", "xor", "cnf")
 
 
 def run(cmd: list[str], *, capture: bool = False) -> subprocess.CompletedProcess[str]:
@@ -27,6 +28,7 @@ def run(cmd: list[str], *, capture: bool = False) -> subprocess.CompletedProcess
 
 
 def collect_rows(
+    family: str,
     pcp_max_vars: int,
     trivial_max_vars: int,
     trials: int,
@@ -38,7 +40,14 @@ def collect_rows(
 
     exe = REPO_ROOT / ".lake" / "build" / "bin" / "qesat_test"
     result = run(
-        [str(exe), "csv", str(pcp_max_vars), str(trials), str(trivial_max_vars)],
+        [
+            str(exe),
+            "csv-hard",
+            family,
+            str(pcp_max_vars),
+            str(trials),
+            str(trivial_max_vars),
+        ],
         capture=True,
     )
     lines = [line for line in result.stdout.splitlines() if line.strip()]
@@ -72,7 +81,7 @@ def measured_points(rows: list[dict[str, str]], verifier: str) -> list[tuple[int
     return points
 
 
-def plot_rows(rows: list[dict[str, str]], path: Path) -> None:
+def plot_rows(rows: list[dict[str, str]], family: str, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -85,7 +94,7 @@ def plot_rows(rows: list[dict[str, str]], path: Path) -> None:
         xs, ys = zip(*points)
         ax.plot(xs, ys, marker="o", label=verifier)
 
-    ax.set_title("QESAT verifier runtime")
+    ax.set_title(f"QESAT verifier runtime ({family} hard instances)")
     ax.set_xlabel("variables")
     ax.set_ylabel("average runtime per trial (ms)")
     ax.set_yscale("log")
@@ -98,32 +107,52 @@ def plot_rows(rows: list[dict[str, str]], path: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--family",
+        choices=HARD_FAMILIES,
+        default="pin",
+        help="hard satisfiable instance family to benchmark",
+    )
+    parser.add_argument(
         "--pcp-max-vars",
         type=int,
-        default=24,
-        help="maximum variable count for the PCP verifier benchmark",
+        default=None,
+        help=(
+            "number of generated PCP rows; pin/xor rows use 1..N variables, "
+            "cnf rows use 3,6,...,3N total variables"
+        ),
     )
     parser.add_argument(
         "--trivial-max-vars",
         type=int,
-        default=20,
-        help="maximum variable count for the brute-force verifier benchmark",
+        default=None,
+        help=(
+            "number of generated brute-force rows; pin/xor rows use 1..N "
+            "variables, cnf rows use 3,6,...,3N total variables"
+        ),
     )
     parser.add_argument("--trials", type=int, default=3, help="trials per verifier and size")
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR, help="output directory")
     parser.add_argument("--no-build", action="store_true", help="skip `lake build qesat_test`")
     args = parser.parse_args()
 
+    default_pcp_max = 6 if args.family == "cnf" else 24
+    default_trivial_max = 6 if args.family == "cnf" else 20
+    pcp_max_vars = args.pcp_max_vars if args.pcp_max_vars is not None else default_pcp_max
+    trivial_max_vars = (
+        args.trivial_max_vars if args.trivial_max_vars is not None else default_trivial_max
+    )
+
     rows = collect_rows(
-        args.pcp_max_vars,
-        args.trivial_max_vars,
+        args.family,
+        pcp_max_vars,
+        trivial_max_vars,
         args.trials,
         build=not args.no_build,
     )
-    csv_path = args.out_dir / "qesat.csv"
-    png_path = args.out_dir / "qesat_runtime.png"
+    csv_path = args.out_dir / f"qesat_{args.family}.csv"
+    png_path = args.out_dir / f"qesat_{args.family}_runtime.png"
     write_csv(rows, csv_path)
-    plot_rows(rows, png_path)
+    plot_rows(rows, args.family, png_path)
 
     print(f"wrote {csv_path}")
     print(f"wrote {png_path}")

@@ -97,6 +97,133 @@ def honestProofNat {vars : ℕ} (a : Fin vars → F) : FastProof :=
 def zeroProofNat : FastProof :=
   fun _ => false
 
+def allZero {vars : ℕ} : Fin vars → F :=
+  fun _ => 0
+
+def hardPinInstance (vars : ℕ) : List (CMvPolynomial vars F) :=
+  (List.finRange vars).map fun i => CMvPolynomial.X (R := F) i
+
+def triangularXorEquation {vars : ℕ} (i : Fin vars) : CMvPolynomial vars F :=
+  (List.finRange vars).foldl
+    (fun acc j =>
+      if i.val ≤ j.val then
+        acc + CMvPolynomial.X (R := F) j
+      else
+        acc)
+    (CMvPolynomial.C (n := vars) (R := F) 0)
+
+def hardXorInstance (vars : ℕ) : List (CMvPolynomial vars F) :=
+  (List.finRange vars).map triangularXorEquation
+
+namespace HardCnf
+
+def clauseCount (vars : ℕ) : ℕ :=
+  2 * vars
+
+def totalVars (vars : ℕ) : ℕ :=
+  vars + clauseCount vars
+
+structure Clause (vars : ℕ) where
+  a : Fin vars
+  b : Fin vars
+  c : Fin vars
+
+def originalIndex (vars : ℕ) (i : Fin vars) : Fin (totalVars vars) :=
+  ⟨i.val, by
+    dsimp [totalVars, clauseCount]
+    omega⟩
+
+def auxIndex (vars : ℕ) (k : Fin (clauseCount vars)) : Fin (totalVars vars) :=
+  ⟨vars + k.val, by
+    dsimp [totalVars]
+    omega⟩
+
+def wrapIndex (vars : ℕ) (base step : ℕ) (hpos : 0 < vars) : Fin vars :=
+  ⟨(base + step) % vars, Nat.mod_lt _ hpos⟩
+
+def clauseAt (vars : ℕ) (k : Fin (clauseCount vars)) : Clause vars :=
+  if hfirst : k.val < vars then
+    let i : Fin vars := ⟨k.val, hfirst⟩
+    { a := i, b := i, c := i }
+  else
+    have hpos : 0 < vars := by
+      have hk : k.val < 2 * vars := by
+        exact k.isLt
+      omega
+    let base := k.val - vars
+    have hbase : base < vars := by
+      have hk : k.val < 2 * vars := by
+        exact k.isLt
+      have hle : vars ≤ k.val := Nat.le_of_not_gt hfirst
+      omega
+    let i : Fin vars := ⟨base, hbase⟩
+    { a := i
+      b := wrapIndex vars i.val 1 hpos
+      c := wrapIndex vars (2 * i.val) 1 hpos }
+
+def falseIndicator (vars : ℕ) (i : Fin vars) :
+    CMvPolynomial (totalVars vars) F :=
+  CMvPolynomial.X (R := F) (originalIndex vars i)
+
+def auxVar (vars : ℕ) (k : Fin (clauseCount vars)) :
+    CMvPolynomial (totalVars vars) F :=
+  CMvPolynomial.X (R := F) (auxIndex vars k)
+
+def encodeClause (vars : ℕ) (k : Fin (clauseCount vars)) :
+    List (CMvPolynomial (totalVars vars) F) :=
+  let clause := clauseAt vars k
+  let y := auxVar vars k
+  let fa := falseIndicator vars clause.a
+  let fb := falseIndicator vars clause.b
+  let fc := falseIndicator vars clause.c
+  [y + fa * fb, y * fc]
+
+def hardInstance (vars : ℕ) : List (CMvPolynomial (totalVars vars) F) :=
+  ((List.finRange (clauseCount vars)).map fun k => encodeClause vars k).flatten
+
+def plantedAssignment {vars : ℕ} : Fin (totalVars vars) → F :=
+  fun _ => 0
+
+end HardCnf
+
+inductive HardFamily where
+  | pin
+  | xor
+  | cnf
+  deriving DecidableEq
+
+def HardFamily.name : HardFamily → String
+  | .pin => "pin"
+  | .xor => "xor"
+  | .cnf => "cnf"
+
+def HardFamily.parse? : String → Option HardFamily
+  | "pin" => some .pin
+  | "xor" => some .xor
+  | "cnf" => some .cnf
+  | _ => none
+
+structure HardBenchmarkCase where
+  vars : ℕ
+  polys : List (CMvPolynomial vars F)
+  proof : FastProof
+
+def hardBenchmarkCase (family : HardFamily) (idx : ℕ) : HardBenchmarkCase :=
+  let vars := idx + 1
+  match family with
+  | .pin =>
+      { vars
+        polys := hardPinInstance vars
+        proof := honestProofNat (allZero (vars := vars)) }
+  | .xor =>
+      { vars
+        polys := hardXorInstance vars
+        proof := honestProofNat (allZero (vars := vars)) }
+  | .cnf =>
+      { vars := HardCnf.totalVars vars
+        polys := HardCnf.hardInstance vars
+        proof := honestProofNat (HardCnf.plantedAssignment (vars := vars)) }
+
 def monomialTotalDegreeFast {vars : ℕ} (m : CMvMonomial vars) : ℕ :=
   (List.finRange vars).foldl (fun acc i => acc + m.get i) 0
 
@@ -376,12 +503,27 @@ def runTrivialBenchmarkRow (vars trials : ℕ) : IO BenchmarkRow := do
   let x := unsatInstance vars
   runBenchmarkRow "trivial" (vars + 1) x.length trials (runFastTrivialVerifier x)
 
+def runHardPcpBenchmarkRow (family : HardFamily) (idx trials : ℕ) : IO BenchmarkRow := do
+  let c := hardBenchmarkCase family idx
+  runBenchmarkRow "pcp" c.vars c.polys.length trials (runFastVerifier c.polys c.proof)
+
+def runHardTrivialBenchmarkRow (family : HardFamily) (idx trials : ℕ) : IO BenchmarkRow := do
+  let c := hardBenchmarkCase family idx
+  runBenchmarkRow "trivial" c.vars c.polys.length trials (runFastTrivialVerifier c.polys)
+
 def runCsv (pcpMaxVars trivialMaxVars trials : ℕ) : IO Unit := do
   IO.println BenchmarkRow.csvHeader
   for vars in List.range pcpMaxVars do
     IO.println (← runPcpBenchmarkRow vars trials).toCsv
   for vars in List.range trivialMaxVars do
     IO.println (← runTrivialBenchmarkRow vars trials).toCsv
+
+def runHardCsv (family : HardFamily) (pcpMaxVars trivialMaxVars trials : ℕ) : IO Unit := do
+  IO.println BenchmarkRow.csvHeader
+  for vars in List.range pcpMaxVars do
+    IO.println (← runHardPcpBenchmarkRow family vars trials).toCsv
+  for vars in List.range trivialMaxVars do
+    IO.println (← runHardTrivialBenchmarkRow family vars trials).toCsv
 
 def runSmoke : IO Unit := do
   IO.println "QESAT PCP concrete verifier smoke tests"
@@ -457,6 +599,15 @@ def main (args : List String) : IO UInt32 := do
       QESATTest.runCsv (pcpMaxVars.toNat?.getD 3) (trivialMaxVars.toNat?.getD 16)
         (trials.toNat?.getD 3)
       pure 0
+  | ["csv-hard", family, pcpMaxVars, trials, trivialMaxVars] =>
+      match QESATTest.HardFamily.parse? family with
+      | some family =>
+          QESATTest.runHardCsv family (pcpMaxVars.toNat?.getD 3)
+            (trivialMaxVars.toNat?.getD 16) (trials.toNat?.getD 3)
+          pure 0
+      | none =>
+          IO.eprintln "unknown hard family; expected one of: pin, xor, cnf"
+          pure 1
   | ["csv-zero", maxVars, trials] =>
       IO.println QESATTest.BenchmarkRow.csvHeader
       for vars in List.range (maxVars.toNat?.getD 3) do
@@ -465,5 +616,6 @@ def main (args : List String) : IO UInt32 := do
   | _ =>
       IO.eprintln
         ("usage: lake exe qesat_test " ++
-          "[smoke|bench|csv [maxVars] [trials] [trivialMaxVars]|csv-zero maxVars trials]")
+          "[smoke|bench|csv [maxVars] [trials] [trivialMaxVars]|" ++
+          "csv-hard family maxVars trials trivialMaxVars|csv-zero maxVars trials]")
       pure 1
