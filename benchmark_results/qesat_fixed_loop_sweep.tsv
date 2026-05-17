@@ -1,0 +1,20 @@
+### fixed-loop-t t=16
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+PCP.fixedIndexCorrectionLoop.t16	1	1	2	1	1	3	3000
+wall_seconds=0.09 exit_status=0
+### fixed-loop-t t=20
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+PCP.fixedIndexCorrectionLoop.t20	1	1	2	1	1	45	45000
+wall_seconds=0.13 exit_status=0
+### fixed-loop-t t=24
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+PCP.fixedIndexCorrectionLoop.t24	1	1	2	1	1	778	778000
+wall_seconds=0.87 exit_status=0
+### fixed-loop-t t=28
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+PCP.fixedIndexCorrectionLoop.t28	1	1	2	1	1	13782	13782000
+wall_seconds=13.91 exit_status=0
+### fixed-loop-t t=30
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+PCP.fixedIndexCorrectionLoop.t30	1	1	2	1	1	56159	56159000
+wall_seconds=56.28 exit_status=0

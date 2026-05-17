@@ -1,0 +1,48 @@
+### mofn-t t=1
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFn.t1	1	1	2	1	0	0	0
+wall_seconds=0.14 exit_status=0
+### mofn-t t=8
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFn.t8	1	1	2	1	0	0	0
+wall_seconds=0.14 exit_status=0
+### mofn-t t=16
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFn.t16	1	1	2	1	0	0	0
+wall_seconds=0.15 exit_status=0
+### mofn-t t=24
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFn.t24	1	1	2	1	0	0	0
+wall_seconds=0.15 exit_status=0
+### mofn-t t=32
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFn.t32	1	1	2	1	0	0	0
+wall_seconds=0.14 exit_status=0
+### mofn-t t=72
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFn.t72	1	1	2	1	0	0	0
+wall_seconds=0.15 exit_status=0
+### mofn-plurality-t t=1
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFnPlurality.t1	1	1	2	1	0	0	0
+wall_seconds=0.17 exit_status=0
+### mofn-plurality-t t=8
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFnPlurality.t8	1	1	2	1	0	0	0
+wall_seconds=0.21 exit_status=0
+### mofn-plurality-t t=16
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFnPlurality.t16	1	1	2	1	0	0	0
+wall_seconds=0.20 exit_status=0
+### mofn-plurality-t t=24
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFnPlurality.t24	1	1	2	1	0	0	0
+wall_seconds=0.19 exit_status=0
+### mofn-plurality-t t=32
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFnPlurality.t32	1	1	2	1	0	0	0
+wall_seconds=0.16 exit_status=0
+### mofn-plurality-t t=72
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.mOfFnPlurality.t72	1	1	2	1	0	0	0
+wall_seconds=0.16 exit_status=0

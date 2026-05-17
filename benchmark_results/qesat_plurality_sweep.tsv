@@ -1,0 +1,20 @@
+### plurality-t t=1
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.plurality.t1	1	1	2	1	0	0	0
+wall_seconds=0.15 exit_status=0
+### plurality-t t=8
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.plurality.t8	1	1	2	1	0	0	0
+wall_seconds=0.15 exit_status=0
+### plurality-t t=16
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.plurality.t16	1	1	2	1	0	0	0
+wall_seconds=0.18 exit_status=0
+### plurality-t t=32
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.plurality.t32	1	1	2	1	0	0	0
+wall_seconds=0.15 exit_status=0
+### plurality-t t=72
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+pure.plurality.t72	1	1	2	1	0	0	0
+wall_seconds=0.16 exit_status=0

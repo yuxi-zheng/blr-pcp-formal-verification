@@ -1,0 +1,18 @@
+QESAT PCP concrete verifier benchmark
+Completeness checks
+complete vars=1: accepts=5/5 (100.00%), elapsed=6ms, avg=1ms
+complete vars=2: accepts=5/5 (100.00%), elapsed=18ms, avg=3ms
+complete vars=3: accepts=5/5 (100.00%), elapsed=27ms, avg=5ms
+Empirical soundness checks
+soundness vars=1: accepts=6/500 (1.20%), elapsed=70ms, avg=0ms
+soundness vars=2: accepts=2/100 (2.00%), elapsed=14ms, avg=0ms
+soundness vars=3: accepts=2/20 (10.00%), elapsed=3ms, avg=0ms
+Runtime by variable count
+runtime-vars vars=1, polys=1: accepts=5/5 (100.00%), elapsed=8ms, avg=1ms
+runtime-vars vars=2, polys=1: accepts=5/5 (100.00%), elapsed=13ms, avg=2ms
+runtime-vars vars=3, polys=1: accepts=5/5 (100.00%), elapsed=30ms, avg=6ms
+Runtime by polynomial count
+runtime-length vars=1, polys=1: accepts=3/3 (100.00%), elapsed=4ms, avg=1ms
+runtime-length vars=1, polys=10: accepts=3/3 (100.00%), elapsed=3ms, avg=1ms
+runtime-length vars=1, polys=100: accepts=3/3 (100.00%), elapsed=4ms, avg=1ms
+runtime-length vars=1, polys=500: accepts=3/3 (100.00%), elapsed=13ms, avg=4ms

@@ -1,0 +1,15 @@
+### decoded-t t=1
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+PCP.decodedSingleQuery.t1	1	1	2	1	1	0	0
+wall_seconds=0.05 exit_status=0
+### decoded-t t=8
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+PCP.decodedSingleQuery.t8	1	1	2	1	1	0	0
+wall_seconds=0.04 exit_status=0
+### decoded-t t=16
+component	vars	rows	proof_dim	trials	accepts	elapsed_ms	avg_us
+PCP.decodedSingleQuery.t16	1	1	2	1	1	2	2000
+wall_seconds=0.04 exit_status=0
+### decoded-t t=32
+Command exited with non-zero status 124
+wall_seconds=60.00 exit_status=124
