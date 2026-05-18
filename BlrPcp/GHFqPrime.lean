@@ -1,5 +1,5 @@
 import BlrPcp.FnFiniteFIelds.FnFiniteFields
-import BlrPcp.GH.GowersHatmi
+import BlrPcp.GH2
 import BlrPcp.GH.Concrete
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 

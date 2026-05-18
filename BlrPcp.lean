@@ -7,4 +7,5 @@ import BlrPcp.Problems.BLR
 import BlrPcp.Problems.TensorEq
 import BlrPcp.GowersHatami_original
 import BlrPcp.GH.Concrete
+import BlrPcp.GH2
 import BlrPcp.GH.GowersHatami
