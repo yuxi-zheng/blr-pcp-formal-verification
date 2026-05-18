@@ -1,6 +1,4 @@
-import BlrPcp.GH.Background
 import BlrPcp.GH.GowersHatami
-
 import Mathlib.Data.Fintype.EquivFin
 import Mathlib.LinearAlgebra.Matrix.Rank
 import Mathlib.LinearAlgebra.Matrix.Reindex
@@ -8,13 +6,13 @@ import Mathlib.LinearAlgebra.Matrix.Reindex
 /-!
 # Concrete finite-dimensional corollary of the abstract Gowers-Hatami theorem
 
-This file converts the abstract finite-coordinate witness from `BlrPcp.GH3`
-into the traditional `Fin d'` formulation.
+This file converts the abstract finite-coordinate witness from `GH.GowersHatami`
+into the reindexed `Fin d'` version.
 
-The only mathematical work here is bookkeeping: an abstract finite index type
+The only work here is bookkeeping: an abstract finite index type
 `ι` is reindexed to `Fin (Fintype.card ι)` using Mathlib's finite-type
 bijections, and matrices/unitary representations are transported along this
-bijection.  The main Gowers-Hatami proof remains in `BlrPcp.GH3`.
+bijection.
 -/
 open scoped Matrix ComplexConjugate ComplexOrder
 open BigOperators Finset
@@ -179,6 +177,7 @@ theorem witness_reindex
     {ι : Type u} [Fintype ι] [DecidableEq ι] {d' : Nat}
     (e : ι ≃ Fin d')
     (sigma : Matrix (Fin d) (Fin d) Complex)
+    (hσ : Matrix.PosSemidef sigma)
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (eps : Real)
     (V : Matrix (Fin d) ι Complex)
@@ -187,7 +186,7 @@ theorem witness_reindex
     (hprox :
       (∑ x : G,
         sigmaNormSq sigma
-          (rho x - V * (rho0 x : Matrix ι ι Complex) * Vᴴ)) /
+          (rho x - V * (rho0 x : Matrix ι ι Complex) * Vᴴ) hσ) /
         Fintype.card G ≤ 2 * eps) :
     ∃ (d' : Nat) (_ : d ≤ d')
       (V' : Matrix (Fin d) (Fin d') Complex)
@@ -195,7 +194,7 @@ theorem witness_reindex
       (rho0' : G →* Matrix.unitaryGroup (Fin d') Complex),
       (∑ x : G,
         sigmaNormSq sigma
-          (rho x - V' * (rho0' x : Matrix (Fin d') (Fin d') Complex) * V'ᴴ)) /
+          (rho x - V' * (rho0' x : Matrix (Fin d') (Fin d') Complex) * V'ᴴ) hσ) /
         Fintype.card G ≤ 2 * eps := by
   let V' := Matrix.reindex (Equiv.refl (Fin d)) e V
   let rho0' := reindexUnitaryRep G e rho0
@@ -207,10 +206,10 @@ theorem witness_reindex
   have hsum :
       (∑ x : G,
         sigmaNormSq sigma
-          (rho x - V' * (rho0' x : Matrix (Fin d') (Fin d') Complex) * V'ᴴ)) =
+          (rho x - V' * (rho0' x : Matrix (Fin d') (Fin d') Complex) * V'ᴴ) hσ) =
         ∑ x : G,
           sigmaNormSq sigma
-            (rho x - V * (rho0 x : Matrix ι ι Complex) * Vᴴ) := by
+            (rho x - V * (rho0 x : Matrix ι ι Complex) * Vᴴ) hσ := by
     apply Finset.sum_congr rfl
     intro x _hx
     simp only [V', rho0']
@@ -226,10 +225,9 @@ Mathlib reindexing step from the witness index type to `Fin d'`.
 -/
 theorem gowers_hatami [DecidableEq G]
     (sigma : Matrix (Fin d) (Fin d) Complex)
-    (hsigma : Matrix.PosSemidef sigma) (hsigmatr : Matrix.trace sigma = 1)
+    (hσ : Matrix.PosSemidef sigma) (hsigmatr : Matrix.trace sigma = 1)
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (eps : Real) (heps : 0 ≤ eps)
-    (hrho : ∀ x, rho x ∈ Matrix.unitaryGroup (Fin d) Complex)
     (hApprox : IsApproxRepresentation G sigma rho eps) :
     ∃ (d' : Nat) (_ : d ≤ d')
       (V : Matrix (Fin d) (Fin d') Complex)
@@ -237,14 +235,14 @@ theorem gowers_hatami [DecidableEq G]
       (rho0 : G →* Matrix.unitaryGroup (Fin d') Complex),
       (∑ x : G,
         sigmaNormSq sigma
-          (rho x - V * (rho0 x : Matrix (Fin d') (Fin d') Complex) * Vᴴ)) /
+          (rho x - V * (rho0 x : Matrix (Fin d') (Fin d') Complex) * Vᴴ) hσ) /
         Fintype.card G ≤ 2 * eps := by
   classical
   obtain ⟨ι, hι, hιdec, V, hV, rho0, hprox⟩ :=
-    gowers_hatami_abstract G sigma hsigma hsigmatr rho eps heps hrho hApprox
+    gowers_hatami_abstract G sigma hσ hsigmatr rho eps heps hApprox
   letI : Fintype ι := hι
   letI : DecidableEq ι := hιdec
-  exact witness_reindex G (Fintype.equivFin ι) sigma rho eps V hV rho0 hprox
+  exact witness_reindex G (Fintype.equivFin ι) sigma hσ rho eps V hV rho0 hprox
 
 
 end

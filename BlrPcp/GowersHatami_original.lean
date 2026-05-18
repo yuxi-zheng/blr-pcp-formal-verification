@@ -134,9 +134,10 @@ def IsApproxRepresentation
     (σ : Matrix (Fin d) (Fin d) ℂ)
     (f : G → Matrix (Fin d) (Fin d) ℂ)
     (ε : ℝ) : Prop :=
-  (∑ x : G, ∑ y : G,
-    (sigmaInner σ (f x * f y) (f (x * y))).re) /
-    (Fintype.card G ^ 2 : ℝ) ≥ 1 - ε
+  (∀ x, f x ∈ Matrix.unitaryGroup (Fin d) ℂ) ∧
+    (∑ x : G, ∑ y : G,
+      (sigmaInner σ (f x * f y) (f (x * y))).re) /
+      (Fintype.card G ^ 2 : ℝ) ≥ 1 - ε
 
 end ApproxRepresentation
 

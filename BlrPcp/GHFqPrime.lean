@@ -1,5 +1,6 @@
 import BlrPcp.FnFiniteFIelds.FnFiniteFields
-import BlrPcp.GH2
+import BlrPcp.GH.GowersHatmi
+import BlrPcp.GH.Concrete
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 
 set_option linter.unusedSectionVars false

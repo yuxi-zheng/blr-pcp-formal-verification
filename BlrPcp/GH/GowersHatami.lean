@@ -1,22 +1,33 @@
-import BlrPcp.GH.Background
-
-/-!
-# Gowers-Hatami with an abstract finite target index
-
-This file proves the finite-coordinate Gowers-Hatami theorem in a form where the
-large Hilbert space is indexed by an arbitrary finite type.
-
-The background file `BlrPcp.GH3.Background` supplies rho-free tools: the right
-regular representation, sigma-norm algebra, and averaging lemmas.  This file
-contains the proof-specific layer: the normalized embedding associated to an
-approximate representation `rho`, the isometry identity, the compression
-calculation, and the abstract theorem `GH3.gowers_hatami_abstract`.
-
-The concrete `Fin d'` formulation is derived separately in
-`BlrPcp.GH3.Concrete` by one final reindexing step.
+/-
+Authors: Thomas Vidick, Open Gauss
 -/
+import Mathlib.Analysis.Convex.Mul
+import Mathlib.Analysis.Matrix.Order
+import Mathlib.Analysis.Normed.Module.Convex
+import Mathlib.LinearAlgebra.Matrix.Permutation
+
 open scoped Matrix ComplexConjugate ComplexOrder
 open BigOperators Finset
+
+/-!
+# A finite-dimensional Gowers--Hatami theorem
+
+The file proves `gowers_hatami_abstract`: a unitary-valued approximate
+representation, measured by the averaged correlation defect below, is
+well-approximated by a finite-dimensional representation.
+
+The proof is organized as follows.
+
+1. We first define the `σ`-weighted Hilbert--Schmidt seminorm and show
+   basic identities about it.
+2. We build the finite left-regular unitary representation on `G × Fin d`.
+3. We introduce the Stinespring isometry. It is indexed inverse to the
+   standard mathlib intexing, so as to make the compressed regular
+   representation close to `ρ`.
+4. We use Jensen convexity to bound the Stinespring compression error by the
+   multiplicative defect, and identify that defect with `2 * correlationDefect`.
+5. The final theorem follows.
+-/
 
 universe u
 
@@ -27,25 +38,819 @@ namespace GH
 
 noncomputable section
 
+section SigmaSeminorm
 
+/-- The `σ`-weighted matrix inner product, linear in the second matrix. -/
+def sigmaInner {n : ℕ} (σ A B : Matrix (Fin n) (Fin n) ℂ) : ℂ :=
+  Matrix.trace (Aᴴ * B * σ)
 
-/-
-### Definitions
+/--
+The squared `σ`-seminorm.  We use mathlib's
+seminormed group instance attached to `σ`.
 -/
+def sigmaNormSq {n : ℕ} (σ A : Matrix (Fin n) (Fin n) ℂ) (hσ : Matrix.PosSemidef σ) : ℝ := by
+  classical
+  letI : SeminormedAddCommGroup (Matrix (Fin n) (Fin n) ℂ) :=
+    Matrix.toMatrixSeminormedAddCommGroup σ hσ
+  exact ‖A‖ ^ 2
 
-/-- The coordinate Hilbert space with basis indexed by an arbitrary finite type. -/
-abbrev CoordHilbert (ι : Type*) := EuclideanSpace Complex ι
+private lemma sigmaNormSq_eq_re_sigmaInner_of_posSemidef {n : ℕ}
+    {σ A : Matrix (Fin n) (Fin n) ℂ}
+    (hσ : Matrix.PosSemidef σ) :
+    sigmaNormSq σ A hσ = (sigmaInner σ A A).re := by
+  classical
+  unfold sigmaNormSq
+  letI : SeminormedAddCommGroup (Matrix (Fin n) (Fin n) ℂ) :=
+    Matrix.toMatrixSeminormedAddCommGroup σ hσ
+  letI : InnerProductSpace ℂ (Matrix (Fin n) (Fin n) ℂ) :=
+    Matrix.toMatrixInnerProductSpace σ hσ
+  rw [InnerProductSpace.norm_sq_eq_re_inner (𝕜 := ℂ) A]
+  change (Matrix.trace (A * σ * Aᴴ)).re = (sigmaInner σ A A).re
+  unfold sigmaInner
+  rw [Matrix.trace_mul_cycle]
 
-/-- (ε, σ)-representations -/
+private lemma weightedMatrix_inner_eq_sigmaInner {n : ℕ}
+    {σ A B : Matrix (Fin n) (Fin n) ℂ}
+    (hσ : Matrix.PosSemidef σ) :
+    letI : SeminormedAddCommGroup (Matrix (Fin n) (Fin n) ℂ) :=
+      Matrix.toMatrixSeminormedAddCommGroup σ hσ
+    letI : InnerProductSpace ℂ (Matrix (Fin n) (Fin n) ℂ) :=
+      Matrix.toMatrixInnerProductSpace σ hσ
+    inner ℂ A B = sigmaInner σ A B := by
+  letI : SeminormedAddCommGroup (Matrix (Fin n) (Fin n) ℂ) :=
+    Matrix.toMatrixSeminormedAddCommGroup σ hσ
+  letI : InnerProductSpace ℂ (Matrix (Fin n) (Fin n) ℂ) :=
+    Matrix.toMatrixInnerProductSpace σ hσ
+  change Matrix.trace (B * σ * Aᴴ) = sigmaInner σ A B
+  unfold sigmaInner
+  rw [Matrix.trace_mul_cycle]
+
+private lemma sigmaNormSq_sub_eq {n : ℕ}
+    {σ A B : Matrix (Fin n) (Fin n) ℂ}
+    (hσ : Matrix.PosSemidef σ) :
+    sigmaNormSq σ (A - B) hσ =
+      sigmaNormSq σ A hσ - 2 * (sigmaInner σ A B).re + sigmaNormSq σ B hσ := by
+  classical
+  rw [sigmaNormSq_eq_re_sigmaInner_of_posSemidef hσ]
+  rw [sigmaNormSq_eq_re_sigmaInner_of_posSemidef hσ]
+  rw [sigmaNormSq_eq_re_sigmaInner_of_posSemidef hσ]
+  letI : SeminormedAddCommGroup (Matrix (Fin n) (Fin n) ℂ) :=
+    Matrix.toMatrixSeminormedAddCommGroup σ hσ
+  letI : InnerProductSpace ℂ (Matrix (Fin n) (Fin n) ℂ) :=
+    Matrix.toMatrixInnerProductSpace σ hσ
+  rw [← weightedMatrix_inner_eq_sigmaInner hσ (A := A - B) (B := A - B)]
+  rw [← weightedMatrix_inner_eq_sigmaInner hσ (A := A) (B := A)]
+  rw [← weightedMatrix_inner_eq_sigmaInner hσ (A := B) (B := B)]
+  rw [← weightedMatrix_inner_eq_sigmaInner hσ (A := A) (B := B)]
+  simpa [InnerProductSpace.norm_sq_eq_re_inner (𝕜 := ℂ)] using
+    norm_sub_sq (𝕜 := ℂ) A B
+
+private lemma norm_sq_average_le_average_norm_sq
+    {ι E : Type*} [Fintype ι] [Nonempty ι]
+    [SeminormedAddCommGroup E] [NormedSpace ℝ E]
+    (A : ι → E) :
+    ‖(∑ i : ι, ((Fintype.card ι : ℝ)⁻¹) • A i)‖ ^ 2 ≤
+      ∑ i : ι, ((Fintype.card ι : ℝ)⁻¹) • (‖A i‖ ^ 2) := by
+  let hconv : ConvexOn ℝ (Set.univ : Set E) (fun x : E => ‖x‖ ^ 2) := by
+    let h : ConvexOn ℝ (Set.univ : Set E) (fun x : E => ‖x‖) :=
+      convexOn_norm (s := Set.univ) convex_univ
+    simpa using h.pow (by intro x _hx; exact norm_nonneg x) 2
+  refine hconv.map_sum_le ?_ ?_ ?_
+  · intro i _hi
+    positivity
+  · simp
+  · intro i _hi
+    simp
+
+private lemma sigmaNormSq_average_le_average
+    {ι : Type*} [Fintype ι] [Nonempty ι] {n : ℕ}
+    {σ : Matrix (Fin n) (Fin n) ℂ}
+    (hσ : Matrix.PosSemidef σ)
+    (A : ι → Matrix (Fin n) (Fin n) ℂ) :
+    sigmaNormSq σ (∑ i : ι, ((Fintype.card ι : ℝ)⁻¹) • A i) hσ ≤
+      (∑ i : ι, sigmaNormSq σ (A i) hσ) / Fintype.card ι := by
+  classical
+  letI : SeminormedAddCommGroup (Matrix (Fin n) (Fin n) ℂ) :=
+    Matrix.toMatrixSeminormedAddCommGroup σ hσ
+  letI : InnerProductSpace ℂ (Matrix (Fin n) (Fin n) ℂ) :=
+    Matrix.toMatrixInnerProductSpace σ hσ
+  letI : NormedSpace ℝ (Matrix (Fin n) (Fin n) ℂ) := by
+    infer_instance
+  have hleft :
+      sigmaNormSq σ (∑ i : ι, ((Fintype.card ι : ℝ)⁻¹) • A i) hσ =
+        ‖(∑ i : ι, ((Fintype.card ι : ℝ)⁻¹) • A i)‖ ^ 2 := by
+    unfold sigmaNormSq
+    rfl
+  have hright :
+      (∑ i : ι, sigmaNormSq σ (A i) hσ) / Fintype.card ι =
+        (∑ i : ι, ‖A i‖ ^ 2) / Fintype.card ι := by
+    simp [sigmaNormSq]
+  calc
+    sigmaNormSq σ (∑ i : ι, ((Fintype.card ι : ℝ)⁻¹) • A i) hσ
+        = ‖(∑ i : ι, ((Fintype.card ι : ℝ)⁻¹) • A i)‖ ^ 2 := hleft
+    _ ≤ ∑ i : ι, ((Fintype.card ι : ℝ)⁻¹) • (‖A i‖ ^ 2) :=
+          norm_sq_average_le_average_norm_sq (E := Matrix (Fin n) (Fin n) ℂ) A
+    _ = (∑ i : ι, ‖A i‖ ^ 2) / Fintype.card ι := by
+          rw [div_eq_mul_inv, Finset.sum_mul]
+          apply Finset.sum_congr rfl
+          intro i _hi
+          simp [smul_eq_mul, mul_comm]
+    _ = (∑ i : ι, sigmaNormSq σ (A i) hσ) / Fintype.card ι := by
+          simp [hright]
+
+private lemma conjTranspose_eq_star {n : Type*} [DecidableEq n] (A : Matrix n n Complex) :
+    Aᴴ = star A := by
+  ext i j
+  simp [Matrix.star_apply, Matrix.conjTranspose_apply]
+
+private lemma sigmaNormSq_unitary_of_posSemidef {n : ℕ}
+    {σ U : Matrix (Fin n) (Fin n) ℂ}
+    (hσ : Matrix.PosSemidef σ)
+    (htr : Matrix.trace σ = 1)
+    (hU : U ∈ Matrix.unitaryGroup (Fin n) ℂ) :
+  sigmaNormSq σ U hσ = 1 := by
+  rw [sigmaNormSq_eq_re_sigmaInner_of_posSemidef hσ]
+  unfold sigmaInner
+  have hUU : Uᴴ * U = (1 : Matrix (Fin n) (Fin n) ℂ) := by
+    simpa [conjTranspose_eq_star] using Matrix.mem_unitaryGroup_iff'.mp hU
+  rw [hUU]
+  simp [htr]
+
+private lemma sigmaNormSq_left_unitary_mul
+    {n : ℕ}
+    {σ U A : Matrix (Fin n) (Fin n) ℂ}
+    (hσ : Matrix.PosSemidef σ)
+    (hU : U ∈ Matrix.unitaryGroup (Fin n) ℂ) :
+  sigmaNormSq σ (U * A) hσ = sigmaNormSq σ A hσ := by
+  rw [sigmaNormSq_eq_re_sigmaInner_of_posSemidef hσ]
+  rw [sigmaNormSq_eq_re_sigmaInner_of_posSemidef hσ]
+  unfold sigmaInner
+  have hUU : Uᴴ * U = (1 : Matrix (Fin n) (Fin n) ℂ) := by
+    simpa [conjTranspose_eq_star] using Matrix.mem_unitaryGroup_iff'.mp hU
+  rw [Matrix.conjTranspose_mul]
+  rw [show Aᴴ * Uᴴ * (U * A) * σ = Aᴴ * (Uᴴ * U) * A * σ by noncomm_ring]
+  rw [hUU]
+  simp
+
+end SigmaSeminorm
+
+/-- The `σ`-weighted average distance between two maps `f` and `g`. -/
+def averageSigmaDistance
+    (σ : Matrix (Fin d) (Fin d) ℂ)
+    (hσ : Matrix.PosSemidef σ)
+    (f g : G → Matrix (Fin d) (Fin d) ℂ) : ℝ :=
+  (∑ x : G, sigmaNormSq σ (f x - g x) hσ) / Fintype.card G
+
+/-- The approximate representation hypothesis used by the final theorem. -/
 def IsApproxRepresentation
     (σ : Matrix (Fin d) (Fin d) ℂ)
     (f : G → Matrix (Fin d) (Fin d) ℂ)
     (ε : ℝ) : Prop :=
+  (∀ x, f x ∈ Matrix.unitaryGroup (Fin d) Complex) ∧
+    (∑ x : G, ∑ y : G,
+      (sigmaInner σ (f x * f y) (f (x * y))).re) /
+      (Fintype.card G ^ 2 : ℝ) ≥ 1 - ε
+
+/-- The `σ`-weighted average correlation of `f`, measuring how multiplicative `f` is. -/
+def averageCorrelation
+    (σ : Matrix (Fin d) (Fin d) ℂ)
+    (f : G → Matrix (Fin d) (Fin d) ℂ) : ℝ :=
   (∑ x : G, ∑ y : G,
     (sigmaInner σ (f x * f y) (f (x * y))).re) /
-    (Fintype.card G ^ 2 : ℝ) ≥ 1 - ε
+    (Fintype.card G ^ 2 : ℝ)
 
-/-- Compression of a representation on the enlarged coordinate space by an isometry adjoint `V`. -/
+/-- How far `f` is from being a homomorphism: `1 - averageCorrelation G σ f`. -/
+def correlationDefect
+    (σ : Matrix (Fin d) (Fin d) ℂ)
+    (f : G → Matrix (Fin d) (Fin d) ℂ) : ℝ :=
+  1 - averageCorrelation G σ f
+
+/-- Predicate asserting that every value of `f` lies in the unitary group. -/
+def UnitaryValued
+    (f : G → Matrix (Fin d) (Fin d) ℂ) : Prop :=
+  ∀ x, f x ∈ Matrix.unitaryGroup (Fin d) Complex
+
+omit [Group G] [Fintype G] in
+private lemma sigmaNormSq_sub_unitary_mul_eq
+    {σ : Matrix (Fin d) (Fin d) ℂ}
+    {rho : G → Matrix (Fin d) (Fin d) ℂ}
+    (hσ : Matrix.PosSemidef σ)
+    (hunit : UnitaryValued G rho)
+    (a b g : G) :
+    sigmaNormSq σ (rho g - (rho a)ᴴ * rho b) hσ =
+      sigmaNormSq σ (rho a * rho g - rho b) hσ := by
+  rw [← sigmaNormSq_left_unitary_mul (σ := σ) (U := rho a)
+    (A := rho g - (rho a)ᴴ * rho b) hσ (hunit a)]
+  congr 1
+  have haa : rho a * (rho a)ᴴ = (1 : Matrix (Fin d) (Fin d) ℂ) := by
+    simpa [conjTranspose_eq_star] using Unitary.mul_star_self_of_mem (hunit a)
+  rw [show rho a * (rho g - (rho a)ᴴ * rho b) =
+      rho a * rho g - (rho a * (rho a)ᴴ) * rho b by noncomm_ring]
+  rw [haa]
+  simp
+
+section RegularRepresentation
+
+private abbrev RegularIndex (G : Type u) (d : Nat) : Type u :=
+  G × Fin d
+
+omit [Fintype G] in
+private def invEquiv : G ≃ G where
+  toFun x := x⁻¹
+  invFun x := x⁻¹
+  left_inv := by intro x; simp
+  right_inv := by intro x; simp
+
+private def regularNormalization (G : Type u) [Fintype G] : Complex :=
+  ((Real.sqrt (Fintype.card G : ℝ) : ℂ))⁻¹
+
+private lemma regularNormalization_mul_star_mul_card :
+    regularNormalization G * star (regularNormalization G) * (Fintype.card G : Complex) = 1 := by
+  unfold regularNormalization
+  have hpos : (0 : ℝ) < Fintype.card G := by exact_mod_cast Fintype.card_pos
+  have hsqrt_ne_real : Real.sqrt (Fintype.card G : ℝ) ≠ 0 := by positivity
+  have hsqrt_ne : (Real.sqrt (Fintype.card G : ℝ) : ℂ) ≠ 0 := by
+    exact_mod_cast hsqrt_ne_real
+  rw [show star (((Real.sqrt (Fintype.card G : ℝ) : ℂ))⁻¹) =
+      ((Real.sqrt (Fintype.card G : ℝ) : ℂ))⁻¹ by simp]
+  field_simp [hsqrt_ne]
+  have hsq : (Real.sqrt (Fintype.card G : ℝ) : ℂ) ^ 2 = (Fintype.card G : ℂ) := by
+    norm_num [← Complex.ofReal_pow, Real.sq_sqrt (le_of_lt hpos)]
+  rw [← hsq]
+
+private lemma regularNormalization_mul_star_eq_card_inv :
+    regularNormalization G * star (regularNormalization G) = ((Fintype.card G : ℂ)⁻¹) := by
+  have h := regularNormalization_mul_star_mul_card (G := G)
+  have hcard : (Fintype.card G : ℂ) ≠ 0 := by exact_mod_cast Fintype.card_ne_zero
+  field_simp [hcard] at h ⊢
+  exact h
+
+omit [Group G] [Fintype G] in
+private lemma unitaryValued_conjTranspose_mul
+    {rho : G → Matrix (Fin d) (Fin d) Complex}
+    (hunit : UnitaryValued G rho)
+    (x : G) :
+    (rho x)ᴴ * rho x = 1 := by
+  simpa [conjTranspose_eq_star] using Matrix.mem_unitaryGroup_iff'.mp (hunit x)
+
+omit [Group G] in
+private lemma stinespring_inner_sum_of_unitaryValued
+    {rho : G → Matrix (Fin d) (Fin d) Complex}
+    (hunit : UnitaryValued G rho)
+    (x : G)
+    (i j : Fin d) :
+    (∑ k : Fin d,
+      regularNormalization G * star (rho x k i) *
+        (star (regularNormalization G) * rho x k j)) =
+      regularNormalization G * star (regularNormalization G) *
+        (1 : Matrix (Fin d) (Fin d) Complex) i j := by
+  have hx := congr_fun (congr_fun (unitaryValued_conjTranspose_mul (G := G) hunit x) i) j
+  simp [Matrix.mul_apply] at hx
+  have hx' :
+      (∑ k : Fin d, star (rho x k i) * rho x k j) =
+        (1 : Matrix (Fin d) (Fin d) Complex) i j := by
+    simpa using hx
+  calc
+    (∑ k : Fin d,
+      regularNormalization G * star (rho x k i) *
+        (star (regularNormalization G) * rho x k j)) =
+        ∑ k : Fin d,
+          (regularNormalization G * star (regularNormalization G)) *
+            (star (rho x k i) * rho x k j) := by
+          apply Finset.sum_congr rfl
+          intro k _hk
+          ring
+    _ = regularNormalization G * star (regularNormalization G) *
+        (∑ k : Fin d, star (rho x k i) * rho x k j) := by
+          rw [Finset.mul_sum]
+    _ = regularNormalization G * star (regularNormalization G) *
+        (1 : Matrix (Fin d) (Fin d) Complex) i j := by
+          rw [hx']
+
+private def leftRegularPerm (g : G) : Equiv.Perm (RegularIndex G d) :=
+  (Equiv.mulLeft g).prodCongr (Equiv.refl (Fin d))
+
+omit [Fintype G] in
+private lemma leftRegularPerm_one :
+    leftRegularPerm (G := G) (d := d) 1 = 1 := by
+  ext x <;> simp [leftRegularPerm]
+
+omit [Fintype G] in
+private lemma leftRegularPerm_mul (g h : G) :
+    leftRegularPerm (G := G) (d := d) (g * h) =
+      leftRegularPerm (G := G) (d := d) g * leftRegularPerm (G := G) (d := d) h := by
+  ext x <;> simp [leftRegularPerm, mul_assoc]
+
+private def leftRegularMatrix [DecidableEq G] (g : G) :
+    Matrix (RegularIndex G d) (RegularIndex G d) Complex :=
+  Equiv.Perm.permMatrix Complex (leftRegularPerm (G := G) (d := d) g)
+
+private lemma sum_leftRegular_single [DecidableEq G]
+    (g x : G)
+    (k : Fin d)
+    (F : RegularIndex G d → Complex) :
+    (∑ z : RegularIndex G d,
+      if (leftRegularPerm (G := G) (d := d) g) z = (x, k) then F z else 0) =
+      F (g⁻¹ * x, k) := by
+  rw [Fintype.sum_equiv (leftRegularPerm (G := G) (d := d) g)
+    (fun z => if (leftRegularPerm (G := G) (d := d) g) z = (x, k) then F z else 0)
+    (fun y => if y = (x, k) then F ((leftRegularPerm (G := G) (d := d) g).symm y) else 0)]
+  · simp [leftRegularPerm]
+  · intro z
+    simp
+
+omit [Group G] in
+private lemma sum_perm_ite_eq_one {α : Type*} [Fintype α] [DecidableEq α]
+    (σ : Equiv.Perm α) (i : α) :
+    (∑ x : α, if σ x = i then (1 : Complex) else 0) = 1 := by
+  rw [Fintype.sum_equiv σ
+    (fun x => if σ x = i then (1 : Complex) else 0)
+    (fun y => if y = i then (1 : Complex) else 0)]
+  · simp
+  · intro x
+    simp
+
+omit [Group G] in
+private lemma sum_perm_double_ite_eq_zero {α : Type*} [Fintype α] [DecidableEq α]
+    (σ : Equiv.Perm α) {i j : α} (hij : i ≠ j) :
+    (∑ x : α, if σ x = j then if σ x = i then (1 : Complex) else 0 else 0) = 0 := by
+  apply Finset.sum_eq_zero
+  intro x _hx
+  by_cases hj : σ x = j
+  · have hji : ¬j = i := fun h => hij h.symm
+    simp [hj, hji]
+  · simp [hj]
+
+private lemma leftRegularMatrix_mem_unitary [DecidableEq G] (g : G) :
+    leftRegularMatrix (G := G) (d := d) g ∈
+      Matrix.unitaryGroup (RegularIndex G d) Complex := by
+  rw [Matrix.mem_unitaryGroup_iff']
+  ext i j
+  rw [Matrix.mul_apply]
+  by_cases hij : i = j
+  · subst j
+    rw [Matrix.one_apply]
+    simp [leftRegularMatrix, Equiv.Perm.permMatrix, PEquiv.toMatrix_apply, Matrix.star_apply]
+    rw [show (∑ x,
+        if (leftRegularPerm (G := G) (d := d) g) x = i then
+          if (leftRegularPerm (G := G) (d := d) g) x = i then (1 : Complex) else 0
+        else 0) =
+        ∑ x, if (leftRegularPerm (G := G) (d := d) g) x = i then (1 : Complex) else 0 by
+      apply Finset.sum_congr rfl
+      intro x _hx
+      by_cases h : (leftRegularPerm (G := G) (d := d) g) x = i <;> simp [h]]
+    exact sum_perm_ite_eq_one (leftRegularPerm (G := G) (d := d) g) i
+  · rw [Matrix.one_apply]
+    simp [hij, leftRegularMatrix, Equiv.Perm.permMatrix, PEquiv.toMatrix_apply,
+      Matrix.star_apply, sum_perm_double_ite_eq_zero (leftRegularPerm (G := G) (d := d) g) hij]
+
+private def leftRegularUnitary [DecidableEq G] (g : G) :
+    Matrix.unitaryGroup (RegularIndex G d) Complex :=
+  ⟨leftRegularMatrix (G := G) (d := d) g, leftRegularMatrix_mem_unitary (G := G) (d := d) g⟩
+
+private lemma leftRegularMatrix_mul [DecidableEq G] (g h : G) :
+    leftRegularMatrix (G := G) (d := d) (g * h) =
+      leftRegularMatrix (G := G) (d := d) h *
+        leftRegularMatrix (G := G) (d := d) g := by
+  simp [leftRegularMatrix, leftRegularPerm_mul]
+
+omit [Fintype G] in
+private lemma leftRegularMatrix_one [DecidableEq G] :
+    leftRegularMatrix (G := G) (d := d) 1 = 1 := by
+  ext i j
+  simp [leftRegularMatrix, leftRegularPerm_one, Equiv.Perm.permMatrix,
+    PEquiv.toMatrix_apply, Matrix.one_apply]
+
+private def regularUnitaryRep [DecidableEq G] :
+    G →* Matrix.unitaryGroup (RegularIndex G d) Complex where
+  toFun g := leftRegularUnitary (G := G) (d := d) g⁻¹
+  map_one' := by
+    ext i j
+    simp [leftRegularUnitary, leftRegularMatrix_one]
+  map_mul' g h := by
+    ext i j
+    change
+      leftRegularMatrix (G := G) (d := d) (g * h)⁻¹ i j =
+        (leftRegularMatrix (G := G) (d := d) g⁻¹ *
+          leftRegularMatrix (G := G) (d := d) h⁻¹) i j
+    rw [mul_inv_rev, leftRegularMatrix_mul]
+
+end RegularRepresentation
+
+section StinespringConstruction
+
+private def stinespringMap
+    (rho : G → Matrix (Fin d) (Fin d) Complex) :
+    Matrix (Fin d) (RegularIndex G d) Complex :=
+  fun i xj => regularNormalization G * (rho xj.1)ᴴ i xj.2
+
+private def inverseIndexedRho
+    (rho : G → Matrix (Fin d) (Fin d) Complex) :
+    G → Matrix (Fin d) (Fin d) Complex :=
+  fun x => rho x⁻¹
+
+private def inverseStinespringMap
+    (rho : G → Matrix (Fin d) (Fin d) Complex) :
+    Matrix (Fin d) (RegularIndex G d) Complex :=
+  stinespringMap G (inverseIndexedRho G rho)
+
+private lemma stinespringMap_mul_leftRegularMatrix_apply [DecidableEq G]
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (g x : G)
+    (i k : Fin d) :
+    (stinespringMap G rho * leftRegularMatrix (G := G) (d := d) g) i (x, k) =
+      regularNormalization G * (rho (g⁻¹ * x))ᴴ i k := by
+  rw [Matrix.mul_apply]
+  simp [stinespringMap, leftRegularMatrix, Equiv.Perm.permMatrix, PEquiv.toMatrix_apply]
+  exact sum_leftRegular_single (G := G) (d := d) g x k
+    (fun z => regularNormalization G * (starRingEnd ℂ) (rho z.1 z.2 i))
+
+private def stinespringCompression [DecidableEq G]
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (g : G) : Matrix (Fin d) (Fin d) Complex :=
+  stinespringMap G rho * leftRegularMatrix (G := G) (d := d) g * (stinespringMap G rho)ᴴ
+
+private def inverseStinespringCompression [DecidableEq G]
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (g : G) : Matrix (Fin d) (Fin d) Complex :=
+  inverseStinespringMap G rho *
+    (regularUnitaryRep (G := G) (d := d) g :
+      Matrix (RegularIndex G d) (RegularIndex G d) Complex) *
+    (inverseStinespringMap G rho)ᴴ
+
+private def averagedTranslate
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (g : G) : Matrix (Fin d) (Fin d) Complex :=
+  (regularNormalization G * star (regularNormalization G)) •
+    ∑ x : G, (rho (g⁻¹ * x))ᴴ * rho x
+
+private def StinespringCompressionFormula [DecidableEq G]
+    (rho : G → Matrix (Fin d) (Fin d) Complex) : Prop :=
+  ∀ g : G, stinespringCompression G rho g = averagedTranslate G rho g
+
+private def inverseAveragedTranslate
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (g : G) : Matrix (Fin d) (Fin d) Complex :=
+  averagedTranslate G (inverseIndexedRho G rho) g⁻¹
+
+private def InverseStinespringCompressionFormula [DecidableEq G]
+    (rho : G → Matrix (Fin d) (Fin d) Complex) : Prop :=
+  ∀ g : G, inverseStinespringCompression G rho g = inverseAveragedTranslate G rho g
+
+private lemma stinespringCompressionFormula_holds [DecidableEq G]
+    (rho : G → Matrix (Fin d) (Fin d) Complex) :
+    StinespringCompressionFormula G rho := by
+  intro g
+  ext i j
+  rw [show stinespringCompression G rho g =
+      (stinespringMap G rho * leftRegularMatrix (G := G) (d := d) g) *
+        (stinespringMap G rho)ᴴ by rfl]
+  rw [Matrix.mul_apply]
+  calc
+    (∑ x : RegularIndex G d,
+      ((stinespringMap G rho * leftRegularMatrix (G := G) (d := d) g) i x) *
+        ((stinespringMap G rho)ᴴ x j)) =
+      ∑ x : G, ∑ k : Fin d,
+        (regularNormalization G * (rho (g⁻¹ * x))ᴴ i k) *
+          (star (regularNormalization G * (rho x)ᴴ j k)) := by
+        simp [Fintype.sum_prod_type, stinespringMap_mul_leftRegularMatrix_apply,
+          stinespringMap, Matrix.conjTranspose_apply]
+    _ = (averagedTranslate G rho g) i j := by
+        rw [averagedTranslate]
+        simp [Matrix.smul_apply, smul_eq_mul]
+        rw [show ((∑ x : G, (rho (g⁻¹ * x))ᴴ * rho x) i j) =
+            ∑ x : G, ((rho (g⁻¹ * x))ᴴ * rho x) i j by
+          rw [Finset.sum_apply, Finset.sum_apply]]
+        simp [Matrix.mul_apply, Matrix.conjTranspose_apply]
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro x _hx
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro k _hk
+        ring
+
+private lemma inverseStinespringCompression_eq_stinespringCompression [DecidableEq G]
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (g : G) :
+    inverseStinespringCompression G rho g =
+      stinespringCompression G (inverseIndexedRho G rho) g⁻¹ := by
+  rfl
+
+private lemma inverseStinespringCompressionFormula_holds [DecidableEq G]
+    (rho : G → Matrix (Fin d) (Fin d) Complex) :
+    InverseStinespringCompressionFormula G rho := by
+  intro g
+  rw [inverseStinespringCompression_eq_stinespringCompression]
+  exact stinespringCompressionFormula_holds (G := G) (inverseIndexedRho G rho) g⁻¹
+
+private lemma inverseAveragedTranslate_eq_average
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (g : G) :
+    inverseAveragedTranslate G rho g =
+      ((Fintype.card G : ℂ)⁻¹) • ∑ y : G, (rho (y * g⁻¹))ᴴ * rho y := by
+  rw [inverseAveragedTranslate, averagedTranslate, regularNormalization_mul_star_eq_card_inv]
+  congr 1
+  rw [Fintype.sum_equiv (invEquiv G)
+    (fun x : G => (inverseIndexedRho G rho ((g⁻¹)⁻¹ * x))ᴴ * inverseIndexedRho G rho x)
+    (fun y : G => (rho (y * g⁻¹))ᴴ * rho y)]
+  · intro x
+    simp [invEquiv, inverseIndexedRho]
+
+private lemma inverseCompression_error_eq_average [DecidableEq G]
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (g : G) :
+    rho g - inverseStinespringCompression G rho g =
+      ∑ y : G, ((Fintype.card G : ℝ)⁻¹) •
+        (rho g - (rho (y * g⁻¹))ᴴ * rho y) := by
+  rw [inverseStinespringCompressionFormula_holds G rho g]
+  rw [inverseAveragedTranslate_eq_average]
+  symm
+  ext i j
+  rw [show ((∑ y : G, ((Fintype.card G : ℝ)⁻¹) •
+        (rho g - (rho (y * g⁻¹))ᴴ * rho y)) i j) =
+        ∑ y : G, (((Fintype.card G : ℝ)⁻¹) •
+        (rho g - (rho (y * g⁻¹))ᴴ * rho y)) i j by
+      rw [Finset.sum_apply, Finset.sum_apply]]
+  simp only [Matrix.sub_apply, Matrix.smul_apply]
+  rw [show ((∑ y : G, (rho (y * g⁻¹))ᴴ * rho y) i j) =
+        ∑ y : G, ((rho (y * g⁻¹))ᴴ * rho y) i j by
+      rw [Finset.sum_apply, Finset.sum_apply]]
+  simp
+  calc
+    (∑ x : G, (↑(Fintype.card G))⁻¹ *
+        (rho g i j - ((rho (x * g⁻¹))ᴴ * rho x) i j)) =
+        ∑ x : G, ((↑(Fintype.card G))⁻¹ * rho g i j -
+          (↑(Fintype.card G))⁻¹ * ((rho (x * g⁻¹))ᴴ * rho x) i j) := by
+          apply Finset.sum_congr rfl
+          intro x _hx
+          ring
+    _ = rho g i j - (↑(Fintype.card G))⁻¹ *
+          ∑ y : G, ((rho (y * g⁻¹))ᴴ * rho y) i j := by
+          rw [Finset.sum_sub_distrib]
+          rw [Finset.sum_const]
+          simp only [nsmul_eq_mul]
+          rw [Finset.mul_sum]
+          simp
+
+private def StinespringIsometry
+    (rho : G → Matrix (Fin d) (Fin d) Complex) : Prop :=
+  stinespringMap G rho * (stinespringMap G rho)ᴴ = 1
+
+private def InverseStinespringIsometry
+    (rho : G → Matrix (Fin d) (Fin d) Complex) : Prop :=
+  inverseStinespringMap G rho * (inverseStinespringMap G rho)ᴴ = 1
+
+private lemma stinespring_isometry_of_unitaryValued
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (hunit : UnitaryValued G rho) :
+    StinespringIsometry G rho := by
+  ext i j
+  rw [Matrix.mul_apply]
+  simp [stinespringMap, Fintype.sum_prod_type]
+  calc
+    (∑ x : G, ∑ x_1 : Fin d,
+      regularNormalization G * (starRingEnd ℂ) (rho x x_1 i) *
+        ((starRingEnd ℂ) (regularNormalization G) * rho x x_1 j)) =
+        ∑ x : G,
+          regularNormalization G * star (regularNormalization G) *
+            (1 : Matrix (Fin d) (Fin d) Complex) i j := by
+          apply Finset.sum_congr rfl
+          intro x _hx
+          exact stinespring_inner_sum_of_unitaryValued (G := G) hunit x i j
+    _ = (Fintype.card G : Complex) *
+        (regularNormalization G * star (regularNormalization G) *
+          (1 : Matrix (Fin d) (Fin d) Complex) i j) := by
+          simp
+    _ = (1 : Matrix (Fin d) (Fin d) Complex) i j := by
+      by_cases hij : i = j
+      · subst j
+        simp
+        calc
+          (Fintype.card G : Complex) *
+              (regularNormalization G * star (regularNormalization G)) =
+              regularNormalization G * star (regularNormalization G) *
+                (Fintype.card G : Complex) := by
+            ring
+          _ = 1 := regularNormalization_mul_star_mul_card (G := G)
+      · simp [hij]
+
+omit [Fintype G] in
+private lemma inverseIndexedRho_unitaryValued
+    {rho : G → Matrix (Fin d) (Fin d) Complex}
+    (hunit : UnitaryValued G rho) :
+    UnitaryValued G (inverseIndexedRho G rho) := by
+  intro x
+  exact hunit x⁻¹
+
+private lemma inverseStinespring_isometry_of_unitaryValued
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (hunit : UnitaryValued G rho) :
+    InverseStinespringIsometry G rho := by
+  dsimp [InverseStinespringIsometry, inverseStinespringMap]
+  exact stinespring_isometry_of_unitaryValued G (inverseIndexedRho G rho)
+    (inverseIndexedRho_unitaryValued (G := G) hunit)
+
+end StinespringConstruction
+
+section StabilityEstimate
+
+private def InverseStinespringCloseToInput [DecidableEq G]
+    (sigma : Matrix (Fin d) (Fin d) Complex)
+    (rho : G → Matrix (Fin d) (Fin d) Complex)
+    (eps : Real)
+    (hσ : Matrix.PosSemidef sigma) : Prop :=
+  averageSigmaDistance G sigma hσ rho (inverseStinespringCompression G rho) ≤ 2 * eps
+
+private lemma inverseStinespring_pointwise_error_le_average [DecidableEq G]
+    {σ : Matrix (Fin d) (Fin d) ℂ}
+    {rho : G → Matrix (Fin d) (Fin d) ℂ}
+    (hσ : Matrix.PosSemidef σ)
+    (hunit : UnitaryValued G rho)
+    (g : G) :
+    sigmaNormSq σ (rho g - inverseStinespringCompression G rho g) hσ ≤
+      (∑ y : G, sigmaNormSq σ (rho (y * g⁻¹) * rho g - rho y) hσ) /
+        Fintype.card G := by
+  rw [inverseCompression_error_eq_average]
+  calc
+    sigmaNormSq σ
+        (∑ y : G, ((Fintype.card G : ℝ)⁻¹) •
+          (rho g - (rho (y * g⁻¹))ᴴ * rho y)) hσ ≤
+        (∑ y : G, sigmaNormSq σ (rho g - (rho (y * g⁻¹))ᴴ * rho y) hσ) /
+          Fintype.card G :=
+      sigmaNormSq_average_le_average hσ
+        (fun y : G => rho g - (rho (y * g⁻¹))ᴴ * rho y)
+    _ = (∑ y : G, sigmaNormSq σ (rho (y * g⁻¹) * rho g - rho y) hσ) /
+          Fintype.card G := by
+        congr 1
+        apply Finset.sum_congr rfl
+        intro y _hy
+        rw [sigmaNormSq_sub_unitary_mul_eq (G := G) hσ hunit (y * g⁻¹) y g]
+
+private lemma sum_div_reindex_mul_inv_right (F : G → G → ℝ) :
+    (∑ g : G, (∑ y : G, F (y * g⁻¹) g) / Fintype.card G) =
+      (∑ x : G, ∑ y : G, F x y) / Fintype.card G := by
+  calc
+    (∑ g : G, (∑ y : G, F (y * g⁻¹) g) / Fintype.card G) =
+        (∑ g : G, ∑ y : G, F (y * g⁻¹) g) / Fintype.card G := by
+      rw [Finset.sum_div]
+    _ = (∑ x : G, ∑ y : G, F x y) / Fintype.card G := by
+      congr 1
+      calc
+        (∑ g : G, ∑ y : G, F (y * g⁻¹) g) = ∑ g : G, ∑ x : G, F x g := by
+          apply Finset.sum_congr rfl
+          intro g _hg
+          rw [Fintype.sum_equiv (Equiv.mulRight g⁻¹)
+            (fun y : G => F (y * g⁻¹) g) (fun x : G => F x g)]
+          · intro x
+            rfl
+        _ = ∑ x : G, ∑ y : G, F x y := by
+          rw [Finset.sum_comm]
+
+private lemma inverseStinespring_error_sum_le_defect_sum [DecidableEq G]
+    {σ : Matrix (Fin d) (Fin d) ℂ}
+    {rho : G → Matrix (Fin d) (Fin d) ℂ}
+    (hσ : Matrix.PosSemidef σ)
+    (hunit : UnitaryValued G rho) :
+    (∑ g : G, sigmaNormSq σ (rho g - inverseStinespringCompression G rho g) hσ) ≤
+      (∑ x : G, ∑ y : G, sigmaNormSq σ (rho x * rho y - rho (x * y)) hσ) /
+        Fintype.card G := by
+  calc
+    (∑ g : G, sigmaNormSq σ (rho g - inverseStinespringCompression G rho g) hσ) ≤
+        ∑ g : G,
+          (∑ y : G, sigmaNormSq σ (rho (y * g⁻¹) * rho g - rho y) hσ) /
+            Fintype.card G := by
+          apply Finset.sum_le_sum
+          intro g _hg
+          exact inverseStinespring_pointwise_error_le_average (G := G) hσ hunit g
+    _ = (∑ x : G, ∑ y : G, sigmaNormSq σ (rho x * rho y - rho (x * y)) hσ) /
+          Fintype.card G := by
+      simpa [mul_assoc] using
+        sum_div_reindex_mul_inv_right (G := G)
+          (fun x y => sigmaNormSq σ (rho x * rho y - rho (x * y)) hσ)
+
+private lemma inverseStinespringDistance_le_multiplicativeDefect [DecidableEq G]
+    {σ : Matrix (Fin d) (Fin d) ℂ}
+    {rho : G → Matrix (Fin d) (Fin d) ℂ}
+    (hσ : Matrix.PosSemidef σ)
+    (hunit : UnitaryValued G rho) :
+    averageSigmaDistance G σ hσ rho (inverseStinespringCompression G rho) ≤
+      (∑ x : G, ∑ y : G, sigmaNormSq σ (rho x * rho y - rho (x * y)) hσ) /
+        (Fintype.card G ^ 2 : ℝ) := by
+  unfold averageSigmaDistance
+  have hcard_pos : (0 : ℝ) < Fintype.card G := by exact_mod_cast Fintype.card_pos
+  calc
+    (∑ x : G, sigmaNormSq σ (rho x - inverseStinespringCompression G rho x) hσ) /
+        Fintype.card G ≤
+        ((∑ x : G, ∑ y : G, sigmaNormSq σ (rho x * rho y - rho (x * y)) hσ) /
+          Fintype.card G) / Fintype.card G :=
+        div_le_div_of_nonneg_right
+          (inverseStinespring_error_sum_le_defect_sum (G := G) hσ hunit)
+          (le_of_lt hcard_pos)
+    _ = (∑ x : G, ∑ y : G, sigmaNormSq σ (rho x * rho y - rho (x * y)) hσ) /
+        (Fintype.card G ^ 2 : ℝ) := by
+        field_simp [ne_of_gt hcard_pos, pow_two]
+
+omit [Group G] [Fintype G] in
+private lemma sigmaNormSq_mul_unitary_of_posSemidef
+    {σ : Matrix (Fin d) (Fin d) ℂ}
+    {rho : G → Matrix (Fin d) (Fin d) ℂ}
+    (hσ : Matrix.PosSemidef σ)
+    (htr : Matrix.trace σ = 1)
+    (hunit : UnitaryValued G rho)
+    (x y : G) :
+    sigmaNormSq σ (rho x * rho y) hσ = 1 :=
+  sigmaNormSq_unitary_of_posSemidef hσ htr (mul_mem (hunit x) (hunit y))
+
+private lemma averageMultiplicativeDefect_eq_two_correlationDefect
+    {σ : Matrix (Fin d) (Fin d) ℂ}
+    {rho : G → Matrix (Fin d) (Fin d) ℂ}
+    (hσ : Matrix.PosSemidef σ)
+    (htr : Matrix.trace σ = 1)
+    (hunit : UnitaryValued G rho) :
+    (∑ x : G, ∑ y : G, sigmaNormSq σ (rho x * rho y - rho (x * y)) hσ) /
+      (Fintype.card G ^ 2 : ℝ) =
+        2 * correlationDefect G σ rho := by
+  let S : ℝ := ∑ x : G, ∑ y : G, (sigmaInner σ (rho x * rho y) (rho (x * y))).re
+  have hsum :
+      (∑ x : G, ∑ y : G, sigmaNormSq σ (rho x * rho y - rho (x * y)) hσ) =
+        2 * (Fintype.card G ^ 2 : ℝ) - 2 * S := by
+    calc
+      (∑ x : G, ∑ y : G, sigmaNormSq σ (rho x * rho y - rho (x * y)) hσ) =
+          ∑ x : G,
+            ∑ y : G, (2 - 2 * (sigmaInner σ (rho x * rho y) (rho (x * y))).re) := by
+            apply Finset.sum_congr rfl
+            intro x _hx
+            apply Finset.sum_congr rfl
+            intro y _hy
+            rw [sigmaNormSq_sub_eq hσ]
+            rw [sigmaNormSq_mul_unitary_of_posSemidef G hσ htr hunit]
+            rw [sigmaNormSq_unitary_of_posSemidef hσ htr (hunit (x * y))]
+            ring
+      _ = 2 * (Fintype.card G ^ 2 : ℝ) - 2 * S := by
+            simp [S, Finset.sum_sub_distrib, Finset.mul_sum, pow_two]
+            ring
+  rw [hsum]
+  unfold correlationDefect averageCorrelation
+  change (2 * (Fintype.card G ^ 2 : ℝ) - 2 * S) / (Fintype.card G ^ 2 : ℝ) =
+    2 * (1 - S / (Fintype.card G ^ 2 : ℝ))
+  have hcard : (Fintype.card G ^ 2 : ℝ) ≠ 0 := by positivity
+  field_simp [hcard]
+
+private lemma inverseStinespringCloseToInput_of_correlationDefect [DecidableEq G]
+    {σ : Matrix (Fin d) (Fin d) ℂ}
+    {rho : G → Matrix (Fin d) (Fin d) ℂ}
+    {eps : ℝ}
+    (hσ : Matrix.PosSemidef σ)
+    (htr : Matrix.trace σ = 1)
+    (hunit : UnitaryValued G rho)
+    (hdef : correlationDefect G σ rho ≤ eps) :
+    InverseStinespringCloseToInput G σ rho eps hσ := by
+  dsimp [InverseStinespringCloseToInput]
+  have hdist := inverseStinespringDistance_le_multiplicativeDefect (G := G) hσ hunit
+  rw [averageMultiplicativeDefect_eq_two_correlationDefect (G := G) hσ htr hunit] at hdist
+  exact le_trans hdist (by nlinarith)
+
+end StabilityEstimate
+
+/-- Repackage the original approximation hypothesis in terms of `correlationDefect`. -/
+lemma isApproxRepresentation_iff
+    (σ : Matrix (Fin d) (Fin d) ℂ)
+    (f : G → Matrix (Fin d) (Fin d) ℂ)
+    (ε : ℝ) :
+    IsApproxRepresentation G σ f ε ↔
+      UnitaryValued G f ∧ correlationDefect G σ f ≤ ε := by
+  constructor
+  · intro h
+    refine ⟨h.1, ?_⟩
+    dsimp [correlationDefect, averageCorrelation]
+    linarith [h.2]
+  · intro h
+    refine ⟨h.1, ?_⟩
+    dsimp [correlationDefect, averageCorrelation] at h
+    linarith [h.2]
+
+/-- An approximate representation is unitary-valued. -/
+lemma IsApproxRepresentation.unitaryValued
+    {σ : Matrix (Fin d) (Fin d) ℂ}
+    {f : G → Matrix (Fin d) (Fin d) ℂ}
+    {ε : ℝ}
+    (h : IsApproxRepresentation G σ f ε) :
+    UnitaryValued G f :=
+  h.1
+
+/-- An approximate representation has correlation defect at most `ε`. -/
+lemma IsApproxRepresentation.correlationDefect_le
+    {σ : Matrix (Fin d) (Fin d) ℂ}
+    {f : G → Matrix (Fin d) (Fin d) ℂ}
+    {ε : ℝ}
+    (h : IsApproxRepresentation G σ f ε) :
+    correlationDefect G σ f ≤ ε :=
+  (isApproxRepresentation_iff G σ f ε).mp h |>.2
+
+section Witness
+
+/-- The compression of a unitary representation `rho0` by an isometry `V`. -/
 def compression {ι : Type*} [Fintype ι] [DecidableEq ι]
     (V : Matrix (Fin d) ι Complex)
     (rho0 : G →* Matrix.unitaryGroup ι Complex)
@@ -53,325 +858,51 @@ def compression {ι : Type*} [Fintype ι] [DecidableEq ι]
   V * (rho0 x : Matrix ι ι Complex) * Vᴴ
 
 /--
-A finite-dimensional Hilbert-space witness for Gowers-Hatami, in coordinates.
+The target conclusion: a finite Hilbert space, an isometry `V`, and a genuine
+unitary representation whose compression is close to the original map.
 -/
 def HasFiniteHilbertWitness
     (sigma : Matrix (Fin d) (Fin d) Complex)
+    (hσ : Matrix.PosSemidef sigma)
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (eps : Real) : Prop :=
   ∃ (ι : Type u) (_ : Fintype ι) (_ : DecidableEq ι)
     (V : Matrix (Fin d) ι Complex)
     (_hV : V * Vᴴ = 1)
     (rho0 : G →* Matrix.unitaryGroup ι Complex),
-    (∑ x : G, sigmaNormSq sigma (rho x - compression G V rho0 x)) /
+    (∑ x : G, sigmaNormSq sigma (rho x - compression G V rho0 x) hσ) /
       Fintype.card G ≤ 2 * eps
 
-/-! ## The normalized embedding and isometry -/
-
-/-- The normalization constant for the uniform inner product on `L(G, ℂ^d)`. -/
-def scale (G : Type*) [Fintype G] : Complex :=
-  ((Real.sqrt (Fintype.card G : Real))⁻¹ : Complex)
-
-@[simp]
-theorem scale_mul_self (G : Type*) [Fintype G] [Nonempty G] :
-    scale G * scale G = (Fintype.card G : Complex)⁻¹ := by
-  have hsqrt_sq :
-      (Real.sqrt (Fintype.card G : Real) : Complex) *
-          (Real.sqrt (Fintype.card G : Real) : Complex) =
-        (Fintype.card G : Complex) := by
-    rw [← Complex.ofReal_mul, ← sq]
-    simp [Real.sq_sqrt (Nat.cast_nonneg _)]
-  have hprod : scale G * scale G * (Fintype.card G : Complex) = 1 := by
-    simp [scale, ← hsqrt_sq, mul_assoc]
-  have hcard : (Fintype.card G : Complex) ≠ 0 := card_ne_zero_complex G
-  rw [← mul_right_inj' hcard]
-  simpa [mul_assoc, mul_left_comm, mul_comm] using hprod
-
-@[simp]
-theorem starRingEnd_scale (G : Type*) [Fintype G] :
-    (starRingEnd Complex) (scale G) = scale G := by
-  simp [scale]
-
-/-- The adjoint of `u ↦ fun x ↦ rho x u`, with normalized counting measure on `G`. -/
-def embedding (rho : G → Matrix (Fin d) (Fin d) Complex) :
-    Matrix (Fin d) (Index G d) Complex :=
-  fun i xj ↦ scale G * (starRingEnd Complex) (rho xj.1 xj.2 i)
-
-private theorem unitary_col_sum
-    (A : Matrix (Fin d) (Fin d) Complex)
-    (hA : A ∈ Matrix.unitaryGroup (Fin d) Complex)
-    (i j : Fin d) :
-    (∑ k : Fin d, (starRingEnd Complex) (A k i) * A k j) =
-      (1 : Matrix (Fin d) (Fin d) Complex) i j := by
-  have hmat : Aᴴ * A = 1 := Matrix.mem_unitaryGroup_iff'.mp hA
-  simpa [Matrix.mul_apply, Matrix.conjTranspose_apply] using
-    congr_fun (congr_fun hmat i) j
-
-omit [Group G] in
-private theorem embedding_mul_conjTranspose_apply
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (i j : Fin d) :
-    (embedding G rho * (embedding G rho)ᴴ) i j =
-      ∑ x : G, scale G * scale G *
-        (∑ k : Fin d, (starRingEnd Complex) (rho x k i) * rho x k j) := by
-  simp [embedding, Matrix.mul_apply, Matrix.conjTranspose_apply,
-    Fintype.sum_prod_type, Finset.mul_sum, mul_assoc, mul_left_comm, mul_comm]
-
-/-- The map `V u = fun x ↦ rho x u` is an isometry. -/
-theorem embedding_isometry
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (hrho : ∀ x, rho x ∈ Matrix.unitaryGroup (Fin d) Complex) :
-    embedding G rho * (embedding G rho)ᴴ = 1 := by
-  ext i j
-  calc
-    (embedding G rho * (embedding G rho)ᴴ) i j
-        = ∑ x : G, scale G * scale G *
-            (∑ k : Fin d, (starRingEnd Complex) (rho x k i) * rho x k j) :=
-          embedding_mul_conjTranspose_apply G rho i j
-    _ = ∑ _x : G, scale G * scale G *
-          (1 : Matrix (Fin d) (Fin d) Complex) i j := by
-          simp [unitary_col_sum _ (hrho _) i j]
-    _ = (1 : Matrix (Fin d) (Fin d) Complex) i j := by
-          simp
-
-/-! ## Compression by the right regular representation -/
-
-/-- The concrete compression coming from the right-regular representation. -/
-def regularCompression [DecidableEq G]
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (x : G) : Matrix (Fin d) (Fin d) Complex :=
-  embedding G rho *
-    rightRegularMatrix (G := G) (d := d) x *
-    (embedding G rho)ᴴ
-
-/-- Applying the right-regular matrix to `Vᴴ` evaluates `rho` at the shifted group element. -/
-@[simp]
-theorem rightRegularMatrix_mul_embedding_conjTranspose_apply [DecidableEq G]
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (x : G) (y : Index G d) (j : Fin d) :
-    (rightRegularMatrix (G := G) (d := d) x * (embedding G rho)ᴴ) y j =
-      scale G * rho (y.1 * x) y.2 j := by
-  rw [rightRegularMatrix_mul_apply]
-  simp [embedding, Matrix.conjTranspose_apply]
-
-/-! ## The compression identity -/
-
-/-- Entrywise form of `V R_x V^*` before collecting it as a matrix average. -/
-private theorem compression_apply [DecidableEq G]
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (x : G) (i j : Fin d) :
-    (embedding G rho * rightRegularMatrix (G := G) (d := d) x *
-        (embedding G rho)ᴴ) i j =
-      ∑ y : G, ∑ k : Fin d, (scale G * scale G) *
-        ((starRingEnd Complex) (rho y k i) * rho (y * x) k j) := by
-  rw [Matrix.mul_assoc]
-  change (∑ a : Index G d,
-    embedding G rho i a *
-      (rightRegularMatrix (G := G) (d := d) x *
-        (embedding G rho)ᴴ) a j) =
-      ∑ y : G, ∑ k : Fin d, (scale G * scale G) *
-        ((starRingEnd Complex) (rho y k i) * rho (y * x) k j)
-  simp [-scale_mul_self, embedding,
-    Fintype.sum_prod_type, mul_assoc, mul_left_comm, mul_comm]
-
-/-- `V R_x V^*` is the average `E_y rho(y)^* rho(y*x)`. -/
-theorem compression_eq_average [DecidableEq G]
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (x : G) :
-    embedding G rho *
-      rightRegularMatrix (G := G) (d := d) x *
-      (embedding G rho)ᴴ =
-        (Fintype.card G : Complex)⁻¹ •
-          ∑ y : G, (rho y)ᴴ * rho (y * x) := by
-  ext i j
-  calc
-    (embedding G rho * rightRegularMatrix (G := G) (d := d) x *
-        (embedding G rho)ᴴ) i j
-        = ∑ y : G, ∑ k : Fin d, (scale G * scale G) *
-            ((starRingEnd Complex) (rho y k i) * rho (y * x) k j) :=
-          compression_apply G rho x i j
-    _ = (Fintype.card G : Complex)⁻¹ *
-          (∑ y : G, ∑ k : Fin d,
-            (starRingEnd Complex) (rho y k i) * rho (y * x) k j) := by
-            simp [scale_mul_self G, Finset.mul_sum]
-    _ = ((Fintype.card G : Complex)⁻¹ •
-          ∑ y : G, (rho y)ᴴ * rho (y * x)) i j := by
-            simp [Matrix.mul_apply, Matrix.conjTranspose_apply, Matrix.smul_apply,
-              Matrix.sum_apply, Finset.mul_sum]
-
-/-- Compression of a unitary has `sigma`-norm square at most one. -/
-theorem compression_sigmaNormSq_le_one [DecidableEq G]
+private lemma inverse_stinespring_close_has_witness [DecidableEq G]
     (sigma : Matrix (Fin d) (Fin d) Complex)
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (x : G)
-    (hsigma : Matrix.PosSemidef sigma)
-    (hsigmatr : Matrix.trace sigma = 1)
-    (hrho : ∀ y, rho y ∈ Matrix.unitaryGroup (Fin d) Complex) :
-    sigmaNormSq sigma (regularCompression G rho x) ≤ 1 := by
-  letI : SeminormedAddCommGroup (Matrix (Fin d) (Fin d) Complex) :=
-    Matrix.toMatrixSeminormedAddCommGroup sigma hsigma
-  letI : InnerProductSpace Complex (Matrix (Fin d) (Fin d) Complex) :=
-    Matrix.toMatrixInnerProductSpace sigma hsigma
-  unfold regularCompression
-  rw [compression_eq_average G rho x]
-  have hnormF : ∀ y : G, ‖(rho y)ᴴ * rho (y * x)‖ ≤ 1 := by
-    intro y
-    have hy_unitary :
-        (rho y)ᴴ * rho (y * x) ∈ Matrix.unitaryGroup (Fin d) Complex :=
-      unitary_conjTranspose_mul (hrho y) (hrho (y * x))
-    have hsq :
-        ‖(rho y)ᴴ * rho (y * x)‖ ^ 2 = 1 := by
-      calc
-        ‖(rho y)ᴴ * rho (y * x)‖ ^ 2
-            = sigmaNormSq sigma ((rho y)ᴴ * rho (y * x)) := by
-              simp [sigmaNormSq_eq_matrix_norm_sq sigma
-                ((rho y)ᴴ * rho (y * x)) hsigma]
-        _ = 1 :=
-              sigmaNormSq_unitary sigma ((rho y)ᴴ * rho (y * x)) hsigmatr
-                hy_unitary
-    nlinarith [norm_nonneg ((rho y)ᴴ * rho (y * x)), hsq]
-  have hsq_avg :
-      ‖((Fintype.card G : Complex)⁻¹ • ∑ y : G,
-          (rho y)ᴴ * rho (y * x))‖ ^ 2 ≤ 1 := by
-    simpa [sigmaNormSq_eq_matrix_norm_sq sigma
-      ((Fintype.card G : Complex)⁻¹ • ∑ y : G,
-        (rho y)ᴴ * rho (y * x)) hsigma] using
-      sigmaNormSq_average_le_one G sigma hsigma (fun y : G =>
-        (rho y)ᴴ * rho (y * x)) (by intro y; have h := hnormF y; rw [sigmaNormSq_eq_matrix_norm_sq sigma ((rho y)ᴴ * rho (y * x)) hsigma]; nlinarith [h, norm_nonneg ((rho y)ᴴ * rho (y * x))])
-  simpa [sigmaNormSq_eq_matrix_norm_sq sigma
-    ((Fintype.card G : Complex)⁻¹ • ∑ y : G,
-      (rho y)ᴴ * rho (y * x)) hsigma] using hsq_avg
-
-/-- The compressed correlation is the average approximate-representation correlation. -/
-theorem sigmaInner_compression [DecidableEq G]
-    (sigma : Matrix (Fin d) (Fin d) Complex)
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (x : G) :
-    sigmaInner sigma (rho x) (regularCompression G rho x) =
-      (Fintype.card G : Complex)⁻¹ *
-        ∑ y : G, sigmaInner sigma (rho y * rho x) (rho (y * x)) := by
-  unfold regularCompression
-  rw [compression_eq_average G rho x]
-  unfold sigmaInner
-  rw [Matrix.mul_smul, Matrix.smul_mul, Matrix.trace_smul]
-  congr 1
-  rw [Matrix.mul_sum, Matrix.sum_mul, Matrix.trace_sum]
-  apply Finset.sum_congr rfl
-  intro y _
-  simp [Matrix.conjTranspose_mul, Matrix.mul_assoc]
-
-
-
-
-
-/-- The approximate-representation hypothesis gives high average compressed correlation. -/
-theorem average_correlation [DecidableEq G]
-    (sigma : Matrix (Fin d) (Fin d) Complex)
+    (hσ : Matrix.PosSemidef sigma)
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (eps : Real)
-    (hApprox : IsApproxRepresentation G sigma rho eps) :
-    (∑ x : G, (sigmaInner sigma (rho x) (regularCompression G rho x)).re) /
-      Fintype.card G ≥ 1 - eps := by
-  have hcard : (Fintype.card G : Real) ≠ 0 := card_ne_zero_real G
-  have hmain :
-      (∑ x : G, (sigmaInner sigma (rho x) (regularCompression G rho x)).re) /
-          Fintype.card G =
-        (∑ x : G, ∑ y : G,
-          (sigmaInner sigma (rho x * rho y) (rho (x * y))).re) /
-          (Fintype.card G ^ 2 : Real) := by
-    calc
-      (∑ x : G, (sigmaInner sigma (rho x) (regularCompression G rho x)).re) /
-          Fintype.card G
-          = (∑ x : G,
-              ((Fintype.card G : Complex)⁻¹ *
-                ∑ y : G, sigmaInner sigma (rho y * rho x) (rho (y * x))).re) /
-              Fintype.card G := by
-              simp [sigmaInner_compression G sigma rho]
-      _ = (∑ x : G, ∑ y : G,
-              (sigmaInner sigma (rho y * rho x) (rho (y * x))).re) /
-              (Fintype.card G ^ 2 : Real) := by
-              simp [Complex.inv_re, hcard, Finset.mul_sum, div_eq_mul_inv,
-                pow_two, mul_left_comm, mul_comm]
-      _ = (∑ x : G, ∑ y : G,
-              (sigmaInner sigma (rho x * rho y) (rho (x * y))).re) /
-              (Fintype.card G ^ 2 : Real) := by
-              rw [Finset.sum_comm]
-  simpa [hmain, IsApproxRepresentation] using hApprox
+    (hV : InverseStinespringIsometry G rho)
+    (hclose : InverseStinespringCloseToInput G sigma rho eps hσ) :
+    HasFiniteHilbertWitness G sigma hσ rho eps := by
+  refine ⟨RegularIndex G d, inferInstance, inferInstance, inverseStinespringMap G rho,
+    hV, regularUnitaryRep (G := G) (d := d), ?_⟩
+  dsimp [InverseStinespringCloseToInput, averageSigmaDistance] at hclose
+  dsimp [compression, inverseStinespringCompression, averageSigmaDistance] at hclose ⊢
+  simpa using hclose
 
-/-! ## The regular witness estimate -/
+end Witness
 
-/-- Pointwise distance bound for the right-regular compression. -/
-theorem sigmaNormSq_sub_regularCompression_le [DecidableEq G]
-    (sigma : Matrix (Fin d) (Fin d) Complex)
-    (hsigma : Matrix.PosSemidef sigma) (hsigmatr : Matrix.trace sigma = 1)
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (hrho : ∀ x, rho x ∈ Matrix.unitaryGroup (Fin d) Complex)
-    (x : G) :
-    sigmaNormSq sigma (rho x - regularCompression G rho x) ≤
-      2 - 2 * (sigmaInner sigma (rho x) (regularCompression G rho x)).re := by
-  have hA : sigmaNormSq sigma (rho x) ≤ 1 := by
-    rw [sigmaNormSq_unitary sigma (rho x) hsigmatr (hrho x)]
-  have hB : sigmaNormSq sigma (regularCompression G rho x) ≤ 1 :=
-    compression_sigmaNormSq_le_one G sigma rho x hsigma hsigmatr hrho
-  rw [sigmaNormSq_sub_eq sigma (rho x) (regularCompression G rho x) hsigma]
-  linarith
-
-
-/-- This is the key identity: The right-regular compression is close to the approximate representation on average. -/
-theorem regularCompression_proximity [DecidableEq G]
-    (sigma : Matrix (Fin d) (Fin d) Complex)
-    (hsigma : Matrix.PosSemidef sigma) (hsigmatr : Matrix.trace sigma = 1)
-    (rho : G → Matrix (Fin d) (Fin d) Complex)
-    (eps : Real)
-    (hrho : ∀ x, rho x ∈ Matrix.unitaryGroup (Fin d) Complex)
-    (hApprox : IsApproxRepresentation G sigma rho eps) :
-    (∑ x : G, sigmaNormSq sigma (rho x - regularCompression G rho x)) /
-      Fintype.card G ≤ 2 * eps := by
-  let c : G → Real :=
-    fun x ↦ (sigmaInner sigma (rho x) (regularCompression G rho x)).re
-  have hcorr : (∑ x : G, c x) / Fintype.card G ≥ 1 - eps := by
-    simpa [c] using average_correlation G sigma rho eps hApprox
-  have hsum :
-      (∑ x : G, sigmaNormSq sigma (rho x - regularCompression G rho x)) ≤
-        ∑ x : G, (2 - 2 * c x) :=
-    Finset.sum_le_sum fun x _ ↦
-      show sigmaNormSq sigma (rho x - regularCompression G rho x) ≤ 2 - 2 * c x from
-        sigmaNormSq_sub_regularCompression_le G sigma hsigma hsigmatr rho hrho x
-  have hcard_pos : 0 < (Fintype.card G : Real) := card_pos_real G
-  calc
-    (∑ x : G, sigmaNormSq sigma (rho x - regularCompression G rho x)) /
-        Fintype.card G
-        ≤ (∑ x : G, (2 - 2 * c x)) / Fintype.card G :=
-          div_le_div_of_nonneg_right hsum (le_of_lt hcard_pos)
-    _ = 2 - 2 * ((∑ x : G, c x) / Fintype.card G) :=
-          average_two_sub_two_mul G c
-    _ ≤ 2 * eps := by
-          linarith [hcorr]
-
-/-! ## Gowers-Hatami, abstract finite-coordinate form -/
 
 /--
-Gowers-Hatami theorem with no chosen numeric dimension for the enlarged space.
-
-The target is an arbitrary finite coordinate Hilbert space, represented by its
-index type `ι`.  The proof chooses the natural space `ι = G × Fin d`, so there
-is no final reindexing step.
+Abstract Gowers--Hatami stability in this finite-dimensional formulation.
+The proof builds the inverse-indexed Stinespring isometry and applies the
+defect-to-compression estimate proved above.
 -/
 theorem gowers_hatami_abstract [DecidableEq G]
     (sigma : Matrix (Fin d) (Fin d) Complex)
     (hsigma : Matrix.PosSemidef sigma) (hsigmatr : Matrix.trace sigma = 1)
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (eps : Real) (_heps : 0 ≤ eps)
-    (hrho : ∀ x, rho x ∈ Matrix.unitaryGroup (Fin d) Complex)
     (hApprox : IsApproxRepresentation G sigma rho eps) :
-    HasFiniteHilbertWitness G sigma rho eps := by
-  refine ⟨Index G d, inferInstance, inferInstance,
-    embedding G rho, embedding_isometry G rho hrho, rightRegular G d, ?_⟩
-  change
-    (∑ x : G, sigmaNormSq sigma (rho x - regularCompression G rho x)) /
-      Fintype.card G ≤ 2 * eps
-  exact regularCompression_proximity G sigma hsigma hsigmatr rho eps hrho hApprox
-
-end
-
-end GH
+    HasFiniteHilbertWitness G sigma hsigma rho eps :=
+  inverse_stinespring_close_has_witness G sigma hsigma rho eps
+    (inverseStinespring_isometry_of_unitaryValued G rho hApprox.unitaryValued)
+    (inverseStinespringCloseToInput_of_correlationDefect (G := G)
+      hsigma hsigmatr hApprox.unitaryValued hApprox.correlationDefect_le)
