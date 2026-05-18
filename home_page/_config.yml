@@ -18,8 +18,8 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 
-title: Formal Verification of BLR PCP
-description: by yuxi-zheng
+title: Formally Verified PCP Constructions
+description: by Serhat Emre Coban, Davide Mazzali, Khanh Nguyen, Vincent Palma, Yanting Teng, Thomas Vidick, and Yuxi Zheng
 baseurl: "/blr-pcp-formal-verification"
 url: "https://yuxi-zheng.github.io"
 github_username: yuxi-zheng

@@ -1,5 +1,5 @@
 /-
-Authors: Thomas Vidick, Open Gauss
+Authors: Serhat Emre Coban, Davide Mazzali, Khanh Nguyen, Vincent Palma, Yanting Teng, Thomas Vidick, Yuxi Zheng
 -/
 import Mathlib.Analysis.Convex.Mul
 import Mathlib.Analysis.Matrix.Order

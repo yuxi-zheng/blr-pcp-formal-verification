@@ -4,8 +4,8 @@
 
 # layout: home
 layout: default
-title: Formal Verification of BLR PCP
-description: by yuxi-zheng
+title: Formally Verified PCP Constructions
+description: by Serhat Emre Coban, Davide Mazzali, Khanh Nguyen, Vincent Palma, Yanting Teng, Thomas Vidick, and Yuxi Zheng
 usemathjax: true
 ---
 
