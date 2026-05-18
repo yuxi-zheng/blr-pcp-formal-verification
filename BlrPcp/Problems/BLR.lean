@@ -55,7 +55,7 @@ def sampleUnit {F : Type} [Field F] {n : ℕ} : OracleComp (fullSpec F n) Fˣ :=
 
 /-- Sample a vector in `F^n` using `n` calls to the field-valued randomness oracle. -/
 def sampleVector (F : Type) [Field F] (n : ℕ) : OracleComp (fullSpec F n) (Fin n → F) :=
-  Fin.mOfFn n fun _ => sampleField (F := F)
+  OracleUtil.sampleVector (sampleField (F := F) (n := n)) n
 
 /-- The finite-field BLR verifier. -/
 def verifier {F : Type} [Field F] [DecidableEq F] {n : ℕ} :
@@ -88,22 +88,13 @@ def basicVerifier {F : Type} [Add F] [DecidableEq F] {n : ℕ} :
   let fxy : F ← query (spec := fullSpec_fin_vector F n) (.inr fun i => x i + y i)
   return decide (fx + fy = fxy)
 
-lemma sampleVector_queryBoundAux (F : Type) [Field F] (m n : ℕ) :
-    QueryBound (Fin.mOfFn m fun _ => sampleField (F := F) (n := n)) m 0 := by
-  induction m with
-  | zero =>
-      simp [Fin.mOfFn, QueryBound]
-  | succ m ih =>
-      simp only [Fin.mOfFn]
-      have hHead : QueryBound (sampleField (F := F) (n := n)) 1 0 := by
-        simp [sampleField, QueryBound]
-      simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using
-        queryBound_bind hHead fun _ => by
-          simpa [QueryBound] using ih
+lemma sampleField_queryBound {F : Type} [Field F] {n : ℕ} :
+    QueryBound (sampleField (F := F) (n := n)) 1 0 := by
+  simp [sampleField, QueryBound]
 
 lemma sampleVector_queryBound (F : Type) [Field F] (n : ℕ) :
-    QueryBound (sampleVector F n) n 0 := by
-  simpa [sampleVector] using sampleVector_queryBoundAux F n n
+    QueryBound (sampleVector F n) n 0 :=
+  OracleUtil.sampleVector_queryBound' (sampleField_queryBound (F := F) (n := n)) n
 
 lemma sampleUnit_queryBound {F : Type} [Field F] {n : ℕ} :
     QueryBound (sampleUnit (F := F) (n := n)) 1 0 := by
@@ -211,63 +202,33 @@ lemma probOutput_finCons_map_ne {m : Type _ → Type _} [Monad m] [LawfulMonad m
     simpa using (congrFun hxy 0).symm
   simp [hfalse]
 
-lemma probOutput_simulateQ_BLR_sampleVectorAux {F : Type}
-    [Field F] [DecidableEq F] [Fintype F] [SampleableType F] [SampleableType Fˣ]
-    (m n : ℕ) (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp)
-    (x : Fin m → F) :
-    Pr[= x |
-      simulateQ ((BLR.normalRandOracle F).impl + impl)
-        (Fin.mOfFn m fun _ => BLR.sampleField (F := F) (n := n))] =
-      (Fintype.card (Fin m → F) : ENNReal)⁻¹ := by
-  induction m with
-  | zero =>
-      have hx : x = Fin.elim0 := by
-        funext i
-        exact Fin.elim0 i
-      subst hx
-      simp [Fin.mOfFn]
-  | succ m ih =>
-      simp only [Fin.mOfFn, BLR.sampleField, simulateQ_bind, simulateQ_query,
-        simulateQ_pure, OracleQuery.cont_query, id_map, OracleQuery.input_query, BLR.normalRandOracle]
-      rw [probOutput_bind_eq_tsum, tsum_fintype]
-      rw [Finset.sum_eq_single (x 0)]
-      · change Pr[= x 0 | ($ᵗ F : ProbComp F)] *
-            Pr[= x |
-              (Fin.cons (x 0)) <$>
-                simulateQ ((BLR.normalRandOracle F).impl + impl)
-                  (Fin.mOfFn m fun _ => BLR.sampleField (F := F) (n := n))] = _
-        rw [probOutput_uniformSample, probOutput_finCons_map_eq, ih]
-        rw [Fintype.card_fun, Fintype.card_fin, Fintype.card_fun, Fintype.card_fin]
-        rw [Nat.pow_succ]
-        simp only [Nat.cast_mul, Nat.cast_pow]
-        rw [ENNReal.mul_inv]
-        · rw [mul_comm]
-        · left
-          exact_mod_cast pow_ne_zero m (Fintype.card_ne_zero (α := F))
-        · left
-          simp
-      · intro a _ ha
-        change Pr[= a | ($ᵗ F : ProbComp F)] *
-            Pr[= x |
-              (Fin.cons a) <$>
-                simulateQ ((BLR.normalRandOracle F).impl + impl)
-                  (Fin.mOfFn m fun _ => BLR.sampleField (F := F) (n := n))] = 0
-        rw [probOutput_finCons_map_ne _ x ha]
-        simp
-      · intro h
-        simp at h
+private lemma simulateQ_BLR_sampleField {F : Type} [Field F] [Fintype F] [SampleableType F]
+    [SampleableType Fˣ] {n : ℕ}
+    (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp) :
+    simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleField (F := F) (n := n)) =
+      $ᵗ F := by
+  simp [BLR.sampleField, BLR.normalRandOracle]
+
+private lemma simulateQ_BLR_sampleVector {F : Type} [Field F] [DecidableEq F] [Fintype F]
+    [SampleableType F] [SampleableType Fˣ] {n : ℕ}
+    (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp) :
+    simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleVector F n) =
+      $ᵗ (Fin n → F) :=
+  OracleUtil.simulateQ_sampleVector' _ (simulateQ_BLR_sampleField impl) n
 
 @[simp]
 lemma probOutput_simulateQ_BLR_sampleVector {F : Type}
-    [Field F] [DecidableEq F] [Fintype F] [SampleableType F] [SampleableType Fˣ] {n : ℕ}
+    [Field F] [DecidableEq F] [Fintype F] [SampleableType F] [SampleableType Fˣ]
+    {n : ℕ}
     (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp) (x : Fin n → F) :
     Pr[= x | simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleVector F n)] =
       (Fintype.card (Fin n → F) : ENNReal)⁻¹ := by
-  simpa [BLR.sampleVector] using
-    probOutput_simulateQ_BLR_sampleVectorAux (F := F) n n impl x
+  rw [simulateQ_BLR_sampleVector impl]
+  exact probOutput_uniformSample (α := Fin n → F) x
 
 lemma probOutput_true_map_simulateQ_BLR_sampleVector {F : Type}
-    [Field F] [DecidableEq F] [Fintype F] [SampleableType F] [SampleableType Fˣ] {n : ℕ}
+    [Field F] [DecidableEq F] [Fintype F] [SampleableType F] [SampleableType Fˣ]
+    {n : ℕ}
     (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp)
     (g : (Fin n → F) → Bool) :
     Pr[= true | g <$> simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleVector F n)] =

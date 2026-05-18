@@ -190,6 +190,15 @@ def sampleVector {ι F : Type} {spec : OracleSpec ι} (query1 : OracleComp spec 
     OracleComp spec (Vec F (Fin m)) :=
   (·.get) <$> sampleVectorAux query1 m
 
+/-- Sample one field element from the standard (Unit-indexed) randomness oracle. -/
+def sampleField {ι F : Type} {spec : OracleSpec ι} :
+    OracleComp (randOracleSpec F + spec) F :=
+  liftM (query (spec := randOracleSpec F + spec) (.inl ()))
+
+lemma sampleField_queryBound {ι F : Type} {spec : OracleSpec ι} :
+    QueryBound (sampleField (F := F) (spec := spec)) 1 0 := by
+  simp [sampleField, QueryBound]
+
 /-- Sample `m` independent random field elements using the randomness oracle of
 `fullSpec_fin_vector F N`. -/
 def sampleRandomVector (F : Type) [SampleableType F] (m N : ℕ) :
@@ -198,6 +207,62 @@ def sampleRandomVector (F : Type) [SampleableType F] (m N : ℕ) :
     OracleComp (fullSpec_fin_vector F N) F)) m
 
 variable {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F]
+
+omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+lemma sampleVectorAux_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
+    {proofSpec : OracleSpec ι}
+    {query1 : OracleComp (randSpec + proofSpec) F}
+    (hq : QueryBound query1 1 0) : ∀ m,
+    QueryBound (sampleVectorAux query1 m) m 0 := by
+  intro m
+  induction m with
+  | zero => simp [sampleVectorAux, QueryBound]
+  | succ m ih =>
+      simp only [sampleVectorAux, seq_eq_bind_map]
+      simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using
+        queryBound_bind ih fun _ => by simpa [QueryBound] using hq
+
+omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+lemma sampleVectorAux_queryBound (m n : ℕ) :
+    QueryBound (sampleVectorAux ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) :
+      OracleComp (LPCP.fullSpec F n) F)) m) m 0 :=
+  sampleVectorAux_queryBound' (by simp [QueryBound]) m
+
+omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+lemma sampleVector_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
+    {proofSpec : OracleSpec ι}
+    {query1 : OracleComp (randSpec + proofSpec) F}
+    (hq : QueryBound query1 1 0) (m : ℕ) :
+    QueryBound (sampleVector query1 m) m 0 := by
+  simp only [sampleVector, map_eq_bind_pure_comp]
+  exact queryBound_mono
+    (queryBound_bind (q₂ := 0) (r₂ := 0) (sampleVectorAux_queryBound' hq m)
+      fun _ => by simp [QueryBound])
+    (by omega) (by omega)
+
+omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+lemma sampleVector_queryBound (m n : ℕ) :
+    QueryBound (sampleVector ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) :
+      OracleComp (LPCP.fullSpec F n) F)) m) m 0 :=
+  sampleVector_queryBound' (by simp [QueryBound]) m
+
+omit [Field F] [Fintype F] [Inhabited F] in
+lemma simulateQ_sampleVector' {ρ ι F : Type} {randSpec : OracleSpec ρ}
+    {proofSpec : OracleSpec ι} [DecidableEq F] [Fintype F] [SampleableType F]
+    (impl : QueryImpl (randSpec + proofSpec) ProbComp)
+    {query1 : OracleComp (randSpec + proofSpec) F}
+    (h : simulateQ impl query1 = $ᵗ F) (m : ℕ) :
+    simulateQ impl (sampleVector query1 m) = $ᵗ (Fin m → F) := by
+  simp only [sampleVector]
+  suffices h' : ∀ m, simulateQ impl (sampleVectorAux query1 m) = $ᵗ Vector F m by
+    simp only [simulateQ_map, h' m]; rfl
+  intro m
+  induction m with
+  | zero => rfl
+  | succ m ih =>
+      simp only [sampleVectorAux, simulateQ_seq, simulateQ_map]
+      rw [ih, h]
+      rfl
 
 omit [Field F] [Fintype F] [Inhabited F] in
 lemma simulateQ_sampleVector (m n : ℕ)
@@ -211,8 +276,7 @@ lemma simulateQ_sampleVector (m n : ℕ)
       (sampleVectorAux ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) :
         OracleComp (LPCP.fullSpec F n) F)) m) =
       ($ᵗ Vector F m : ProbComp (Vector F m)) by
-    simp [simulateQ_map, h m]
-    simp [instSampleableTypeFinFunc, SampleableType.ofEquiv, uniformSample]
+    simp only [simulateQ_map, h m]; rfl
   intro m
   induction m with
   | zero => rfl
@@ -232,27 +296,6 @@ lemma simulateQ_sampleRandomVector (m N : ℕ)
     simulateQ ((randOracle F).impl + impl) (sampleRandomVector F m N) =
     ($ᵗ (Fin m → F) : ProbComp (Fin m → F)) := by
   simp [sampleRandomVector, simulateQ_sampleVector m N impl]
-
-omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma sampleVectorAux_queryBound (m n : ℕ) :
-    QueryBound (sampleVectorAux ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) :
-      OracleComp (LPCP.fullSpec F n) F)) m) m 0 := by
-  induction m with
-  | zero => simp [sampleVectorAux, QueryBound]
-  | succ m ih =>
-      simp only [sampleVectorAux, seq_eq_bind_map]
-      simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using
-        queryBound_bind ih fun _ => by simp [QueryBound]
-
-omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma sampleVector_queryBound (m n : ℕ) :
-    QueryBound (sampleVector ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) :
-      OracleComp (LPCP.fullSpec F n) F)) m) m 0 := by
-  simp only [sampleVector, map_eq_bind_pure_comp]
-  exact queryBound_mono
-    (queryBound_bind (q₂ := 0) (r₂ := 0) (sampleVectorAux_queryBound (F := F) m n)
-      fun _ => by simp [QueryBound])
-    (by omega) (by omega)
 
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] in
 lemma sampleRandomVector_queryBound (m N : ℕ) :
