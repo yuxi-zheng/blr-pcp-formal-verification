@@ -8,7 +8,10 @@ import VCVio.OracleComp.QueryTracking.QueryBound
 /-!
 # Oracle computations
 
-This file defines the BLR test, PCPs and LPCPs in terms of oracle computations.
+This file defines PCPs and LPCPs in terms of oracle computations, as well as some genetic utils.
+
+For BLR, the randomness oracle gives either an element of field F or a scalar, and thus uses a different definition from
+the ones defined here.
 
 ## Main declarations
 
@@ -21,13 +24,6 @@ This file defines the BLR test, PCPs and LPCPs in terms of oracle computations.
 - `RunsInTime`, `QueryBound`: time and (randomness, proof) query bounds for verifier computations.
 - `PCPVerifier`, `LPCPVerifier`: the type of PCP and LPCP verifiers.
 - `PCP`, `LPCP`: PCP and LPCP complexity classes with query and randomness bounds.
-
-## Design choices
-- For each instance of PCP (LINEQ, TENSORQ, ..), we purposely pass an oracle which generates exactly 1 element. Each
-  instance will use that random oracle to construct their own "whichever" random generator that suit them, e.g. vector
-  of size n, n * 2, n^2 + n, ...
-
-  Of course we can just define everything in simple terms and , as everything is either F or Z/2 now ..
 -/
 
 open OracleComp
