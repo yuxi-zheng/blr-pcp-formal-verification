@@ -695,7 +695,8 @@ theorem gh2_average_correlation
               (sigmaInner sigma (rho x * rho y) (rho (x * y))).re) /
               (Fintype.card G ^ 2 : Real) := by
               rw [Finset.sum_comm]
-  simpa [hmain, IsApproxRepresentation] using hApprox
+  rcases hApprox with ⟨_, hApprox⟩
+  simpa [hmain] using hApprox
 
 /-! ## Gowers-Hatami, regular-representation proof -/
 
