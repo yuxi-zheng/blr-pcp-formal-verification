@@ -70,64 +70,7 @@ lemma blr_completeness {f : ScalarFn F Idx}
 
 end BLRCompleteness
 
-private noncomputable def dotProductLeftAddMonoidHom (x : Vec F Idx) : Vec F Idx →+ F where
-  toFun := fun a => dotProduct a x
-  map_zero' := by simp [dotProduct]
-  map_add' a b := by
-    simp [dotProduct, add_mul, Finset.sum_add_distrib]
-
-omit [Fintype F] [Nonempty Idx] in
-private lemma dotProductLeftAddMonoidHom_surjective {x : Vec F Idx}
-    (hx : x ≠ 0) :
-    Function.Surjective (dotProductLeftAddMonoidHom (F := F) (Idx := Idx) x) := by
-  classical
-  obtain ⟨i, hi⟩ : ∃ i, x i ≠ 0 := by
-    by_contra h
-    apply hx
-    ext i
-    by_contra hi
-    exact h ⟨i, hi⟩
-  intro t
-  refine ⟨Pi.single i (t * (x i)⁻¹), ?_⟩
-  change ⟪Pi.single i (t * (x i)⁻¹), x⟫ᵥ = t
-  rw [dotProduct_comm, dotProduct_single]
-  field_simp [hi]
-
-omit [Nonempty Idx] in
-private lemma dotProduct_left_fiber_card_mul_card {x : Vec F Idx}
-    (hx : x ≠ 0) (t : F) :
-    ((Finset.univ.filter fun a : Vec F Idx => dotProduct a x = t).card) *
-      Fintype.card F = Fintype.card (Vec F Idx) := by
-  classical
-  let L : Vec F Idx →+ F := dotProductLeftAddMonoidHom (F := F) (Idx := Idx) x
-  have hsurj : Function.Surjective L :=
-    dotProductLeftAddMonoidHom_surjective (F := F) (Idx := Idx) hx
-  have hfibers : ∀ u : F,
-      (Finset.univ.filter fun a : Vec F Idx => L a = u).card =
-        (Finset.univ.filter fun a : Vec F Idx => L a = t).card := by
-    intro u
-    exact AddMonoidHom.card_fiber_eq_of_mem_range L (hsurj u) (hsurj t)
-  have hpartition :
-      (∑ u : F, (Finset.univ.filter fun a : Vec F Idx => L a = u).card) =
-        Fintype.card (Vec F Idx) := by
-    simpa using
-      (Finset.card_eq_sum_card_fiberwise
-        (s := (Finset.univ : Finset (Vec F Idx)))
-        (t := (Finset.univ : Finset F))
-        (f := fun a : Vec F Idx => L a)
-        (by intro a _; simp)).symm
-  calc
-    ((Finset.univ.filter fun a : Vec F Idx => dotProduct a x = t).card) *
-        Fintype.card F =
-      ((Finset.univ.filter fun a : Vec F Idx => L a = t).card) *
-        Fintype.card F := by rfl
-    _ = ∑ _u : F, (Finset.univ.filter fun a : Vec F Idx => L a = t).card := by
-        simp [mul_comm]
-    _ = ∑ u : F, (Finset.univ.filter fun a : Vec F Idx => L a = u).card := by
-        apply Finset.sum_congr rfl
-        intro u _
-        exact (hfibers u).symm
-    _ = Fintype.card (Vec F Idx) := hpartition
+section BLRSoundness
 
 private def agreementCount (f : ScalarFn F Idx) (α : Vec F Idx) : ℕ :=
   (Finset.univ.filter fun x : Vec F Idx => f x = linearFn α x).card
@@ -185,7 +128,11 @@ private lemma sum_agreementCount_lower (f : ScalarFn F Idx) :
     intro x
     by_cases hx : x = 0
     · simp [hx]
-    · have hmul := dotProduct_left_fiber_card_mul_card (F := F) (Idx := Idx) hx (f x)
+    · have hmul :
+          ((Finset.univ.filter fun α : Vec F Idx => dotProduct α x = f x).card) *
+              Fintype.card F = Fintype.card (Vec F Idx) := by
+        simpa [linearFn, dotProduct_comm] using
+          linearFn_fiber_card_mul_card (F := F) (Idx := Idx) hx (f x)
       have hfiber :
           (Finset.univ.filter fun α : Vec F Idx => dotProduct α x = f x).card = k := by
         dsimp [k, N, q]
@@ -824,24 +771,21 @@ private lemma sum_nonzero_neg (H : F → ℂ) :
   · intro c _
     rfl
 
-omit [DecidableEq F] [Fintype Idx] [DecidableEq Idx] [Nonempty Idx] in
-private lemma phaseLift_norm (f : ScalarFn F Idx) (c : F) (x : Vec F Idx) :
-    ‖phaseLift f c x‖ = 1 := by
-  classical
-  letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
-  letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
-  let ψ : AddChar F ℂ := baseChar (F := F)
-  have hphase : phaseLift f c x = ψ (c * f x) := by
-    simp [phaseLift, baseChar, ψ]
-  rw [hphase]
-  exact AddChar.norm_apply ψ (c * f x)
-
 omit [DecidableEq F] in
 private lemma fnNormSq_phaseLift (f : ScalarFn F Idx) (c : F) :
     fnNormSq (phaseLift f c) = 1 := by
   classical
+  have hnorm : ∀ x : Vec F Idx, ‖phaseLift f c x‖ = 1 := by
+    intro x
+    letI : Algebra (ZMod (ringChar F)) F := ZMod.algebra F (ringChar F)
+    letI : NeZero (ringChar F) := ⟨Nat.Prime.ne_zero (CharP.char_is_prime F (ringChar F))⟩
+    let ψ : AddChar F ℂ := baseChar (F := F)
+    have hphase : phaseLift f c x = ψ (c * f x) := by
+      simp [phaseLift, baseChar, ψ]
+    rw [hphase]
+    exact AddChar.norm_apply ψ (c * f x)
   unfold fnNormSq
-  simp [phaseLift_norm]
+  simp [hnorm]
 
 private lemma sum_norm_sq_phaseLinearCoeff (f : ScalarFn F Idx) {c : F}
     (hc : c ≠ 0) :
@@ -1107,7 +1051,7 @@ private lemma ab_average_one_add_phase_triple_sum (f : ScalarFn F Idx) :
         rfl
 
 omit [Nonempty Idx] in
-private lemma scalar_phase_triple_sum_fixed (f : ScalarFn F Idx) (η : Vec F Idx) :
+private lemma scalar_phase_triple_sum_fixed_eta (f : ScalarFn F Idx) (η : Vec F Idx) :
     (∑ a ∈ (nonzeroF (F := F)), ∑ b ∈ (nonzeroF (F := F)),
       ∑ c ∈ (nonzeroF (F := F)),
         phaseLinearCoeff f (c * a) η *
@@ -1217,7 +1161,7 @@ private lemma scalar_phase_triple_sum (f : ScalarFn F Idx) :
     _ = ∑ η : Vec F Idx, (linearFourierScoreC f η) ^ 3 := by
         apply Finset.sum_congr rfl
         intro η _
-        rw [scalar_phase_triple_sum_fixed]
+        rw [scalar_phase_triple_sum_fixed_eta]
 
 /-- Complex form of the exact BLR acceptance formula in terms of the Fourier scores
 `∑ c∈Fˣ, \widehat{f_c}(cα)`. -/
@@ -1408,7 +1352,7 @@ private lemma linearFourierScore_sup_nonneg (f : ScalarFn F Idx) :
 
 /-- Soundness of the finite-field BLR test in the Fourier-score form used by
 the proof: acceptance is at most `1 - distanceToLinear f`. -/
-theorem finite_field_blr_soundness (f : ScalarFn F Idx) :
+theorem blr_soundness (f : ScalarFn F Idx) :
     acceptanceProbabilityBLR f ≤ 1 - distanceToLinear f := by
   classical
   let nz : Finset F := nonzeroF (F := F)
@@ -1474,6 +1418,10 @@ theorem finite_field_blr_soundness (f : ScalarFn F Idx) :
           rw [distanceToLinear_fourier (F := F) (Idx := Idx) f]
           simp [M, coeffs, score]
 
+end BLRSoundness
+
+section FinalStatement
+
 omit [Nonempty Idx] in
 /-- The acceptance probability of the BLR test is non-negative. -/
 private lemma acceptanceProbabilityBLR_nonneg (f : ScalarFn F Idx) :
@@ -1492,7 +1440,8 @@ theorem blr (f : ScalarFn F Idx) :
     · rw [if_pos hf, blr_completeness (F := F) (Idx := Idx) hf]
     · rw [if_neg hf]
       exact acceptanceProbabilityBLR_nonneg (F := F) (Idx := Idx) f
-  · exact finite_field_blr_soundness (F := F) (Idx := Idx) f
+  · exact blr_soundness (F := F) (Idx := Idx) f
 
+end FinalStatement
 
 end BlrPcp

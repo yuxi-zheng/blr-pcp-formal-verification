@@ -23,6 +23,74 @@ def LinearSet : Finset (ScalarFn F Idx) := by
     exact Fintype.decidableExistsFintype
   exact Finset.univ.filter fun f => IsLinear f
 
+/-- The linear function `ℓ_a` as an additive monoid homomorphism. -/
+private noncomputable def linearFnAddMonoidHom (a : Vec F Idx) : Vec F Idx →+ F where
+  toFun := linearFn a
+  map_zero' := by simp [linearFn, dotProduct]
+  map_add' x y := by
+    simp [linearFn, dotProduct, mul_add, Finset.sum_add_distrib]
+
+omit [Fintype F] [Nonempty Idx] in
+/-- A nonzero linear function `ℓ_a : F^Idx → F` is surjective. -/
+private lemma linearFnAddMonoidHom_surjective {a : Vec F Idx}
+    (ha : a ≠ 0) :
+    Function.Surjective (linearFnAddMonoidHom (F := F) (Idx := Idx) a) := by
+  classical
+  obtain ⟨i, hi⟩ : ∃ i, a i ≠ 0 := by
+    by_contra h
+    apply ha
+    ext i
+    by_contra hi
+    exact h ⟨i, hi⟩
+  intro t
+  refine ⟨Pi.single i (t * (a i)⁻¹), ?_⟩
+  change linearFn a (Pi.single i (t * (a i)⁻¹)) = t
+  rw [linearFn, dotProduct, Finset.sum_eq_single i]
+  · simp [Pi.single_eq_same]
+    field_simp [hi]
+  · intro j _ hij
+    simp [Pi.single_eq_of_ne hij]
+  · intro hi_univ
+    simp at hi_univ
+
+omit [Nonempty Idx] in
+/-- Every fiber of a nonzero linear function `ℓ_a : F^Idx → F` has size
+`|F^Idx| / |F|`, expressed multiplicatively to avoid natural-number division. -/
+lemma linearFn_fiber_card_mul_card {a : Vec F Idx}
+    (ha : a ≠ 0) (t : F) :
+    ((Finset.univ.filter fun x : Vec F Idx => linearFn a x = t).card) *
+      Fintype.card F = Fintype.card (Vec F Idx) := by
+  classical
+  let L : Vec F Idx →+ F := linearFnAddMonoidHom (F := F) (Idx := Idx) a
+  have hsurj : Function.Surjective L :=
+    linearFnAddMonoidHom_surjective (F := F) (Idx := Idx) ha
+  have hfibers : ∀ u : F,
+      (Finset.univ.filter fun x : Vec F Idx => L x = u).card =
+        (Finset.univ.filter fun x : Vec F Idx => L x = t).card := by
+    intro u
+    exact AddMonoidHom.card_fiber_eq_of_mem_range L (hsurj u) (hsurj t)
+  have hpartition :
+      (∑ u : F, (Finset.univ.filter fun x : Vec F Idx => L x = u).card) =
+        Fintype.card (Vec F Idx) := by
+    simpa using
+      (Finset.card_eq_sum_card_fiberwise
+        (s := (Finset.univ : Finset (Vec F Idx)))
+        (t := (Finset.univ : Finset F))
+        (f := fun x : Vec F Idx => L x)
+        (by intro x _; simp)).symm
+  calc
+    ((Finset.univ.filter fun x : Vec F Idx => linearFn a x = t).card) *
+        Fintype.card F =
+      ((Finset.univ.filter fun x : Vec F Idx => L x = t).card) *
+        Fintype.card F := by rfl
+    _ = ∑ _u : F, (Finset.univ.filter fun x : Vec F Idx => L x = t).card := by
+        simp [mul_comm]
+    _ = ∑ u : F, (Finset.univ.filter fun x : Vec F Idx => L x = u).card := by
+        apply Finset.sum_congr rfl
+        intro u _
+        exact (hfibers u).symm
+    _ = Fintype.card (Vec F Idx) := hpartition
+
 section Phases
 
 omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
@@ -327,55 +395,7 @@ theorem linearSet_wellSeparated {f g : ScalarFn F Idx}
   have hfiber_mul :
       ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card) *
         Fintype.card F = Fintype.card (Vec F Idx) := by
-    let L : Vec F Idx →+ F := {
-      toFun := linearFn c
-      map_zero' := by simp [linearFn, dotProduct]
-      map_add' x y := by
-        simp [linearFn, dotProduct, mul_add, Finset.sum_add_distrib]
-    }
-    have hsurj : Function.Surjective L := by
-      obtain ⟨i, hi⟩ : ∃ i, c i ≠ 0 := by
-        by_contra h
-        apply hc
-        ext i
-        by_contra hi
-        exact h ⟨i, hi⟩
-      intro t
-      refine ⟨Pi.single i (t * (c i)⁻¹), ?_⟩
-      change linearFn c (Pi.single i (t * (c i)⁻¹)) = t
-      rw [linearFn, dotProduct, Finset.sum_eq_single i]
-      · simp [Pi.single_eq_same]
-        field_simp [hi]
-      · intro j _ hij
-        simp [Pi.single_eq_of_ne hij]
-      · intro hi_univ
-        simp at hi_univ
-    have hfibers : ∀ u : F,
-        (Finset.univ.filter fun x : Vec F Idx => L x = u).card =
-          (Finset.univ.filter fun x : Vec F Idx => L x = 0).card := by
-      intro u
-      exact AddMonoidHom.card_fiber_eq_of_mem_range L (hsurj u) (hsurj 0)
-    have hpartition :
-        (∑ u : F, (Finset.univ.filter fun x : Vec F Idx => L x = u).card) =
-          Fintype.card (Vec F Idx) := by
-      simpa using
-        (Finset.card_eq_sum_card_fiberwise
-          (s := (Finset.univ : Finset (Vec F Idx)))
-          (t := (Finset.univ : Finset F))
-          (f := fun x : Vec F Idx => L x)
-          (by intro x _; simp)).symm
-    calc
-      ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card) *
-          Fintype.card F =
-        ((Finset.univ.filter fun x : Vec F Idx => L x = 0).card) *
-          Fintype.card F := by rfl
-      _ = ∑ _u : F, (Finset.univ.filter fun x : Vec F Idx => L x = 0).card := by
-          simp [mul_comm]
-      _ = ∑ u : F, (Finset.univ.filter fun x : Vec F Idx => L x = u).card := by
-          apply Finset.sum_congr rfl
-          intro u _
-          exact (hfibers u).symm
-      _ = Fintype.card (Vec F Idx) := hpartition
+    exact linearFn_fiber_card_mul_card (F := F) (Idx := Idx) hc 0
   have hagreement :
       (∑ x : Vec F Idx, (if f x = g x then (1 : Real) else 0)) =
         ((Finset.univ.filter fun x : Vec F Idx => linearFn c x = 0).card : Real) := by
