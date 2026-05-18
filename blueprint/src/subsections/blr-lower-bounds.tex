@@ -1,0 +1,212 @@
+\begin{theorem}[Counterexample to the proposed cubic lower bound]
+\label{thm:blr-cubic-lower-bound-counterexample}
+The inequality
+\[
+    \left(1-\delta(f,\lin)\right)^3
+    \le
+    \Pr[\BLRVerifier=1]
+\]
+does not hold for all functions $f:\bbF_q^n\to\bbF_q$ with the finite-field BLR verifier
+from \cref{def:finite-field-blr-test}.
+\end{theorem}
+
+\begin{proof}
+It suffices to give a concrete counterexample. Take $q=2$ and $n=1$, so the domain and
+codomain are both $\bbF_2$. Let
+\[
+    f:\bbF_2\to\bbF_2,
+    \qquad
+    f(0)=1,\quad f(1)=1.
+\]
+The homogeneous linear maps $\bbF_2\to\bbF_2$ are exactly the zero map and the identity map.
+The function $f$ agrees with the zero map at no point, and it agrees with the identity map
+only at the point $1$. Hence
+\[
+    \delta(f,\lin)=\frac{1}{2},
+    \qquad
+    1-\delta(f,\lin)=\frac{1}{2}.
+\]
+
+For the verifier, the only possible nonzero field elements are $a=b=1$. Thus the verifier
+accepts on a pair $(x,y)$ exactly when
+\[
+    f(x)+f(y)=f(x+y).
+\]
+Since $f$ is constantly $1$, the left-hand side is $1+1=0$ in $\bbF_2$, while the
+right-hand side is $1$. Therefore the verifier rejects for every choice of $x,y$, and
+\[
+    \Pr[\BLRVerifier=1]=0.
+\]
+But
+\[
+    \left(1-\delta(f,\lin)\right)^3
+    =
+    \left(\frac{1}{2}\right)^3
+    =
+    \frac{1}{8}
+    >
+    0
+    =
+    \Pr[\BLRVerifier=1].
+\]
+This contradicts the proposed lower bound.
+\end{proof}
+
+\begin{theorem}[Lower bound from agreement with a linear function]
+\label{thm:blr-lower-bound-from-agreement}
+Let $f:\bbF_q^n\to\bbF_q$. Suppose there exists $\ell\in\lin$ such that
+\[
+    \Pr_{x\in\bbF_q^n}[f(x)=\ell(x)]\ge 1-\varepsilon.
+\]
+Then
+\[
+    \Pr[\BLRVerifier=1]\ge 1-3\varepsilon+2\varepsilon^2.
+\]
+In particular,
+\[
+    \Pr[\BLRVerifier=1]\ge 1-3\delta(f,\lin)+2\delta(f,\lin)^2.
+\]
+\end{theorem}
+
+\begin{proof}
+Let
+\[
+    G:=\{z\in\bbF_q^n : f(z)=\ell(z)\}
+\]
+be the agreement set, and let $B:=\bbF_q^n\setminus G$ be the bad set. Write
+\[
+    \eta:=\Pr_z[z\in B].
+\]
+By assumption, $\eta\le\varepsilon$.
+
+The verifier samples $a,b\in\bbF_q^\times$ and $x,y\in\bbF_q^n$, and queries
+\[
+    x,\qquad y,\qquad ax+by.
+\]
+For fixed $a,b\in\bbF_q^\times$, the random variables $x$, $y$, and $ax+by$ are each
+uniform on $\bbF_q^n$. Indeed, $x$ and $y$ are uniform by definition, and $ax+by$ is
+uniform because, after fixing $a$, $b$, and $x$, the map
+\[
+    y\mapsto ax+by
+\]
+is a bijection of $\bbF_q^n$.
+
+Therefore
+\[
+    \Pr[x\in B]=\Pr[y\in B]=\Pr[ax+by\in B]=\eta.
+\]
+Moreover the three queried points are pairwise independent. For fixed
+$a,b\in\bbF_q^\times$, each of the maps
+\[
+    (x,y)\mapsto (x,y),\qquad
+    (x,y)\mapsto (x,ax+by),\qquad
+    (x,y)\mapsto (y,ax+by)
+\]
+is a bijection from $\bbF_q^n\times\bbF_q^n$ to itself. Hence
+\[
+    \Pr[x\in B,\ y\in B]
+    =
+    \Pr[x\in B,\ ax+by\in B]
+    =
+    \Pr[y\in B,\ ax+by\in B]
+    =
+    \eta^2.
+\]
+By inclusion--exclusion and the trivial bound
+\[
+    \Pr[x\in B,\ y\in B,\ ax+by\in B]\le \Pr[x\in B,\ y\in B]=\eta^2,
+\]
+we get
+\[
+    \Pr[x\in B\text{ or }y\in B\text{ or }ax+by\in B]
+    \le
+    3\eta-3\eta^2+\eta^2
+    =
+    3\eta-2\eta^2.
+\]
+On the complementary event, the verifier sees the same three values as it would see from
+$\ell$:
+\[
+    f(x)=\ell(x),\qquad
+    f(y)=\ell(y),\qquad
+    f(ax+by)=\ell(ax+by).
+\]
+Since $\ell$ is linear,
+\[
+    \ell(ax+by)=a\ell(x)+b\ell(y).
+\]
+Thus
+\[
+    f(ax+by)=a f(x)+b f(y),
+\]
+so the verifier accepts. Hence the acceptance probability is at least the probability of
+the complementary event:
+\[
+    \Pr[\BLRVerifier=1]\ge 1-3\eta+2\eta^2.
+\]
+If $\varepsilon\ge 1/2$, then $1-3\varepsilon+2\varepsilon^2\le 0$, so the desired bound is
+trivial. Otherwise $\varepsilon\le 1/2$, and since $\eta\le\varepsilon$, the function
+$1-3t+2t^2$ is decreasing on the interval containing both $\eta$ and $\varepsilon$. This gives
+\[
+    \Pr[\BLRVerifier=1]\ge 1-3\varepsilon+2\varepsilon^2.
+\]
+
+Taking $\ell$ to be a closest linear function gives the final statement with
+$\varepsilon=\delta(f,\lin)$.
+\end{proof}
+
+\begin{theorem}[Boolean tightness for subspace error sets]
+\label{thm:boolean-blr-lower-bound-tight-subspace}
+The bound in \cref{thm:blr-lower-bound-from-agreement} is tight for the Boolean BLR test
+for infinitely many values of $\varepsilon$. More precisely, let $q=2$ and let
+$B\le \bbF_2^n$ be a linear subspace of density $\varepsilon=2^{-k}$. Define
+\[
+    f:\bbF_2^n\to\bbF_2,
+    \qquad
+    f(x)=
+    \begin{cases}
+        1 & \text{if } x\in B,\\
+        0 & \text{if } x\notin B.
+    \end{cases}
+\]
+Then $\delta(f,\lin)=\varepsilon$ and
+\[
+    \Pr[\BLRVerifier=1]=1-3\varepsilon+2\varepsilon^2.
+\]
+\end{theorem}
+
+\begin{proof}
+The zero linear function disagrees with $f$ exactly on $B$, so
+$\delta(f,\lin)\le\varepsilon$. If $m:\bbF_2^n\to\bbF_2$ is any nonzero linear function,
+then $m$ is balanced. Thus $m$ agrees with the indicator of $B$ on at most half of the
+domain, whereas the zero linear function agrees on a $1-\varepsilon$ fraction of the domain.
+For $\varepsilon\le 1/2$, this shows that the closest linear function is the zero function,
+so $\delta(f,\lin)=\varepsilon$.
+
+Since $q=2$, the verifier has $a=b=1$ and accepts iff
+\[
+    f(x)+f(y)=f(x+y).
+\]
+Because $B$ is a subspace, among the three points $x$, $y$, and $x+y$, the number lying in
+$B$ is never exactly two. Therefore the verifier rejects exactly when at least one of the
+three queried points lies in $B$.
+
+The three events
+\[
+    x\in B,\qquad y\in B,\qquad x+y\in B
+\]
+each have probability $\varepsilon$, and each pair has probability $\varepsilon^2$.
+Since $B$ is a subspace, the triple event also has probability $\varepsilon^2$: if
+$x,y\in B$, then $x+y\in B$. Hence
+\[
+    \Pr[\BLRVerifier=0]
+    =
+    3\varepsilon-3\varepsilon^2+\varepsilon^2
+    =
+    3\varepsilon-2\varepsilon^2.
+\]
+Taking complements gives
+\[
+    \Pr[\BLRVerifier=1]=1-3\varepsilon+2\varepsilon^2.
+\]
+\end{proof}
