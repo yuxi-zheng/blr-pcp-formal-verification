@@ -1,6 +1,6 @@
 import Architect
-import BlrPcp.Oracle
-import BlrPcp.Problems.LinEq
+import BlrPcp.QESATExpSizePCP.PCPs
+import BlrPcp.QESATExpSizePCP.LinEq
 import Mathlib.Algebra.MvPolynomial.SchwartzZippel
 
 /-!

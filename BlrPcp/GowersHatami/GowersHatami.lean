@@ -34,7 +34,7 @@ universe u
 variable {d : Nat}
 variable (G : Type u) [Group G] [Fintype G]
 
-namespace GH
+namespace GowersHatami
 
 noncomputable section
 

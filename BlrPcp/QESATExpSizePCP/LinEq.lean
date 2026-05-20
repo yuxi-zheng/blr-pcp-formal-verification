@@ -1,5 +1,5 @@
 import Architect
-import BlrPcp.Oracle
+import BlrPcp.QESATExpSizePCP.PCPs
 import Mathlib.Algebra.MvPolynomial.SchwartzZippel
 
 /-!

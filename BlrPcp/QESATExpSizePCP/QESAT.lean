@@ -1,7 +1,7 @@
 import Architect
-import BlrPcp.Oracle
-import BlrPcp.Problems.TensorEq
-import BlrPcp.Problems.lpcp_pcp_reduction
+import BlrPcp.QESATExpSizePCP.PCPs
+import BlrPcp.QESATExpSizePCP.TensorEq
+import BlrPcp.QESATExpSizePCP.lpcp_pcp_reduction
 import CompPoly.Data.Nat.Bitwise
 import CompPoly.Multivariate.CMvPolynomial
 import CompPoly.Multivariate.MvPolyEquiv.Eval

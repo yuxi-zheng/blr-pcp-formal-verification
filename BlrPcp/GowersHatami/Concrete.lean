@@ -1,4 +1,4 @@
-import BlrPcp.GH.GowersHatami
+import BlrPcp.GowersHatami.GowersHatami
 import Mathlib.Data.Fintype.EquivFin
 import Mathlib.LinearAlgebra.Matrix.Rank
 import Mathlib.LinearAlgebra.Matrix.Reindex
@@ -6,7 +6,7 @@ import Mathlib.LinearAlgebra.Matrix.Reindex
 /-!
 # Concrete finite-dimensional corollary of the abstract Gowers-Hatami theorem
 
-This file converts the abstract finite-coordinate witness from `GH.GowersHatami`
+This file converts the abstract finite-coordinate witness from `GowersHatami.GowersHatami`
 into the reindexed `Fin d'` version.
 
 The only work here is bookkeeping: an abstract finite index type
@@ -22,7 +22,7 @@ universe u
 variable {d : Nat}
 variable (G : Type u) [Group G] [Fintype G]
 
-namespace GH
+namespace GowersHatami
 
 noncomputable section
 /-! ## Reindexing an abstract witness to a numeric dimension -/
@@ -247,4 +247,4 @@ theorem gowers_hatami [DecidableEq G]
 
 end
 
-end GH
+end GowersHatami
