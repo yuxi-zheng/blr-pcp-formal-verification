@@ -7,29 +7,82 @@ Let $\omega_p = e^{2\pi i/p}$.
 
 \begin{definition}[Field trace]
 \label{def:field-trace}
+\lean{Algebra.trace}
+\leanok
 The field trace $\Tr: \bbF_q \to \bbF_p$ is
 \[
     \Tr(z) := \sum_{i=0}^{s-1} z^{p^i}.
 \]
 \end{definition}
 
+\begin{definition}[Base additive character]
+\label{def:base-character}
+\lean{BlrPcp.baseChar}
+\uses{def:field-trace}
+\leanok
+The base additive character $\psi:\bbF_q\to\bbC$ is
+\[
+    \psi(z) := \omega_p^{\Tr(z)}.
+\]
+\end{definition}
+
 \begin{definition}[Additive characters]
 \label{def:additive-character}
+\lean{BlrPcp.charFn}
+\uses{def:base-character}
+\leanok
 For $\alpha\in\bbF_q^n$, define the additive character
 $\chi_\alpha: \bbF_q^n\to\bbC$ by
 \[
-    \chi_\alpha(x) := \omega_p^{\Tr(\inner{\alpha}{x})},
+    \chi_\alpha(x) := \psi(\inner{\alpha}{x})
+    = \omega_p^{\Tr(\inner{\alpha}{x})},
 \]
 where $\inner{\alpha}{x}=\sum_{i=1}^n \alpha_i x_i\in\bbF_q$.
 \end{definition}
 
-\begin{definition}[Inner product and Fourier coefficient]
-\label{def:fourier-coefficient}
+\begin{definition}[Expectation]
+\label{def:expectation}
+\lean{BlrPcp.expectation}
+\leanok
+For a function $h:\bbF_q^n\to\bbC$, define its uniform expectation by
+\[
+    \bbE_{x\in\bbF_q^n}[h(x)]
+    := \frac{1}{q^n}\sum_{x\in\bbF_q^n} h(x).
+\]
+\end{definition}
+
+\begin{definition}[Inner product]
+\label{def:function-inner-product}
+\lean{BlrPcp.fnInner}
+\uses{def:expectation}
+\leanok
 For functions $h_1,h_2:\bbF_q^n\to\bbC$, define
 \[
     \inner{h_1}{h_2}
     := \bbE_{x\in\bbF_q^n}\left[h_1(x)\overline{h_2(x)}\right].
 \]
+\end{definition}
+
+\begin{definition}[$L_2$ norm]
+\label{def:function-l2-norm}
+\lean{BlrPcp.fnNorm}
+\uses{def:expectation,def:function-inner-product}
+\leanok
+For a function $h:\bbF_q^n\to\bbC$, define its $L_2$ norm by
+\[
+    \|h\|_2
+    :=
+    \left(\bbE_{x\in\bbF_q^n}\left[\abs{h(x)}^2\right]\right)^{1/2}
+    =
+    \sqrt{\inner{h}{h}}.
+\]
+\end{definition}
+
+\begin{definition}[Fourier coefficient]
+\label{def:fourier-coefficient}
+\lean{BlrPcp.fourierCoeff}
+\uses{def:function-inner-product,def:additive-character}
+\leanok
 For $h:\bbF_q^n\to\bbC$ and $\alpha\in\bbF_q^n$, define
 \[
     \widehat h(\alpha)
@@ -38,21 +91,23 @@ For $h:\bbF_q^n\to\bbC$ and $\alpha\in\bbF_q^n$, define
 \]
 \end{definition}
 
-\begin{lemma}[Character orthogonality]
-\label{lem:character-orthogonality}
+\begin{lemma}[Characters are orthonormal]
+\label{lem:character-orthonormal}
+\lean{BlrPcp.characters_orthonormal}
+\uses{def:additive-character,def:function-inner-product}
+\leanok
 For every $\alpha,\beta\in\bbF_q^n$,
 \[
-    \bbE_{x\in\bbF_q^n}\left[\chi_\alpha(x)\overline{\chi_\beta(x)}\right]
+    \inner{\chi_\alpha}{\chi_\beta}
     =
     \begin{cases}
         1 & \text{if } \alpha=\beta,\\
         0 & \text{if } \alpha\ne\beta.
     \end{cases}
 \]
-Equivalently, $\bbE_x[\chi_\alpha(x)]=0$ for $\alpha\ne 0$ and equals $1$ for $\alpha=0$.
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\leanok
 First observe that for every $\alpha,\beta\in\bbF_q^n$ and every $x\in\bbF_q^n$,
 \[
     \chi_\alpha(x)\overline{\chi_\beta(x)}
@@ -126,24 +181,20 @@ Combining the two cases proves the stated orthogonality relation. The equivalent
 follows by taking $\beta=0$.
 \end{proof}
 
-\begin{lemma}[Fourier inversion and Parseval]
-\label{lem:fourier-inversion-parseval}
-For every function $h:\bbF_q^n\to\bbC$,
+\begin{lemma}[Fourier inversion]
+\label{lem:fourier-inversion}
+\lean{BlrPcp.fourier_inversion}
+\uses{def:fourier-coefficient,def:additive-character}
+\leanok
+For every function $h:\bbF_q^n\to\bbC$ we have
 \[
     h(x)=\sum_{\alpha\in\bbF_q^n}\widehat h(\alpha)\chi_\alpha(x)
-    \quad\text{for every }x\in\bbF_q^n,
+    \quad\text{for every }x\in\bbF_q^n.
 \]
-and
-\[
-    \sum_{\alpha\in\bbF_q^n}\abs{\widehat h(\alpha)}^2
-    = \bbE_{x\in\bbF_q^n}\left[\abs{h(x)}^2\right].
-\]
-In particular, if $\abs{h(x)}=1$ for every $x$, then
-$\sum_{\alpha\in\bbF_q^n}\abs{\widehat h(\alpha)}^2=1$.
 \end{lemma}
 
-\begin{proof}
-By Lemma~1.1.4, the additive characters
+\begin{proof}\uses{lem:character-orthonormal, def:function-inner-product}\leanok
+By \cref{lem:character-orthonormal}, the additive characters
 \[
     \{\chi_\alpha : \alpha \in \mathbb F_q^n\}
 \]
@@ -201,48 +252,83 @@ formula
     \sum_{\alpha\in\mathbb F_q^n}
         \widehat h(\alpha)\chi_\alpha(x).
 \]
+\end{proof}
 
-It remains to prove Parseval's identity. Using the Fourier expansion and
-orthonormality, we compute
+\begin{lemma}[Plancherel identity]
+\label{lem:fourier-plancherel}
+\lean{BlrPcp.fourier_plancherel}
+\uses{def:function-inner-product,def:fourier-coefficient}
+\leanok
+For every pair of functions $f,g:\bbF_q^n\to\bbC$,
 \[
-\begin{aligned}
-    \mathbb E_x |h(x)|^2
-    &= \langle h,h\rangle \\
-    &=
-    \left\langle
-        \sum_{\alpha\in\mathbb F_q^n}
-            \widehat h(\alpha)\chi_\alpha,
-        \sum_{\beta\in\mathbb F_q^n}
-            \widehat h(\beta)\chi_\beta
-    \right\rangle \\
-    &=
-    \sum_{\alpha,\beta\in\mathbb F_q^n}
-        \widehat h(\alpha)
-        \overline{\widehat h(\beta)}
-        \langle \chi_\alpha,\chi_\beta\rangle .
-\end{aligned}
-\]
-Again, by orthonormality,
-\(\langle \chi_\alpha,\chi_\beta\rangle=0\) when \(\alpha\neq\beta\), and
-\(\langle \chi_\alpha,\chi_\alpha\rangle=1\). Hence the double sum reduces to
-\[
-    \mathbb E_x |h(x)|^2
+    \sum_{\alpha\in\bbF_q^n}
+        \widehat f(\alpha)\overline{\widehat g(\alpha)}
     =
-    \sum_{\alpha\in\mathbb F_q^n}
+    \inner{f}{g}.
+\]
+\end{lemma}
+
+\begin{proof}\uses{lem:fourier-inversion}\leanok
+By \cref{lem:fourier-inversion},
+\[
+    f=\sum_{\alpha\in\bbF_q^n}\widehat f(\alpha)\chi_\alpha .
+\]
+Taking the inner product with \(g\) and using linearity in the first argument gives
+\[
+    \inner{f}{g}
+    =
+    \sum_{\alpha\in\bbF_q^n}
+        \widehat f(\alpha)\inner{\chi_\alpha}{g}.
+\]
+Since
+\[
+    \inner{\chi_\alpha}{g}
+    =
+    \overline{\inner{g}{\chi_\alpha}}
+    =
+    \overline{\widehat g(\alpha)},
+\]
+we obtain
+\[
+    \inner{f}{g}
+    =
+    \sum_{\alpha\in\bbF_q^n}
+        \widehat f(\alpha)\overline{\widehat g(\alpha)}.
+\]
+\end{proof}
+
+\begin{lemma}[Parseval identity]
+\label{lem:parseval-identity}
+\lean{BlrPcp.parseval_identity}
+\uses{def:fourier-coefficient,def:function-l2-norm}
+\leanok
+For every function $h:\bbF_q^n\to\bbC$,
+\[
+    \sum_{\alpha\in\bbF_q^n}\abs{\widehat h(\alpha)}^2
+    =
+    \|h\|_2^2.
+\]
+\end{lemma}
+
+\begin{proof}\uses{lem:fourier-plancherel,def:function-inner-product}\leanok
+Apply \cref{lem:fourier-plancherel} with \(f=g=h\):
+\[
+    \sum_{\alpha\in\bbF_q^n}
         \widehat h(\alpha)\overline{\widehat h(\alpha)}
     =
-    \sum_{\alpha\in\mathbb F_q^n}
-        |\widehat h(\alpha)|^2 .
+    \inner{h}{h}.
 \]
-This proves Parseval's identity.
-
-Finally, if \(|h(x)|=1\) for every \(x\in\mathbb F_q^n\), then
+The left-hand side is
 \[
-    \mathbb E_x |h(x)|^2 = \mathbb E_x 1 = 1.
+    \sum_{\alpha\in\bbF_q^n}\abs{\widehat h(\alpha)}^2,
 \]
-Therefore Parseval gives
+and by the definitions of the inner product and the $L_2$ norm, the right-hand side is
 \[
-    \sum_{\alpha\in\mathbb F_q^n} |\widehat h(\alpha)|^2 = 1.
+    \inner{h}{h}
+    =
+    \bbE_{x\in\bbF_q^n}\left[\abs{h(x)}^2\right]
+    =
+    \|h\|_2^2.
 \]
 \end{proof}
 
@@ -461,7 +547,7 @@ For every $x\in\bbF_q^n$,
     = \chi_{c\alpha}(x).
 \]
 The statement about Fourier coefficients follows from
-\cref{lem:character-orthogonality}.
+\cref{lem:character-orthonormal}.
 \end{proof}
 
 \begin{lemma}[Distance to linearity in Fourier form]
@@ -591,7 +677,7 @@ Since
 \[
     \chi_\gamma(ax+by)=\chi_{a\gamma}(x)\chi_{b\gamma}(y),
 \]
-\cref{lem:character-orthogonality} implies that the inner expectation is $1$ exactly when
+\cref{lem:character-orthonormal} implies that the inner expectation is $1$ exactly when
 \[
     \alpha+a\gamma=0
     \quad\text{and}\quad
@@ -645,7 +731,7 @@ Expanding the square gives
         \widehat{\fexp{\ff}{b}}(b\alpha).
 \]
 For fixed $a,b\in\bbF_q^\times$, Cauchy--Schwarz and
-\cref{lem:fourier-inversion-parseval} give
+\cref{lem:parseval-identity} give
 \begin{align*}
 \abs{\sum_{\alpha\in\bbF_q^n}
         \widehat{\fexp{\ff}{a}}(a\alpha)
@@ -656,7 +742,8 @@ For fixed $a,b\in\bbF_q^\times$, Cauchy--Schwarz and
 &=1.
 \end{align*}
 The equality uses that multiplication by $a$ and by $b$ permutes $\bbF_q^n$, and that
-$\abs{\fexp{\ff}{a}(x)}=\abs{\fexp{\ff}{b}(x)}=1$ for every $x$.
+Parseval plus $\abs{\fexp{\ff}{a}(x)}=\abs{\fexp{\ff}{b}(x)}=1$ for every $x$
+make both squared $L_2$ norms equal to \(1\).
 Summing over the $(q-1)^2$ choices of $(a,b)$ gives the result.
 \end{proof}
 

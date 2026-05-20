@@ -188,7 +188,7 @@ omit [Nonempty Idx] in
 /-- The Fourier characters `χ_α` form an orthonormal basis of all complex-valued
 functions on `F^Idx`: distinct characters have zero inner product, each
 character has unit norm, and their span is the whole function space. -/
-lemma characters_orthonormal_basis :
+lemma characters_orthonormal :
     (∀ α β : Vec F Idx, ⟪charFn α, charFn β⟫ = if α = β then 1 else 0) ∧
       Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx))) = ⊤ := by
   classical
@@ -227,13 +227,6 @@ section HilbertSpaceTranslation
 omit [DecidableEq F] [Nonempty Idx] in
 /-- The finite vector space `F^Idx` has positive cardinality. -/
 lemma card_vec_pos : 0 < Fintype.card (Vec F Idx) := Fintype.card_pos
-
-omit [Field F] [DecidableEq F] [Nonempty Idx] in
-/-- The expectation-normalized squared norm is the `PiLp` norm squared divided
-by the number of points of `F^Idx`. -/
-private lemma fnNormSq_eq_card_inv_mul_norm_sq (g : ComplexFn F Idx) :
-    fnNormSq g = (Fintype.card (Vec F Idx) : ℝ)⁻¹ * ‖WithLp.toLp 2 g‖ ^ 2 := by
-  simp [fnNormSq, PiLp.norm_sq_eq_of_L2]
 
 omit [DecidableEq F] [Nonempty Idx] in
 /-- The square root of `|F^Idx|`, viewed in `ℂ`, is nonzero. -/
@@ -291,10 +284,10 @@ lemma normalizedCharLp_orthonormal :
   by_cases h : α = β
   · subst h
     have horthα : fnInner (charFn α) (charFn α) = (1 : ℂ) := by
-      simpa using (characters_orthonormal_basis (F := F) (Idx := Idx)).1 α α
+      simpa using (characters_orthonormal (F := F) (Idx := Idx)).1 α α
     simp [horthα]
     simpa using (inv_sqrt_card_sq_mul_card (F := F) (Idx := Idx))
-  · have horth := (characters_orthonormal_basis (F := F) (Idx := Idx)).1 β α
+  · have horth := (characters_orthonormal (F := F) (Idx := Idx)).1 β α
     have h' : β ≠ α := by simpa [eq_comm] using h
     simp [horth, h, h']
 
@@ -317,38 +310,6 @@ lemma normalizedCharLp_inner_eq_sqrt_card_mul_fnInner (g : ComplexFn F Idx)
     _ = (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * fnInner g (charFn α) := by
       rw [sqrt_card_mul_inv_sqrt_card]
 
-omit [DecidableEq F] in
-/-- The conjugate-oriented version of `normalizedCharLp_inner_eq_sqrt_card_mul_fnInner`. -/
-private lemma toLp_inner_normalizedCharLp_eq_sqrt_card_mul_star_fnInner (g : ComplexFn F Idx)
-    (α : Vec F Idx) :
-    inner ℂ (WithLp.toLp 2 g) (normalizedCharLp (F := F) (Idx := Idx) α) =
-      (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * star (fnInner g (charFn α)) := by
-  calc
-    inner ℂ (WithLp.toLp 2 g) (normalizedCharLp (F := F) (Idx := Idx) α) =
-        star (inner ℂ (normalizedCharLp (F := F) (Idx := Idx) α) (WithLp.toLp 2 g)) := by
-          exact (inner_conj_symm (WithLp.toLp 2 g)
-            (normalizedCharLp (F := F) (Idx := Idx) α)).symm
-    _ = star ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * fnInner g (charFn α)) := by
-          rw [normalizedCharLp_inner_eq_sqrt_card_mul_fnInner]
-    _ = (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * star (fnInner g (charFn α)) := by
-          simp
-
-omit [DecidableEq F] in
-/-- The squared norm of a normalized-character coefficient is `|F^Idx|` times
-the squared norm of the corresponding expectation inner product. -/
-private lemma norm_sq_normalizedCharLp_inner (g : ComplexFn F Idx) (α : Vec F Idx) :
-    ‖inner ℂ (normalizedCharLp (F := F) (Idx := Idx) α) (WithLp.toLp 2 g)‖ ^ 2 =
-      (Fintype.card (Vec F Idx) : ℝ) * ‖fnInner g (charFn α)‖ ^ 2 := by
-  rw [normalizedCharLp_inner_eq_sqrt_card_mul_fnInner, norm_mul]
-  simp only [Complex.norm_real]
-  calc
-    (|√(Fintype.card (Vec F Idx) : ℝ)| * ‖fnInner g (charFn α)‖) ^ 2 =
-        |√(Fintype.card (Vec F Idx) : ℝ)| ^ 2 * ‖fnInner g (charFn α)‖ ^ 2 := by ring
-    _ = (√(Fintype.card (Vec F Idx) : ℝ)) ^ 2 * ‖fnInner g (charFn α)‖ ^ 2 := by
-        rw [abs_of_nonneg (Real.sqrt_nonneg _)]
-    _ = (Fintype.card (Vec F Idx) : ℝ) * ‖fnInner g (charFn α)‖ ^ 2 := by
-        rw [Real.sq_sqrt (Nat.cast_nonneg _)]
-
 omit [Nonempty Idx] in
 /-- Transporting the character basis into `PiLp` still spans all functions. -/
 private lemma toLp_charFn_span_top :
@@ -356,7 +317,7 @@ private lemma toLp_charFn_span_top :
   let e : WithLp 2 (ComplexFn F Idx) ≃ₗ[ℂ] ComplexFn F Idx :=
     WithLp.linearEquiv 2 ℂ (ComplexFn F Idx)
   have hspan : Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx))) = ⊤ :=
-    (characters_orthonormal_basis (F := F) (Idx := Idx)).2
+    (characters_orthonormal (F := F) (Idx := Idx)).2
   calc
     Submodule.span ℂ (Set.range fun α : Vec F Idx => WithLp.toLp 2 (charFn α)) =
         (Submodule.span ℂ (Set.range (charFn (F := F) (Idx := Idx)))).map e.symm.toLinearMap := by
@@ -420,82 +381,67 @@ lemma fourier_inversion (g : ComplexFn F Idx) (x : Vec F Idx) :
 
 end FourierInversion
 
-section ParsevaPlancharel
+section PlancherelParseval
 
-/-- Parseval's identity for the finite-field Fourier transform. -/
-lemma parseval_identity (g : ComplexFn F Idx) :
-    ∑ α, ‖fourierCoeff g α‖ ^ 2 = fnNormSq g := by
+omit [Field F] [DecidableEq F] [Nonempty Idx] in
+/-- The inner product is linear in its left argument over finite sums of functions. -/
+private lemma fnInner_sum_left {ι : Type*} [Fintype ι]
+    (A : ι → ℂ) (φ : ι → ComplexFn F Idx) (g : ComplexFn F Idx) :
+    fnInner (fun x => ∑ i, A i * φ i x) g =
+      ∑ i, A i * fnInner (φ i) g := by
   classical
-  let b : OrthonormalBasis (Vec F Idx) ℂ (PiLp 2 fun _ : Vec F Idx => ℂ) :=
-    normalizedCharOrthonormalBasis (F := F) (Idx := Idx)
-  have hb : ∑ α, ‖inner ℂ (b α) (WithLp.toLp 2 g)‖ ^ 2 = ‖WithLp.toLp 2 g‖ ^ 2 :=
-    OrthonormalBasis.sum_sq_norm_inner_right b (WithLp.toLp 2 g)
-  have hb' : (Fintype.card (Vec F Idx) : ℝ) * ∑ α, ‖fnInner g (charFn α)‖ ^ 2 =
-      ‖WithLp.toLp 2 g‖ ^ 2 := by
-    simpa [b, normalizedCharOrthonormalBasis, Finset.mul_sum, norm_sq_normalizedCharLp_inner] using hb
-  have hcard0 : (Fintype.card (Vec F Idx) : ℝ) ≠ 0 := by
-    exact_mod_cast card_vec_pos.ne'
+  unfold fnInner expectation
   calc
-    ∑ α, ‖fourierCoeff g α‖ ^ 2 = ∑ α, ‖fnInner g (charFn α)‖ ^ 2 := by
-      simp [fourierCoeff]
-    _ = (Fintype.card (Vec F Idx) : ℝ)⁻¹ *
-        ((Fintype.card (Vec F Idx) : ℝ) * ∑ α, ‖fnInner g (charFn α)‖ ^ 2) := by
-          field_simp [hcard0]
-    _ = (Fintype.card (Vec F Idx) : ℝ)⁻¹ * ‖WithLp.toLp 2 g‖ ^ 2 := by rw [hb']
-    _ = fnNormSq g := by rw [fnNormSq_eq_card_inv_mul_norm_sq]
+    (Fintype.card (Vec F Idx) : ℝ)⁻¹ * ∑ x, (∑ i, A i * φ i x) * star (g x)
+        = (Fintype.card (Vec F Idx) : ℝ)⁻¹ * ∑ x, ∑ i, A i * φ i x * star (g x) := by
+            simp [Finset.sum_mul, mul_assoc]
+    _ = (Fintype.card (Vec F Idx) : ℝ)⁻¹ * ∑ i, ∑ x, A i * φ i x * star (g x) := by
+            rw [Finset.sum_comm]
+    _ = ∑ i, A i * ((Fintype.card (Vec F Idx) : ℝ)⁻¹ * ∑ x, φ i x * star (g x)) := by
+            simp [Finset.mul_sum, mul_assoc, mul_left_comm]
+
+omit [DecidableEq F] [Nonempty Idx] in
+/-- Pairing a character on the left with `g` is the conjugate of the corresponding Fourier
+coefficient of `g`. -/
+private lemma fnInner_charFn_left_eq_star_fourierCoeff (g : ComplexFn F Idx) (α : Vec F Idx) :
+    fnInner (charFn α) g = star (fourierCoeff g α) := by
+  rw [fourierCoeff]
+  unfold fnInner expectation
+  simp [star_mul, star_sum, mul_comm]
 
 /-- Plancherel's identity for the finite-field Fourier transform. -/
 lemma fourier_plancherel (f g : ComplexFn F Idx) :
     ∑ α, fourierCoeff f α * star (fourierCoeff g α) = fnInner f g := by
   classical
-  let b : OrthonormalBasis (Vec F Idx) ℂ (PiLp 2 fun _ : Vec F Idx => ℂ) :=
-    normalizedCharOrthonormalBasis (F := F) (Idx := Idx)
-  have hb := OrthonormalBasis.sum_inner_mul_inner b (WithLp.toLp 2 g) (WithLp.toLp 2 f)
-  have hterm : ∀ α : Vec F Idx,
-      inner ℂ (WithLp.toLp 2 g) (b α) * inner ℂ (b α) (WithLp.toLp 2 f) =
-        (Fintype.card (Vec F Idx) : ℂ) *
-          (fourierCoeff f α * star (fourierCoeff g α)) := by
-    intro α
-    have hcalc :
-        inner ℂ (WithLp.toLp 2 g) (normalizedCharLp (F := F) (Idx := Idx) α) *
-            inner ℂ (normalizedCharLp (F := F) (Idx := Idx) α) (WithLp.toLp 2 f) =
-          (Fintype.card (Vec F Idx) : ℂ) *
-            (fourierCoeff f α * star (fourierCoeff g α)) := by
-      rw [toLp_inner_normalizedCharLp_eq_sqrt_card_mul_star_fnInner,
-        normalizedCharLp_inner_eq_sqrt_card_mul_fnInner]
-      rw [fourierCoeff]
-      calc
-        ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * star (fnInner g (charFn α))) *
-            ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) * fnInner f (charFn α)) =
-          ((Real.sqrt (Fintype.card (Vec F Idx)) : ℂ) *
-            (Real.sqrt (Fintype.card (Vec F Idx)) : ℂ)) *
-              (fnInner f (charFn α) * star (fnInner g (charFn α))) := by
-            ring
-        _ = (Fintype.card (Vec F Idx) : ℂ) *
-            (fnInner f (charFn α) * star (fnInner g (charFn α))) := by
-            rw [sqrt_card_mul_sqrt_card]
-    simpa [b, normalizedCharOrthonormalBasis] using hcalc
-  have hb' :
-      (Fintype.card (Vec F Idx) : ℂ) *
-          ∑ α, fourierCoeff f α * star (fourierCoeff g α) =
-        (Fintype.card (Vec F Idx) : ℂ) * fnInner f g := by
-    calc
-      (Fintype.card (Vec F Idx) : ℂ) *
-          ∑ α, fourierCoeff f α * star (fourierCoeff g α) =
-        ∑ α, (Fintype.card (Vec F Idx) : ℂ) *
-          (fourierCoeff f α * star (fourierCoeff g α)) := by
-            rw [Finset.mul_sum]
-      _ = ∑ α, inner ℂ (WithLp.toLp 2 g) (b α) *
-          inner ℂ (b α) (WithLp.toLp 2 f) := by
-            exact Finset.sum_congr rfl fun α _ => (hterm α).symm
-      _ = inner ℂ (WithLp.toLp 2 g) (WithLp.toLp 2 f) := hb
-      _ = (Fintype.card (Vec F Idx) : ℂ) * fnInner f g := by
-            rw [toLp_inner_eq_card_mul_fnInner]
-  have hcard0 : (Fintype.card (Vec F Idx) : ℂ) ≠ 0 := by
-    exact_mod_cast Fintype.card_ne_zero
-  exact mul_left_cancel₀ hcard0 hb'
+  have hExpand :
+      fnInner f g =
+        fnInner (fun x => ∑ α, fourierCoeff f α * charFn α x) g := by
+    congr
+    ext x
+    rw [fourier_inversion f x]
+  rw [hExpand]
+  rw [fnInner_sum_left]
+  simp [fnInner_charFn_left_eq_star_fourierCoeff]
 
-end ParsevaPlancharel
+omit [Field F] [DecidableEq F] [Nonempty Idx] in
+/-- The self inner product is the squared `L²` norm, viewed as a complex number. -/
+private lemma fnInner_self_eq_fnNormSq (g : ComplexFn F Idx) :
+    fnInner g g = (fnNormSq g : ℂ) := by
+  unfold fnInner expectation fnNormSq
+  simp [Complex.mul_conj, Complex.normSq_eq_norm_sq]
+
+/-- Parseval's identity for the finite-field Fourier transform. -/
+lemma parseval_identity (g : ComplexFn F Idx) :
+    ∑ α, ‖fourierCoeff g α‖ ^ 2 = fnNormSq g := by
+  apply Complex.ofReal_injective
+  calc
+    ((∑ α, ‖fourierCoeff g α‖ ^ 2 : ℝ) : ℂ) =
+        ∑ α, fourierCoeff g α * star (fourierCoeff g α) := by
+          simp [Complex.mul_conj, Complex.normSq_eq_norm_sq]
+    _ = fnInner g g := fourier_plancherel g g
+    _ = (fnNormSq g : ℂ) := fnInner_self_eq_fnNormSq g
+
+end PlancherelParseval
 
 section DistanceViaPhaseCoeff
 
