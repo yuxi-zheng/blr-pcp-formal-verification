@@ -4,7 +4,6 @@ import BlrPcp.QESATExpSizePCP.QESAT
 import BlrPcp.QESATExpSizePCP.LinEq
 import BlrPcp.QESATExpSizePCP.FnOracleAccessBLR
 import BlrPcp.QESATExpSizePCP.TensorEq
-import BlrPcp.GowersHatami.GowersHatami_original
 import BlrPcp.GowersHatami.Concrete
 import BlrPcp.GowersHatami.GH2
 import BlrPcp.GowersHatami.GowersHatami

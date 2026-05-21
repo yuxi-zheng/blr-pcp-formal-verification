@@ -1,4 +1,3 @@
-import BlrPcp.GowersHatami.GowersHatami_original
 import Mathlib.Data.Fintype.EquivFin
 import Mathlib.Analysis.Matrix.Order
 import Mathlib.LinearAlgebra.Matrix.Permutation
@@ -26,7 +25,7 @@ The two identities in the proof sketch are then:
 * `V^* rho0(x) V = E_y rho(y)^* rho(y*x)`.
 
 Combining the second identity with the approximate representation hypothesis
-and `sigma_proximity_iff` gives the desired average `sigma`-norm estimate.
+and a polarization of the `sigma`-norm gives the desired average estimate.
 -/
 
 open scoped Matrix ComplexConjugate ComplexOrder
@@ -34,6 +33,32 @@ open BigOperators Finset
 
 variable {d : Nat}
 variable (G : Type*) [Group G] [Fintype G]
+
+/-! ## Base definitions
+
+`sigmaInner`, `sigmaNormSq` and `IsApproxRepresentation` previously lived in
+`GowersHatami_original.lean`; they are reproduced here so this file is
+self-contained and does not depend on that (now removed) file.
+-/
+
+/-- The `σ`-weighted matrix inner product `⟪A, B⟫_σ = Tr(Aᴴ B σ)`. -/
+noncomputable def sigmaInner {n : ℕ} (σ A B : Matrix (Fin n) (Fin n) ℂ) : ℂ :=
+  Matrix.trace (Aᴴ * B * σ)
+
+/-- The squared `σ`-seminorm `‖A‖²_σ = Re ⟪A, A⟫_σ`. -/
+noncomputable def sigmaNormSq {n : ℕ} (σ A : Matrix (Fin n) (Fin n) ℂ) : ℝ :=
+  (sigmaInner σ A A).re
+
+/-- An `(ε, σ)`-approximate representation of `G`: `f` is unitary-valued and
+`𝔼_{x,y} Re ⟪f(x) f(y), f(x*y)⟫_σ ≥ 1 - ε`. -/
+def IsApproxRepresentation
+    (σ : Matrix (Fin d) (Fin d) ℂ)
+    (f : G → Matrix (Fin d) (Fin d) ℂ)
+    (ε : ℝ) : Prop :=
+  (∀ x, f x ∈ Matrix.unitaryGroup (Fin d) ℂ) ∧
+    (∑ x : G, ∑ y : G,
+      (sigmaInner σ (f x * f y) (f (x * y))).re) /
+      (Fintype.card G ^ 2 : ℝ) ≥ 1 - ε
 
 /-! ## The enlarged Hilbert space `L(G,H)` -/
 
