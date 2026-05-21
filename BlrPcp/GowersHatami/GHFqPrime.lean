@@ -629,13 +629,14 @@ private lemma phase_collision_distance_bound
 /-- The 1×1 lift of `Φ` is an `(ε, 1)`-approximate representation of
 `Multiplicative (F^Idx)`, given the BLR-form hypothesis. -/
 private lemma liftMat1_isApproxRep
-    (Φ : Vec F Idx → ℂ) (ε : ℝ)
+    (Φ : Vec F Idx → ℂ) (hΦ : ∀ x, ‖Φ x‖ = 1) (ε : ℝ)
     (hApprox :
       (∑ x : Vec F Idx, ∑ y : Vec F Idx,
           ((starRingEnd ℂ) (Φ x * Φ y) * Φ (x + y)).re) /
         ((Fintype.card (Vec F Idx) : ℝ) ^ 2) ≥ 1 - ε) :
     IsApproxRepresentation (Multiplicative (Vec F Idx))
       (1 : Matrix (Fin 1) (Fin 1) ℂ) (liftMat1 Φ) ε := by
+  refine ⟨fun x => liftMat1_unitary Φ hΦ x, ?_⟩
   show (∑ x : Multiplicative (Vec F Idx), ∑ y,
       (sigmaInner 1 (liftMat1 Φ x * liftMat1 Φ y) (liftMat1 Φ (x * y))).re) /
     ((Fintype.card (Multiplicative (Vec F Idx)) : ℝ) ^ 2) ≥ 1 - ε
@@ -697,7 +698,7 @@ theorem gh_blr_correlation
   · exact gh2Embedding_isometry _ (liftMat1 Φ) (liftMat1_unitary Φ hΦ)
   · have hgh := gh2_average_correlation (Multiplicative (Vec F Idx))
                   (1 : Matrix (Fin 1) (Fin 1) ℂ) (liftMat1 Φ) ε
-                  (liftMat1_isApproxRep Φ ε hApprox)
+                  (liftMat1_isApproxRep Φ hΦ ε hApprox)
     rw [show (Fintype.card (Multiplicative (Vec F Idx)) : ℝ) =
           (Fintype.card (Vec F Idx) : ℝ) from by simp] at hgh
     -- Reduce each `sigmaInner` summand to scalar form: `sigmaInner 1 (liftMat1 Φ x) M`
