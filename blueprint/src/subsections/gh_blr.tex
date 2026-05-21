@@ -1,7 +1,6 @@
 \section{Gowers-Hatami for BLR linearity test over $\FF_q$}
-\textcolor{blue}{TODO: add Trace for prime powers}
 
-Assume $q = p$ is a prime, $n \ge 1$, and we set
+Assume $q = p^s$ be a prime with power $s\in \mathbb{Z}^+$, $n \ge 1$, and we set
 \[
 X := \F_q^n, \qquad A := \F_q^\times, \qquad \omega := e^{2\pi i/p}.
 \]
@@ -101,32 +100,34 @@ The isomorphism gives us a easy way to compute its irreducible representations w
 \begin{proposition}[Group characters]\label{prop:group_characaters}
 The group $(G, \star)$ has the Pontryagin dual character group 
 \be
-\hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \quad \chi_{\alpha, k}(x,a) = \omega^{\inner{\alpha}{a x}} \psi_k(a),
+\hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \quad \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a),
 \ee
 where $\psi_k(a) = e^{\frac{i 2 \pi m k}{q-1}}$ and $a=g_0^m$ for a fixed multiplicative generator $g_0\in A$.
 \end{proposition}
 \begin{proof}
-By Proposition.~\ref{prop:group_iso}, $(G, \star) \cong (X, +) \times (A, \cdot)$ via $\Psi(x, a) = (ax, a)$. First we consider the characters of the product group. Using Fact.~\ref{fact:pontryagin_dual}, we have 
+By \propref{prop:group_iso}, $(G, \star) \cong (X, +) \times (A, \cdot)$ via $\Psi(x, a) = (ax, a)$. First we consider the characters of the product group. Using Fact.~\ref{fact:pontryagin_dual}, we have 
 \[
 \widehat{(X, +) \times (A, \cdot)} = \hat{X} \times \hat{A}.
 \]
 The character groups of $X$ and $A$ are
 \begin{align}
-    \hat{X} &= \{\phi_\alpha(y) = \omega^{\inner{\alpha}{y}}\}_{\alpha\in X}, \\
+    \hat{X} &= \{\phi_\alpha(y) = \omega^{\Tr \inner{\alpha}{y}}\}_{\alpha\in X}, \\
      \hat{A} &= \{\psi_k(b) =e^{\frac{i 2 \pi m k}{q-1}}\}_{k \in [0, \cdots, q-2]},
 \end{align}
-where $b=g_0^m$ for a fixed multiplicative generator $g_0\in A$. Therefore, $\widehat{(X, +) \times (A, \cdot)} = \{\Theta_{\alpha, k}(y, b) = \phi_\alpha(y) \psi_k(b)\}_{\alpha, k}$.
+where $b=g_0^m$ for a fixed multiplicative generator $g_0\in A$. 
+Here the field trace $\Tr: \F_q \to \F_p$ is defined by $\Tr(x) = x + x^p + x^{p^2} + \cdots + x^{p^{s-1}}$ for $x \in \F_q$ (see Definition~1.1 in Chapter 1).%(see Definition~\ref{def:field-trace} in \secref{sec:blr-general-finite-fields}).
+Therefore, $\widehat{(X, +) \times (A, \cdot)} = \{\Theta_{\alpha, k}(y, b) = \phi_\alpha(y) \psi_k(b)\}_{\alpha, k}$.
 The character $\chi \in \hat{G}$ is given by the pull-back through the isomorphism
 \be
 \chi_{\alpha, k}(x, a) = \Theta_{\alpha, k}(\Psi(x, a)) = \Theta_{\alpha, k}(ax, a).
 \ee
-Therefore, we have $\chi_{\alpha, k}(x, a) = \phi_\alpha(ax) \psi_k(a) =\omega^{\inner{\alpha}{a x}} \psi_k(a)$.
+Therefore, we have $\chi_{\alpha, k}(x, a) = \phi_\alpha(ax) \psi_k(a) =\omega^{\Tr \inner{\alpha}{a x}} \psi_k(a)$.
 \end{proof}
 \subsection{Approximate representation and matrix lift of $f$}\label{sec:rep}
 
 Define a unitary matrix valued lift $F_f : G \to U(\cc^{q-1})$ by the diagonal matrix
 \begin{equation}\label{eq:Flift-def}
-F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{c a f(x)}\ket{c}\bra{c},
+F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
 \end{equation}
 where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\mathcal{H} \cong \cc^{q-1}$ and the inner product between operators defined by $\inner{A}{B}_\sigma=\Tr(A^* B \sigma)$ and choose $\sigma = \I/(q-1)$.
 We first show that the BLR condition indeed gives an approximate represenatation.
@@ -148,10 +149,14 @@ First we observe that
 \end{equation}
 Using~Equation~\ref{eq:star} and~Equation~\ref{eq:Flift-def},
 \begin{align*}
-F_f\bigl((x,a)\star(y,b)\bigr) &= \sum_{c\in A}\omega^{cab\,f(b^{-1}x + a^{-1}y)} \ket{c}\bra{c}, \\
-F_f(x, a)\,F_f(y, b) &= \sum_{c\in A} \omega^{c(af(x) + bf(y))} \ket{c}\bra{c}.
+F_f\bigl((x,a)\star(y,b)\bigr) &= \sum_{c\in A}\omega^{\Tr\, cab\,f(b^{-1}x + a^{-1}y)} \ket{c}\bra{c}, \\
+F_f(x, a)\,F_f(y, b) &= \sum_{c\in A} \omega^{\Tr\, c(af(x) + bf(y))} \ket{c}\bra{c}.
 \end{align*}
-These coincide iff their exponents agree modulo $p$ \textcolor{red}{Check this is true if we add Trace}: 
+These coincide iff their exponents agree modulo $p$ for $c \in A$: 
+\[
+ab\, f(b^{-1}x + a^{-1}y) = af(x) + bf(y) \mod p, \quad \forall c \in A.
+\]
+Therefore, we have equality over $\F_p$ 
 \[
 ab\, f(b^{-1}x + a^{-1}y) = af(x) + bf(y).
 \]
@@ -168,18 +173,18 @@ To relate the test condition to the approximate representation, first note the e
 because $F_f$ is unitary so $F_f(g)^* = F_f(g^{-1}), \forall g \in G$. Then evaluate the right hand side
 \begin{align}
     \mathbb{E}_{g, h \in G} \Re \left\langle F_f(g) F_f(h), F_f\left(g h\right)\right\rangle_{\sigma} &= \mathbb{E}_{g, h \in G} \Re \Tr\left[F_f^*(h) F_f^*(g) F_f\left(g h\right)\sigma\right], \nonumber \\
-    & = \mathbb{E}_{(x,a), (y,b) \in G} \frac{1}{q-1}\Re \Tr\left[ \sum_{c\in A} \omega^{-c(af(x) + bf(y))} \omega^{cab\,f(b^{-1}x + a^{-1}y)} \ket{c}\bra{c}\right], \nonumber \\
-    & = \mathbb{E}_{(x,a), (y,b) \in G} \frac{1}{q-1}\Re \sum_{c\in A} \omega^{c z},
+    & = \mathbb{E}_{(x,a), (y,b) \in G} \frac{1}{q-1}\Re \Tr\left[ \sum_{c\in A} \omega^{-\Tr\, c(af(x) + bf(y))} \omega^{\Tr\, cab\,f(b^{-1}x + a^{-1}y)} \ket{c}\bra{c}\right], \nonumber \\
+    & = \mathbb{E}_{(x,a), (y,b) \in G} \frac{1}{q-1}\Re \sum_{c\in A} \omega^{\Tr\, c z},
 \end{align}
 where we define $z=c (ab\,f(b^{-1}x + a^{-1}y) - (af(x) + bf(y)))$. To compute the expectation, we can split to two cases
 \begin{align}
-\sum_{c\in A} \omega^{c z} = 
+\sum_{c\in A} \omega^{\Tr\, c z} = 
     \begin{cases}
         q-1, \quad z=0 \quad \text{when $f$ passes BLR}, \\
         -1, \quad z \neq 0 \quad \text{when $f$ fails BLR}.
     \end{cases}
 \end{align}
-The second case is because $\sum_{c\in A} \omega^{c z} + 1= \sum_{c\in \FF_q} \omega^{c z} =0$. Therefore, we have the approximate representation
+The second case is because $\sum_{c\in A} \omega^{\Tr\, c z} + 1= \sum_{c\in \FF_q} \omega^{\Tr\, c z} =0$. Therefore, we have the approximate representation
 \be
 \mathbb{E}_{g, h \in G} \Re \left\langle F_f(g) F_f(h), F_f\left(g h\right)\right\rangle_{\sigma} \geq (1- \varepsilon) - \frac{1}{q-1} \varepsilon = 1 - \frac{q}{q-1}\varepsilon. 
 \ee
@@ -229,19 +234,19 @@ Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the rel
     
     % Since $V$ is an isometry, the vectors $\{v_c := V|c\rangle\}$ form an orthonormal set of $q-1$ basis in $L(G, \mathcal{H})$. 
     
-    Because $F_f(g)$ is diagonal in $\{\ket{c}\}$ with entries $\omega^{caf(x)}$, we can rewrite the inner product trace:
+    Because $F_f(g)$ is diagonal in $\{\ket{c}\}$ with entries $\omega^{\Tr\, caf(x)}$, we can rewrite the inner product trace:
     \[
-        \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
+        \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-\Tr\, caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
     \]
     where $\ket{v_c} = V\ket{c} \in \mathcal{H}^\prime$.
     Taking the expectation over $g = (x, a)$ and taking the real part, condition Equation~\ref{eq:inner1} becomes:
     \begin{equation}
-        \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
+        \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
     \end{equation}
 
-    A basis for $L(G, \mathcal{H})$ is given by $\{\chi \ket{c}\}_{\chi\in\hat{G}, c\in \FF_q^\times}$. By Proposition.~\ref{prop:group_characaters}, the characters are given by
+    A basis for $L(G, \mathcal{H})$ is given by $\{\chi \ket{c}\}_{\chi\in\hat{G}, c\in \FF_q^\times}$. By \propref{prop:group_characaters}, the characters are given by
     \[
-    \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\inner{\alpha}{a x}} \psi_k(a).
+    \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a).
     \]
     The regular representation $R(g)$ acts on $L(G, \mathcal{H})$ so it can be decomposed as 
     \be\label{eq:reg_repr_decomp}
@@ -267,16 +272,16 @@ Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the rel
 
     Substituting the spectral decomposition Equation~\ref{eq:reg_repr_decomp} back into Equation~\ref{eq:expanded}, we get:
     \[
-        \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-caf(x)} \chi_{\alpha, k}(x, a) \right] \right) \ge 1 - \epsilon.
+        \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \chi_{\alpha, k}(x, a) \right] \right) \ge 1 - \epsilon.
     \]
     This is a convex combination (a weighted average) of real values less than $1$. Because the average is at least $1 - \epsilon$, there must exist at least one specific configuration $(c^*, \alpha^*, k^*)$ with $c^* \neq 0$ such that its individual value satisfies:
     \begin{equation}
-        \Re \left( \EE_{x, a} \left[ \omega^{-c^*af(x)} \omega^{\langle \alpha^*, ax \rangle} \psi_{k^*}(a) \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
+        \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, c^*af(x)} \omega^{\Tr \langle \alpha^*, ax \rangle} \psi_{k^*}(a) \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
     \end{equation}
 
     Because $c^* \in \FF_q^\times$ is invertible, we define a specific linear function $\ell(x) := \langle (c^*)^{-1} \alpha^*, x \rangle$. Notice that $\langle \alpha^*, ax \rangle = c^* a \ell(x)$. We can rewrite the argument of the expectation in Equation~\ref{eq:dominant} as:
     \[
-        E^* := \EE_{x} \left[ \EE_{a} \left[ \omega^{c^* a (\ell(x) - f(x))} \psi_{k^*}(a) \right] \right].
+        E^* := \EE_{x} \left[ \EE_{a} \left[ \omega^{\Tr\, c^* a (\ell(x) - f(x))} \psi_{k^*}(a) \right] \right].
     \]
 
     For the rest of this proof, without using specific form of $p_{c, \alpha, k}$, we consider two cases: $k^*=0$ and $k^* \neq 0$. Define $z(x) = c^*(\ell(x) - f(x))$.
@@ -284,13 +289,13 @@ Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the rel
     \begin{enumerate}
         \item Consider $k^*=0$ so that $\psi_0(a) = 1$, the inner expectation over $a \in \FF_q^\times$ for a fixed $x$:
     \be
-    \EE_{a \in \in \FF_q^\times}\omega^{c^* a (\ell(x) - f(x))} = 
+    \EE_{a \in \in \FF_q^\times}\omega^{\Tr\, c^* a (\ell(x) - f(x))} = 
     \begin{cases}
         1, \quad z(x) = 0, \\
         - \frac{1}{q-1}, \quad z(x) \neq 0,
     \end{cases}
     \ee
-    where in the second case we have again used average of roots of unity is $\sum_{b \in \in \FF_q^\times} \omega^{b} +1 = 0$.
+    where in the second case we have again used average of roots of unity is $\sum_{b \in \in \FF_q^\times} \omega^{\Tr b} +1 = 0$.
 
     Evaluating the outer expectation over $x$ and recall the definition of hamming distance 
     \be
@@ -309,26 +314,26 @@ Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the rel
         \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
     \]
 
-    \item Consider $k^* \neq 0$, then by Proposition.~\ref{prop:group_characaters} we have $\psi_k(a) = e^{\frac{i 2 \pi m k}{q-1}}$ and $a=g_0^m$ for a fixed multiplicative generator $g_0\in \FF_q^\times$. Note that averaging over $\psi_k(a)$ we have
+    \item Consider $k^* \neq 0$, then by \propref{prop:group_characaters} we have $\psi_k(a) = e^{\frac{i 2 \pi m k}{q-1}}$ and $a=g_0^m$ for a fixed multiplicative generator $g_0\in \FF_q^\times$. Note that averaging over $\psi_k(a)$ we have
     \be\label{eq: averaging_psi}
     \EE_{a \in \FF_q^\times} \psi_k(a) = \frac{1}{q-1} \sum_{m=0}^{q-2} e^{\frac{i 2 \pi m k}{q-1}} = 0.
     \ee
     The average expectation over $a \in \FF_q^\times$ for a fixed $x$ gives:
     \be
-    \EE_{a \in \in \FF_q^\times}\omega^{c^* a (\ell(x) - f(x))}  \psi_{k^*}(a) = 
+    \EE_{a \in \in \FF_q^\times}\omega^{\Tr \, c^* a (\ell(x) - f(x))}  \psi_{k^*}(a) = 
     \begin{cases}
         0, \quad z(x) = 0, \\
-        \frac{1}{q-1} \sum_{a \in \in \FF_q^\times} \omega^{a z(x)}\psi_{k^*}(a), \quad z(x) \neq 0.
+        \frac{1}{q-1} \sum_{a \in \in \FF_q^\times} \omega^{\Tr a z(x)}\psi_{k^*}(a), \quad z(x) \neq 0.
     \end{cases}
     \ee
     In the second case, let $b = a z(x)$ so that
     \begin{align}
-        \frac{1}{q-1} \sum_{a \in \in \FF_q^\times} \omega^{a z(x)}\psi_{k^*}(a) &= \frac{1}{q-1} \sum_{b \in \in \FF_q^\times} \omega^{b}\psi_{k^*}(z^{-1}b), \nonumber \\
-        & =  \frac{\psi_{k^*}(z^{-1})}{q-1} \sum_{b \in \in \FF_q^\times} \omega^{b}\psi_{k^*}(b).
+        \frac{1}{q-1} \sum_{a \in \in \FF_q^\times} \omega^{\Tr\, a z(x)}\psi_{k^*}(a) &= \frac{1}{q-1} \sum_{b \in \in \FF_q^\times} \omega^{\Tr b}\psi_{k^*}(z^{-1}b), \nonumber \\
+        & =  \frac{\psi_{k^*}(z^{-1})}{q-1} \sum_{b \in \in \FF_q^\times} \omega^{\Tr b}\psi_{k^*}(b).
     \end{align}
     It turns out the summation is a known quantitiy called \textit{the Gauss sum}
     \be
-    \mathcal{G}(\psi_{k^*}) = \sum_{b \in \in \FF_q^\times} \omega^{b}\psi_{k^*}(b).
+    \mathcal{G}(\psi_{k^*}) = \sum_{b \in \in \FF_q^\times} \omega^{\Tr b}\psi_{k^*}(b).
     \ee
     Is it believed that there is no analytic expression for $\mathcal{G}$ but it is known that
     \be\label{eq:gauss_sum_mag}
@@ -364,7 +369,7 @@ First let us write down statements about Fourier coefficients of $F_f$, which we
 \begin{proposition}[Fourier coefficient of $F_f$]\label{prop:Ff_fourier}
     Let the matrix lift $F_f : G \to U(\cc^{q-1})$ be defined by the diagonal matrix
 \begin{equation*}
-F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{c a f(x)}\ket{c}\bra{c},
+F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
 \end{equation*}
 then its Fourier coefficients can be written as
 \be\label{eq:factored_coeff}
@@ -372,21 +377,21 @@ then its Fourier coefficients can be written as
 \ee
 where 
 \be\label{def:nu_k}
-\nu_k(\beta) := \EE_{x,b} \left[ \omega^{b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
+\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
 \ee
 
 \end{proposition}
 
 \begin{proof}
-    By Proposition.~\ref{prop:group_characaters}, the characters are given by
+    By \propref{prop:group_characaters}, the characters are given by
     \[
-    \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\inner{\alpha}{a x}} \psi_k(a).
+    \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a).
     \]
     Therefore the Fourier coefficients of $F_f$ are
     \begin{align}
         \hat{F}_f(\chi_{\alpha, k}) 
-        & = \sum_{c \in \FF_q^\times } \EE_{x, a} \omega^{caf(x)} \bar{\chi}_{\alpha, k}(x, a) , \nonumber \\
-        & = \sum_{c \in \FF_q^\times }\EE_{x,a} \left[ \omega^{a(cf(x) - \langle \alpha, x \rangle)} \overline{\psi_k(a)} \right] \ket{c}\bra{c}.
+        & = \sum_{c \in \FF_q^\times } \EE_{x, a} \omega^{\Tr\, c a f(x)} \bar{\chi}_{\alpha, k}(x, a) , \nonumber \\
+        & = \sum_{c \in \FF_q^\times }\EE_{x,a} \left[ \omega^{\Tr\, a(cf(x) - \langle \alpha, x \rangle)} \overline{\psi_k(a)} \right] \ket{c}\bra{c}.
     \end{align}
     
 
@@ -396,10 +401,10 @@ This means $a = bc^{-1}$, and by the multiplicity of Dirichlet characters, $\ove
 
 Substituting these into the expectation isolates the $c$-dependence: 
 \begin{align} 
-    [\hat{F}_f(\chi_{c\beta, k})]_{cc} &= \EE_{x,b} \left[ \omega^{b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)}\psi_k(c) \right] \nonumber \\
+    [\hat{F}_f(\chi_{c\beta, k})]_{cc} &= \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)}\psi_k(c) \right] \nonumber \\
     &= \psi_k(c) \nu_k(\beta), 
 \end{align}
-where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right]$ is a $c$-independent coefficient.    
+where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right]$ is a $c$-independent coefficient.    
 \end{proof}
 
 
@@ -421,26 +426,26 @@ Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the rel
     
     % Since $V$ is an isometry, the vectors $\{v_c := V|c\rangle\}$ form an orthonormal set of $q-1$ basis in $L(G, \mathcal{H})$. 
     
-    Because $F_f(g)$ is diagonal in $\{\ket{c}\}$ with entries $\omega^{caf(x)}$, we can rewrite the inner product trace:
+    Because $F_f(g)$ is diagonal in $\{\ket{c}\}$ with entries $\omega^{\Tr\, caf(x)}$, we can rewrite the inner product trace:
     \[
-        \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
+        \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-\Tr\, caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
     \]
     where $\ket{v_c} = V\ket{c} \in \mathcal{H}^\prime$.
     Taking the expectation over $g = (x, a)$ and taking the real part, condition Equation~\ref{eq:inner1} becomes:
     \begin{equation}
-        \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
+        \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
     \end{equation}
 
-    A basis for $L(G, \mathcal{H})$ is given by $\{\chi \ket{c}\}_{\chi\in\hat{G}, c\in \FF_q^\times}$. By Proposition.~\ref{prop:group_characaters}, the characters are given by
+    A basis for $L(G, \mathcal{H})$ is given by $\{\chi \ket{c}\}_{\chi\in\hat{G}, c\in \FF_q^\times}$. By \propref{prop:group_characaters}, the characters are given by
     \[
-    \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\inner{\alpha}{a x}} \psi_k(a).
+    \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a).
     \]
 
     Moreover, the Fourier coefficients of $F_f$ are
     \begin{align}
         \hat{F}_f(\chi_{\alpha, k}) 
-        & = \sum_{c \in \FF_q^\times } \EE_{x, a} \omega^{caf(x)} \bar{\chi}_{\alpha, k}(x, a) , \nonumber \\
-        & = \sum_{c \in \FF_q^\times }\EE_{x,a} \left[ \omega^{a(cf(x) - \langle \alpha, x \rangle)} \overline{\psi_k(a)} \right] \ket{c}\bra{c}.
+        & = \sum_{c \in \FF_q^\times } \EE_{x, a} \omega^{\Tr\, caf(x)} \bar{\chi}_{\alpha, k}(x, a) , \nonumber \\
+        & = \sum_{c \in \FF_q^\times }\EE_{x,a} \left[ \omega^{\Tr\, a(cf(x) - \langle \alpha, x \rangle)} \overline{\psi_k(a)} \right] \ket{c}\bra{c}.
     \end{align}
     
     The regular representation $R(g)$ acts on $L(G, \mathcal{H})$ so it can be decomposed as 
@@ -461,13 +466,13 @@ Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the rel
     \be
     p_{c, \alpha,k} = \abs{[\hat{F}_f(\chi_{\alpha, k})]_{cc}}^2.
     \ee
-    By Proposition.~\ref{prop:Ff_fourier}, let $\alpha = c \beta$, we can show
+    By \propref{prop:Ff_fourier}, let $\alpha = c \beta$, we can show
     \be
     p_{c, c\beta,k} = \abs{\psi_k(c) \nu_k(\beta)}^2 = \abs{\nu_k(\beta)}^2,
     \ee
     where 
     \[
-    \nu_k(\beta) := \EE_{x,b} \left[ \omega^{b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
+    \nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr\, b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
     \]
     is defined in Equation~\ref{def:nu_k}.   
     
@@ -489,14 +494,14 @@ Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the rel
     
     Substituting the spectral decomposition Equation~\ref{eq:reg_repr_decomp} back into Equation~\ref{eq:expanded}, we define:
     \begin{align*}
-            E &:= \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-caf(x)} \langle v_c, R(x, a) v_c \rangle \right], \\
-            % & = \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-caf(x)} \chi_{\alpha, k}(x, a) \right] \right), \\
-            & = \frac{1}{q-1} \sum_{c \in \FF_q^\times}\sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-caf(x)} \omega^{\inner{\alpha}{ax}} \psi_k(a) \right] \right).
+            E &:= \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right], \\
+            % & = \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \chi_{\alpha, k}(x, a) \right] \right), \\
+            & = \frac{1}{q-1} \sum_{c \in \FF_q^\times}\sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \omega^{\Tr\, \inner{\alpha}{ax}} \psi_k(a) \right] \right).
     \end{align*}
 
     Relabel the sum by $\alpha = c \beta$ and $b=ca$, we have
     \[
-    E =  \frac{1}{q-1} \sum_{c \in \FF_q^\times}\sum_{\beta, k} \abs{\nu_k(\beta)}^2 \Re \left( \EE_{x, b} \left[ \omega^{b(\inner{\beta}{x} - f(x))} \psi_k(c^{-1})\psi_k(b) \right] \right).
+    E =  \frac{1}{q-1} \sum_{c \in \FF_q^\times}\sum_{\beta, k} \abs{\nu_k(\beta)}^2 \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta}{x} - f(x))} \psi_k(c^{-1})\psi_k(b) \right] \right).
     \]
     Use the indicator function of $\FF_q^\times$:
     \[
@@ -504,23 +509,23 @@ Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the rel
     \] 
     we have     
     \[
-    E = \sum_{\beta} \abs{\nu_0(\beta)}^2 \Re \left( \EE_{x, b} \left[ \omega^{b(\inner{\beta}{x} - f(x))} \right] \right).
+    E = \sum_{\beta} \abs{\nu_0(\beta)}^2 \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta}{x} - f(x))} \right] \right).
     \]
     
     This is a convex combination (a weighted average) of real values less than $1$ with the weight sum to less than 1 by Equation~\ref{eq:nu_less_1}. Because the average is at least $E \geq 1 - \epsilon$, there must exist at least one specific configuration $\beta^*$ such that its individual value satisfies:
     \begin{equation}
-        E^* := \Re \left( \EE_{x, b} \left[ \omega^{b(\inner{\beta^*}{x} - f(x))} \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
+        E^* := \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta^*}{x} - f(x))} \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
     \end{equation}
     
     Let $\ell_\beta(x):=\inner{\beta^*}{x}$, the inner expectation over $b \in \FF_q^\times$ for a fixed $x$:
         \be
-        \EE_{b \in \in \FF_q^\times}\omega^{b z(x)} = 
+        \EE_{b \in \in \FF_q^\times}\omega^{\Tr\, b z(x)} = 
         \begin{cases}
             1, \quad z(x) = 0, \\
             - \frac{1}{q-1}, \quad z(x) \neq 0,
         \end{cases}
         \ee
-        where in the second case we have again used average of roots of unity is $\sum_{b \in \in \FF_q^\times} \omega^{b} +1 = 0$.
+        where in the second case we have again used average of roots of unity is $\sum_{b \in \in \FF_q^\times} \omega^{\Tr\, b} +1 = 0$.
     
         Evaluating the outer expectation over $x$ and recall the definition of hamming distance 
         \be
@@ -561,7 +566,7 @@ Define a group $G$ by the set $X \times A$ with the binary operation
 
     Let $F_f$ be a unitary matrix valued lift $F_f : G \to U(\cc^{q-1})$ by the diagonal matrix
 \begin{equation}
-F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{c a f(x)}\ket{c}\bra{c},
+F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
 \end{equation}
 where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\mathcal{H} \cong \cc^{q-1}$ and the inner product between operators defined by $\inner{A}{B}_\sigma=\Tr(A^* B \sigma)$ and choose $\sigma = \I/(q-1)$. By \lemref{lem:rep-iff-blr}, since $f$ is rejected with probability $\varepsilon$, then $F_f$ is an $(\frac{q}{q-1}\varepsilon,\frac{\I}{q-1})$ approximate representation of $(G, \star)$.
 
