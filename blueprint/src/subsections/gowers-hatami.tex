@@ -22,27 +22,20 @@ Given a finite group \(G\), an integer \(d \geq 1, \varepsilon \geq 0\), and a \
 where $\Re$ denotes taking real part of the inner product. 
 \end{definition}
 
-\begin{proposition}\label{UnitarySigmaError}\uses{sigmaInner}\lean{sigma_proximity_iff}
-Let $G$ be a finite group, and let $f, f_2 : G \to U(n)$ be functions into the unitary matrices. Then 
+\begin{proposition}[$\sigma$-norm Square]\label{sigmaNormSqSub}\uses{sigmaInner}\lean{sigmaNormSq_sub_eq}\leanok
+Let $\sigma$ be positive semidefinite and let $A, B$ be matrices of the same dimension. Then
 \[
-\mathbb{E}_{x \in G}\|f(x) - f_2(x)\|_\sigma^2 \le 2\varepsilon
-\quad \Longleftrightarrow \quad
-\mathbb{E}_{x \in G}
-\Re\!\left(\langle f(x), f_2(x)\rangle_\sigma\right)
-\ge 1 - \varepsilon.
+\|A - B\|_\sigma^2 = \|A\|_\sigma^2 + \|B\|_\sigma^2 - 2\,\Re\inner{A}{B}_\sigma.
 \]
 \end{proposition}
 \begin{proof}
-    For unitary matrices $A, B$, we have
-    \be
-    \| A- B\|_\sigma^2 = 2 - 2 \Re \inner{A}{B}_\sigma.
-    \ee
-    Since $\EE$ is linear, this proves the proposition.
+    Expanding by linearity of the inner product,
+    \[
+    \|A-B\|_\sigma^2 = \Re\inner{A-B}{A-B}_\sigma
+    = \|A\|_\sigma^2 + \|B\|_\sigma^2 - \Re\inner{A}{B}_\sigma - \Re\inner{B}{A}_\sigma.
+    \]
+    Since $\sigma$ is Hermitian, $\inner{B}{A}_\sigma = \overline{\inner{A}{B}_\sigma}$, so the two cross terms have the same real part, yielding $-2\,\Re\inner{A}{B}_\sigma$.
 \end{proof}
-TODO:
-\begin{itemize}
-    \item Relation to classical BLR test
-\end{itemize}
 
 
 \section{Representation theory}
@@ -60,7 +53,7 @@ TODO:
 %     \ee
 % \end{definition}
 
-\begin{definition}[Unitary Representation]\label{UnitaryRep}\lean{UnitaryRep}
+\begin{definition}[Unitary Representation]\label{UnitaryRep}
     A \emph{unitary representation} of $G$ is a representation to unitary matrices $\rho : G \to U(V)$.
 \end{definition}
 
@@ -97,7 +90,7 @@ TODO:
 %     \ee
 % \end{definition}
 
-\begin{definition}[Regular representation]\label{RegularRep}\lean{regularRep}\uses{UnitaryRep}
+\begin{definition}[Regular representation]\label{RegularRep}\uses{UnitaryRep}
     Let $R: G \rightarrow \mathbb{C}[G]$ be a regular representation where $\{\ket{g}, g\in G\}$ forms a basis of \(\mathbb{C}[G]\). The representation is given by
     \be
     R(x) \ket{g} = \ket{xg}.
@@ -107,7 +100,7 @@ TODO:
 
 It is possible to decompose any representation of a finite group into direct sums over irreps. 
 
-\begin{theorem}[Maschke's theorem]\label{Maschke}\lean{Maschke}
+\begin{theorem}[Maschke's theorem]\label{Maschke}
     Let $G$ be a finite group and let $\rho : G \to \mathrm{GL}(V)$ be a finite-dimensional representation over $\mathbb{C}$. Then $\rho$ is completely reducible. In particular, there exists a decomposition
     \be
         \rho \cong \bigoplus_{m} r_m \, \rho_m,
@@ -128,7 +121,7 @@ It is possible to decompose any representation of a finite group into direct sum
 % \ee    
 % \end{theorem}
 
-\begin{proposition}[Decomposition of the regular representation]\label{RegDecompIrrep}\lean{regularRep}\uses{Maschke,RegularRep}
+\begin{proposition}[Decomposition of the regular representation]\label{RegDecompIrrep}\uses{Maschke,RegularRep}
     Let $R : G \to \mathrm{GL}(\mathbb{C}[G])$ be the regular representation of a finite group $G$. Then
     \be
         R \cong \bigoplus_{\rho \in \widehat{G}} d_\rho \, \rho,
@@ -143,7 +136,7 @@ It is possible to decompose any representation of a finite group into direct sum
 \end{sproof}
 
 
-\begin{proposition}[Character of regular representation.]\label{regular_repr_character}\lean{regular_repr_character}\uses{RegDecompIrrep}
+\begin{proposition}[Character of regular representation.]\label{regular_repr_character}\uses{RegDecompIrrep}
 Let $G$ be a finite group and $\sum_\rho$ denotes summing over the complete set of inequivalent irreps $\hat{G}$
     \be\label{eq:regular_repr_characterr}
     \sum_{\rho \in \hat{G}} d_{\rho} \operatorname{Tr}(\rho(x))=|G| \delta_{x, e}.
@@ -163,7 +156,7 @@ Let $G$ be a finite group and $\sum_\rho$ denotes summing over the complete set 
 %     This is a corollary from Fact.~\ref{regular_repr_character} for $x=e$.
 % \end{sproof}
 
-\begin{definition}[Group fourier transform]\label{GroupFourier}\lean{groupFourierTransform}
+\begin{definition}[Group fourier transform]\label{GroupFourier}
     Let $f: G \rightarrow U_d(\cc)$ be a map and \(\rho: G \rightarrow U_{d_{\rho}}(\mathbb{C})\) be a unitary irrep. The fourier transform of $f$ at the representation $\rho$ is denoted by $\hat{f}$:
     \be
 \hat{f}(\rho)=\mathbb{E}_{x \in G} f(x) \otimes \overline{\rho(x)},
@@ -173,8 +166,8 @@ Let $G$ be a finite group and $\sum_\rho$ denotes summing over the complete set 
 
 \section{Gowers Hatami Theorem}
 
-\begin{theorem}[Gowers-Hatami]\label{gowers-hatami}\lean{gowers_hatami}
-  \uses{UnitarySigmaError, approx-representation, GroupFourier, regular_repr_character}
+\begin{theorem}[Gowers-Hatami]\label{gowers-hatami}
+  \uses{sigmaNormSqSub, approx-representation, GroupFourier, regular_repr_character}
 Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d}(\mathbb{C})\) an \((\varepsilon, \sigma)\)-representation of \(G\). Then there exists a \(d^{\prime} \geq d\), an isometry \(V: \mathbb{C}^{d} \rightarrow \mathbb{C}^{d^{\prime}}\), and a representation \(g: G \rightarrow U_{d^{\prime}}(\mathbb{C})\) such that
 \be
 \mathbb{E}_{x \in G}\left\|f(x)-V^{*} g(x) V\right\|_{\sigma}^{2} \leq 2 \varepsilon.
@@ -208,7 +201,7 @@ Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d
 \end{sproof}
 
 Next, we will give a different proof that does not directly decompose into irreps but instead uses the action of the regular representation.
-\begin{lemma}[Gowers-Hatami-Correlation]\label{gowers-hatami-correlation}\lean{gh2_average_correlation}\uses{approx-representation}
+\begin{lemma}[Gowers-Hatami-Correlation]\label{gowers-hatami-correlation}\lean{gh2_average_correlation}\leanok\uses{approx-representation}
 Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(\rho: G \rightarrow U(\mathcal{H})\) an \((\varepsilon, \sigma)\)-representation of \(G\) on space $\mathcal{H}$. 
 Then there exists an isometry \(V: \mathcal{H} \rightarrow \mathcal{H}^\prime\) to a different space $\mathcal{H}^\prime$, 
 and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that the average correlation between $\rho$ and $\rho^\prime$ is:
@@ -262,8 +255,8 @@ and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
     \eea    
 \end{proof}
 
-\begin{theorem}[Gowers-Hatami-2]\label{gowers-hatami-2}\lean{gowers_hatami}
-  \uses{UnitarySigmaError, approx-representation, gowers-hatami-correlation}
+\begin{theorem}[Gowers-Hatami-2]\label{gowers-hatami-2}\lean{gowers_hatami_GH2_product}\leanok
+  \uses{sigmaNormSqSub, approx-representation, gowers-hatami-correlation}
 Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(\rho: G \rightarrow U(\mathcal{H})\) an \((\varepsilon, \sigma)\)-representation of \(G\) on space $\mathcal{H}=\mathbb{C}^{d}$. 
 Then there exists an isometry \(V: \mathcal{H} \rightarrow \mathcal{H}^\prime\) to a different space $\mathcal{H}^\prime$, 
 and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
@@ -282,18 +275,12 @@ and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
         &= & \EE_{x \in G} \| \rho(x) \|_\sigma^2 + \EE_{x \in G} \|V^* \rho^\prime(x) V\|_\sigma^2 - 2 \EE_{x \in G} \Re \langle \rho(x), V^* \rho^\prime(x) V\rangle_\sigma \nonumber
     \eea        
 
-    Because $\rho$ is unitary, $\EE_{x \in G} \| \rho(x) \|_\sigma^2 = 1$.
-    For the second term, since $\rho^\prime$ is unitary and $V$ is an isometry, 
-    \bea
-    && \EE_{x \in G} \|V^* \rho^\prime(x) V\|_\sigma^2  \\ 
-    & = & \EE_{x \in G} \Tr\left[V^* \rho^{\prime *}(x) V V^* \rho^\prime(x) V \sigma\right] \nonumber \\ 
-    & = & \EE_{x, y, z \in G} \Tr\left[\rho^*(yx)\rho(y) \rho^*(z) \rho(zx) \sigma\right] \nonumber
-    \eea
-    Because $\rho$ is unitary the product $U(x, y, z) := \rho^*(yx)\rho(y) \rho^*(z) \rho(zx)$ is again a unitary operator, the above expression is upper bounded by Holder's inequality as
-    \bea \label{eq:isometry_unitary_bound}
-    && \EE_{x, y, z \in G} \Tr\left[U(x, y, z) \sigma\right] \\ \nonumber
-    & \le & \EE_{x, y, z \in G} \|U(x, y, z)\|_\infty \|\sigma\|_1 = 1. 
-    \eea
+    Because $\rho$ is unitary and $\Tr \sigma = 1$, $\EE_{x \in G} \| \rho(x) \|_\sigma^2 = 1$.
+    For the second term, recall from \equref{eq:isometry_average} that the compression is the group average $V^* \rho^\prime(x) V = \EE_{y \in G} \rho^*(y)\rho(yx)$. Each summand $\rho^*(y)\rho(yx)$ is a product of unitaries, hence unitary, so $\|\rho^*(y)\rho(yx)\|_\sigma = 1$. By convexity of the $\sigma$-norm---the triangle inequality applied to the average---we obtain
+    \be \label{eq:isometry_unitary_bound}
+    \|V^* \rho^\prime(x) V\|_\sigma = \left\| \EE_{y \in G} \rho^*(y)\rho(yx) \right\|_\sigma \le \EE_{y \in G} \|\rho^*(y)\rho(yx)\|_\sigma = 1,
+    \ee
+    hence $\EE_{x \in G}\|V^* \rho^\prime(x) V\|_\sigma^2 \le 1$.
 
     Therefore using the bounds in Eq.~\ref{eq:isometry_unitary_bound} and Eq.~\ref{eq:inner_product_bound} by applying Lemma~\ref{gowers-hatami-correlation}, we have
     \be
