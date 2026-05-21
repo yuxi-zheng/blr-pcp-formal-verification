@@ -1,6 +1,6 @@
 import Architect
-import BlrPcp.Oracle
-import BlrPcp.Problems.BLR
+import BlrPcp.QESATExpSizePCP.PCPs
+import BlrPcp.QESATExpSizePCP.FnOracleAccessBLR
 import CompPoly.Multivariate.CMvPolynomial
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Algebra.BigOperators.Fin

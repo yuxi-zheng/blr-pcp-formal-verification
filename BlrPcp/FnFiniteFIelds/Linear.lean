@@ -109,7 +109,7 @@ lemma fourierCoeff_phaseLift_linearFn (α β : Vec F Idx) (c : F) :
       if β = (fun i => c * α i) then 1 else 0 := by
   rw [phaseLift_linearFn]
   simpa [fourierCoeff, eq_comm] using
-    (characters_orthonormal_basis (F := F) (Idx := Idx)).1 (fun i => c * α i) β
+    (characters_orthonormal (F := F) (Idx := Idx)).1 (fun i => c * α i) β
 
 end Phases
 

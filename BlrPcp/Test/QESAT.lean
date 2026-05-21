@@ -1,4 +1,4 @@
-import BlrPcp.Problems.QESAT
+import BlrPcp.QESATExpSizePCP.QESAT
 import BlrPcp.Test.SysRand
 import CompPoly.Data.Nat.Bitwise
 

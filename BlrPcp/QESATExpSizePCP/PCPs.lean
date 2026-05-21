@@ -6,7 +6,7 @@ import VCVio.OracleComp.OracleContext
 import VCVio.OracleComp.QueryTracking.QueryBound
 
 /-!
-# Oracle computations
+# PCPs
 
 This file defines PCPs and LPCPs in terms of oracle computations, as well as some genetic utils.
 

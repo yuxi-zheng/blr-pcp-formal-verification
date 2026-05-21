@@ -1,4 +1,4 @@
-import BlrPcp.Oracle
+import BlrPcp.QESATExpSizePCP.PCPs
 
 /-!
 # IO-backed randomness for executable tests

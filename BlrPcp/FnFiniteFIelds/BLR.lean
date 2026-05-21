@@ -297,7 +297,7 @@ private lemma charFn_add_arg_apply (γ : Vec F Idx) (a b : F) (x y : Vec F Idx) 
 omit [Nonempty Idx] in
 private lemma expectation_charFn (α : Vec F Idx) :
     expectation (charFn α) = if α = 0 then 1 else 0 := by
-  have h := (characters_orthonormal_basis (F := F) (Idx := Idx)).1 α 0
+  have h := (characters_orthonormal (F := F) (Idx := Idx)).1 α 0
   simpa [fnInner, expectation, charFn_zero_apply] using h
 
 omit [Nonempty Idx] in

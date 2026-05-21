@@ -174,7 +174,7 @@ Let $G$ be a finite group and $\sum_\rho$ denotes summing over the complete set 
 \section{Gowers Hatami Theorem}
 
 \begin{theorem}[Gowers-Hatami]\label{gowers-hatami}\lean{gowers_hatami}
-  \uses{UnitarySigmaError, approx-representation,sigma_proximity_iff,GroupFourier,regular_repr_character}
+  \uses{UnitarySigmaError, approx-representation, GroupFourier, regular_repr_character}
 Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d}(\mathbb{C})\) an \((\varepsilon, \sigma)\)-representation of \(G\). Then there exists a \(d^{\prime} \geq d\), an isometry \(V: \mathbb{C}^{d} \rightarrow \mathbb{C}^{d^{\prime}}\), and a representation \(g: G \rightarrow U_{d^{\prime}}(\mathbb{C})\) such that
 \be
 \mathbb{E}_{x \in G}\left\|f(x)-V^{*} g(x) V\right\|_{\sigma}^{2} \leq 2 \varepsilon.
@@ -182,7 +182,7 @@ Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d
 \end{theorem}
 
 \begin{sproof}
-    The full proof can be found in the lecture notes Theorem 2.3~\cite{lecture}.
+    The theorem is due to Gowers and Hatami~\cite{GowHat17}; the constructive proof below follows Vidick's lecture notes, Theorem 2.3~\cite{VidickQMATH22}.
     In particular, the proof is constructive. The isometry is defined as 
     \(V: \mathbb{C}^{d} \rightarrow \mathbb{C}^{d} \otimes\left(\oplus_{\rho} \mathbb{C}^{d_{\rho}} \otimes \mathbb{C}^{d_{\rho}}\right)\) by
     \be\label{eq:isometry_V}
@@ -273,7 +273,7 @@ and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
 \end{theorem}
 
 \begin{proof}
-    A different proof of the Gowers-Hatami theorem is given in M. de la Salle's notes~\cite{de_la_Salle}.
+    A regular-representation proof of the Gowers-Hatami theorem appears in Morel's slides~\cite{Morel20}, following the original Gowers-Hatami theorem~\cite{GowHat17}.
 
     The rest of the proof follows by expanding the $\sigma$-norm, bounding the norm of $\EE_{x \in G} V^* \rho^\prime(x) V$ and applying the definition of $(\varepsilon, \sigma)$-representation.
      In particular, we have 

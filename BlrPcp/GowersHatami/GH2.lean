@@ -1,4 +1,4 @@
-import BlrPcp.GowersHatami_original
+import BlrPcp.GowersHatami.GowersHatami_original
 import Mathlib.Data.Fintype.EquivFin
 import Mathlib.Analysis.Matrix.Order
 import Mathlib.LinearAlgebra.Matrix.Permutation
