@@ -11,7 +11,7 @@ Let $\omega_p = e^{2\pi i/p}$.
 \leanok
 The field trace $\Tr: \bbF_q \to \bbF_p$ is
 \[
-    \Tr(z) := \sum_{i=0}^{s-1} z^{p^i}.
+    \Tr(z) \coloneqq \sum_{i=0}^{s-1} z^{p^i}.
 \]
 \end{definition}
 
@@ -22,7 +22,7 @@ The field trace $\Tr: \bbF_q \to \bbF_p$ is
 \leanok
 The base additive character $\psi:\bbF_q\to\bbC$ is
 \[
-    \psi(z) := \omega_p^{\Tr(z)}.
+    \psi(z) \coloneqq \omega_p^{\Tr(z)}.
 \]
 \end{definition}
 
@@ -34,7 +34,7 @@ The base additive character $\psi:\bbF_q\to\bbC$ is
 For $\alpha\in\bbF_q^n$, define the additive character
 $\chi_\alpha: \bbF_q^n\to\bbC$ by
 \[
-    \chi_\alpha(x) := \psi(\inner{\alpha}{x})
+    \chi_\alpha(x) \coloneqq \psi(\inner{\alpha}{x})
     = \omega_p^{\Tr(\inner{\alpha}{x})},
 \]
 where $\inner{\alpha}{x}=\sum_{i=1}^n \alpha_i x_i\in\bbF_q$.
@@ -47,7 +47,7 @@ where $\inner{\alpha}{x}=\sum_{i=1}^n \alpha_i x_i\in\bbF_q$.
 For a function $h:\bbF_q^n\to\bbC$, define its uniform expectation by
 \[
     \bbE_{x\in\bbF_q^n}[h(x)]
-    := \frac{1}{q^n}\sum_{x\in\bbF_q^n} h(x).
+    \coloneqq \frac{1}{q^n}\sum_{x\in\bbF_q^n} h(x).
 \]
 \end{definition}
 
@@ -59,7 +59,7 @@ For a function $h:\bbF_q^n\to\bbC$, define its uniform expectation by
 For functions $h_1,h_2:\bbF_q^n\to\bbC$, define
 \[
     \inner{h_1}{h_2}
-    := \bbE_{x\in\bbF_q^n}\left[h_1(x)\overline{h_2(x)}\right].
+    \coloneqq \bbE_{x\in\bbF_q^n}\left[h_1(x)\overline{h_2(x)}\right].
 \]
 \end{definition}
 
@@ -71,7 +71,7 @@ For functions $h_1,h_2:\bbF_q^n\to\bbC$, define
 For a function $h:\bbF_q^n\to\bbC$, define its $L_2$ norm by
 \[
     \|h\|_2
-    :=
+    \coloneqq
     \left(\bbE_{x\in\bbF_q^n}\left[\abs{h(x)}^2\right]\right)^{1/2}
     =
     \sqrt{\inner{h}{h}}.
@@ -86,7 +86,7 @@ For a function $h:\bbF_q^n\to\bbC$, define its $L_2$ norm by
 For $h:\bbF_q^n\to\bbC$ and $\alpha\in\bbF_q^n$, define
 \[
     \widehat h(\alpha)
-    := \inner{h}{\chi_\alpha}
+    \coloneqq \inner{h}{\chi_\alpha}
     = \bbE_{x\in\bbF_q^n}\left[h(x)\overline{\chi_\alpha(x)}\right].
 \]
 \end{definition}
@@ -131,7 +131,7 @@ $x\in\bbF_q^n$. Hence
     1.
 \]
 
-Now suppose $\alpha\ne\beta$. Let $\gamma:=\alpha-\beta$. Then $\gamma\ne 0$, so there exists
+Now suppose $\alpha\ne\beta$. Let $\gamma \coloneqq \alpha-\beta$. Then $\gamma\ne 0$, so there exists
 an index $j$ such that $\gamma_j\ne 0$. Fix all coordinates of $x$ except $x_j$. For the fixed
 remaining coordinates, the map
 \[
@@ -332,35 +332,43 @@ and by the definitions of the inner product and the $L_2$ norm, the right-hand s
 \]
 \end{proof}
 
+\begin{definition}[Nonzero field elements]
+\label{def:nonzero-field-elements}
+\lean{BlrPcp.nonzeroF}
+\leanok
+Write
+\[
+    \bbF_q^\times \coloneqq \{c\in\bbF_q : c\ne 0\}.
+\]
+\end{definition}
+
 \begin{definition}[Fourier expansion of a finite-field-valued function]
 \label{def:fourier-expansion-field-valued}
-Let $f:\bbF_q^n\to\bbF_q$. For each $c\in\bbF_q^\times$, define
+\lean{BlrPcp.phaseLift}
+\uses{def:base-character,def:nonzero-field-elements}
+\leanok
+Let $f:\bbF_q^n\to\bbF_q$. For each $c\in\bbF_q^\times$, define the $c$-phase lift
 \[
-    \fexp{\ff}{c}(x) := \omega_p^{\Tr(c f(x))}.
+    \fexp{\ff}{c}(x) \coloneqq \omega_p^{\Tr(c f(x))}.
 \]
-The Fourier expansion of $f$ is the family
-\[
-    \left\{\fexp{\ff}{c}\right\}_{c\in\bbF_q^\times}.
-\]
+The Fourier expansion of $f$ is the set $\{\varphi_c\}_{c\in \bbF_q^\times}$.
 \end{definition}
 
 \begin{lemma}[Character-sum indicator]
 \label{lem:character-sum-indicator}
-For every $z\in\bbF_q$,
-\[
-    \ind[z=0]
-    = \frac{1}{q}\sum_{c\in\bbF_q}\omega_p^{\Tr(cz)}.
-\]
-Consequently, for every $u,v\in\bbF_q$,
+\lean{BlrPcp.character_sum_indicator_eq}
+\uses{def:base-character}
+\leanok
+For every $u,v\in\bbF_q$,
 \[
     \ind[u=v]
     = \frac{1}{q}\sum_{c\in\bbF_q}\omega_p^{\Tr(c(u-v))}.
 \]
 \end{lemma}
-\begin{proof}
-Let
+\begin{proof}\leanok
+For each $z \in \bbF_q$ we define
 \[
-    \psi(z) := \omega_p^{\Tr(z)}
+    \psi(z) \coloneqq \omega_p^{\Tr(z)}
 \]
 be the standard additive character of \(\bbF_q\). We prove that, for every
 \(t\in \bbF_q\),
@@ -389,7 +397,7 @@ Now suppose \(t\neq 0\). Then multiplication by \(t\) is a bijection
 \]
 We claim that the latter sum is \(0\). Let
 \[
-    S:=\sum_{z\in\bbF_q}\psi(z).
+    S \coloneqq \sum_{z\in\bbF_q}\psi(z).
 \]
 Since \(\Tr:\bbF_q\to\bbF_p\) is a nonzero \(\bbF_p\)-linear map, it is
 surjective. Hence there exists \(a\in\bbF_q\) such that \(\Tr(a)=1\).
@@ -427,35 +435,54 @@ Substituting \(t=u-v\), we obtain
 
 \begin{definition}[Relative Hamming distance]
 \label{def:relative-hamming-distance}
+\lean{BlrPcp.distance}
+\leanok
 For $f,g:\bbF_q^n\to\bbF_q$, define
 \[
     \delta(f,g)
-    := \Pr_{x\in\bbF_q^n}\left[f(x)\ne g(x)\right].
+    \coloneqq \Pr_{x\in\bbF_q^n}\left[f(x)\ne g(x)\right].
 \]
 \end{definition}
 
 \begin{definition}[Linear functions]
 \label{def:linear-functions}
-For $\alpha\in\bbF_q^n$, define $\ell_\alpha:\bbF_q^n\to\bbF_q$ by
+\lean{BlrPcp.linearFn, BlrPcp.IsLinear, BlrPcp.LinearSet}
+\leanok
+For $\alpha\in\bbF_q^n$, define the linear scalar function
+$\ell_\alpha:\bbF_q^n\to\bbF_q$ by
 \[
-    \ell_\alpha(x):=\inner{\alpha}{x}.
+    \ell_\alpha(x) \coloneqq \inner{\alpha}{x}.
 \]
-The set of linear functions is
+A function $h:\bbF_q^n\to\bbF_q$ is linear if $h=\ell_\alpha$ for some
+$\alpha\in\bbF_q^n$. The finite set of all linear scalar functions is
 \[
-    \lin := \left\{\ell_\alpha \mid \alpha\in\bbF_q^n\right\}.
+    \lin
+    \coloneqq
+    \left\{\ell_\alpha \mid \alpha\in\bbF_q^n\right\}.
 \]
+\end{definition}
+
+\begin{definition}[Distance to linearity]
+\label{def:distance-to-linearity}
+\lean{BlrPcp.distanceToLinear}
+\uses{def:relative-hamming-distance,def:linear-functions}
+\leanok
 The distance from $f:\bbF_q^n\to\bbF_q$ to linearity is
 \[
-    \delta(f,\lin):=\min_{\alpha\in\bbF_q^n}\delta(f,\ell_\alpha).
+    \delta(f,\lin) \coloneqq \min_{g\in\lin}\delta(f,g).
 \]
 \end{definition}
 
 
 
 \begin{lemma}[Well-separatedness of $\lin$]
-For any distincit $f,g \in \lin$, one has $\delta(f,g)= 1-1/|\bbF|$.
+\label{lem:linear-set-well-separated}
+\lean{BlrPcp.linearSet_wellSeparated}
+\uses{def:linear-functions,def:relative-hamming-distance}
+\leanok
+For any distinct $f,g \in \lin$, one has $\delta(f,g)= 1-1/|\bbF|$.
 \end{lemma}
-\begin{proof}
+\begin{proof}\uses{def:linear-functions,def:relative-hamming-distance}\leanok
 Let $a,b \in \bbF^n$ be the unique vectors such that $f(x) = \langle a, x\rangle$ and $g(x) = \langle b, x\rangle$ for each $x$.
 Let $c = a-b$, which must be a non-zero vector. In particular, there exists $i \in [n]$ such that $c_i \neq 0$. Take any permutation $\sigma: [n] \rightarrow [n]$ such that $\sigma(i)=n$. Then
 \begin{align*}
@@ -472,6 +499,9 @@ where the last equality follows because $c_i \neq 0$. Now note that  $\ind[x_n =
 
 \begin{lemma}[Distance formula]
 \label{lem:distance-formula}
+\lean{BlrPcp.distance_formula_via_phase_fourier_coefficients}
+\uses{def:relative-hamming-distance,def:fourier-expansion-field-valued,def:function-inner-product}
+\leanok
 Let $f,g:\bbF_q^n\to\bbF_q$.
 Let $\{\fexp{\ff}{c}\}_{c\in\bbF_q^\times}$ and
 $\{\fexp{\fg}{c}\}_{c\in\bbF_q^\times}$ be their Fourier expansions.
@@ -483,19 +513,9 @@ Then
         \inner{\fexp{\ff}{c}}{\fexp{\fg}{c}}
     \right).
 \]
-Equivalently,
-\[
-    \delta(f,g)
-    = 1-\frac{1}{q}\left(1+
-        \sum_{c\in\bbF_q^\times}
-        \sum_{\alpha\in\bbF_q^n}
-        \widehat{\fexp{\ff}{c}}(\alpha)
-        \overline{\widehat{\fexp{\fg}{c}}(\alpha)}
-    \right).
-\]
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\uses{lem:character-sum-indicator,lem:fourier-plancherel}\leanok
 By \cref{lem:character-sum-indicator},
 \[
     \Pr_x[f(x)=g(x)]
@@ -516,29 +536,21 @@ Therefore
 \]
 which gives the first formula after using
 $\delta(f,g)=1-\Pr_x[f(x)=g(x)]$.
-The second formula follows from Fourier inversion and Parseval.
 \end{proof}
 
 \begin{lemma}[Fourier expansion of a linear function]
 \label{lem:linear-function-fourier-expansion}
-Fix $\alpha\in\bbF_q^n$ and $c\in\bbF_q^\times$.
-Let $\fexp{\lambda}{c}(x):=\omega_p^{\Tr(c\ell_\alpha(x))}$.
+\lean{BlrPcp.phaseLift_linearFn}
+\uses{def:linear-functions,def:fourier-expansion-field-valued,def:additive-character}
+\leanok
+Fix $\alpha\in\bbF_q^n$ and let $\{\lambda_c\}_{c \in \bbF_q^\times}$ be the Fourier expansion of $\ell_\alpha$.
 Then
 \[
     \fexp{\lambda}{c}=\chi_{c\alpha}.
 \]
-Equivalently, for every $\beta\in\bbF_q^n$,
-\[
-    \widehat{\fexp{\lambda}{c}}(\beta)
-    =
-    \begin{cases}
-        1 & \text{if } \beta=c\alpha,\\
-        0 & \text{if } \beta\ne c\alpha.
-    \end{cases}
-\]
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\leanok
 For every $x\in\bbF_q^n$,
 \[
     \fexp{\lambda}{c}(x)
@@ -546,51 +558,63 @@ For every $x\in\bbF_q^n$,
     = \omega_p^{\Tr(\inner{c\alpha}{x})}
     = \chi_{c\alpha}(x).
 \]
-The statement about Fourier coefficients follows from
-\cref{lem:character-orthonormal}.
 \end{proof}
+
+\begin{definition}[Linear Fourier score]
+\label{def:linear-fourier-score}
+\lean{BlrPcp.linearFourierScore, BlrPcp.linearFourierScoreC}
+\uses{def:nonzero-field-elements,def:fourier-expansion-field-valued,def:fourier-coefficient}
+\leanok
+For $f:\bbF_q^n\to\bbF_q$ and $\alpha\in\bbF_q^n$, define the linear Fourier score
+of $f$ at $\alpha$ by
+\[
+    S_\alpha(f) \coloneqq \sum_{c\in\bbF_q^\times}
+        \widehat{\fexp{\ff}{c}}(c\alpha),
+\]
+where $\{\fexp{\ff}{c}\}_{c \in \bbF_q^\times}$ is the Fourier expansion of $f$.
+\end{definition}
 
 \begin{lemma}[Distance to linearity in Fourier form]
 \label{lem:distance-to-linearity-fourier}
+\lean{BlrPcp.distance_to_linearity_fourier}
+\uses{def:distance-to-linearity,def:linear-fourier-score}
+\leanok
 Let $f:\bbF_q^n\to\bbF_q$ have Fourier expansion
 $\{\fexp{\ff}{c}\}_{c\in\bbF_q^\times}$. Then
 \[
     \delta(f,\lin)
     = 1-\frac{1}{q}\left(1+
         \max_{\alpha\in\bbF_q^n}
-        \sum_{c\in\bbF_q^\times}
-        \widehat{\fexp{\ff}{c}}(c\alpha)
+        S_\alpha(f)
     \right).
 \]
-Moreover, for every $\alpha\in\bbF_q^n$, the quantity
-\[
-    S_\alpha := \sum_{c\in\bbF_q^\times}
-        \widehat{\fexp{\ff}{c}}(c\alpha)
-\]
-is real and satisfies $-1\le S_\alpha\le q-1$.
+Moreover, for every $\alpha\in\bbF_q^n$, the score $S_\alpha(f)$ is real and
+satisfies $-1\le S_\alpha(f)\le q-1$.
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\uses{lem:distance-formula,lem:linear-function-fourier-expansion}\leanok
 Apply \cref{lem:distance-formula} with $g=\ell_\alpha$ and use
 \cref{lem:linear-function-fourier-expansion}. This gives
 \[
     \delta(f,\ell_\alpha)
     =1-\frac{1}{q}\left(1+
-        \sum_{c\in\bbF_q^\times}
-        \widehat{\fexp{\ff}{c}}(c\alpha)
+        S_\alpha(f)
     \right).
 \]
 Taking the minimum over $\alpha$ gives the claimed formula for
 $\delta(f,\lin)$.
-For fixed $\alpha$, the same formula expresses $S_\alpha$ as
-$q(1-\delta(f,\ell_\alpha))-1$. Hence $S_\alpha$ is real, and since
-$0\le \delta(f,\ell_\alpha)\le 1$, we get $-1\le S_\alpha\le q-1$.
+For fixed $\alpha$, the same formula expresses $S_\alpha(f)$ as
+$q(1-\delta(f,\ell_\alpha))-1$. Hence $S_\alpha(f)$ is real, and since
+$0\le \delta(f,\ell_\alpha)\le 1$, we get $-1\le S_\alpha(f)\le q-1$.
 \end{proof}
 
 \begin{definition}[Finite-field BLR test]
 \label{def:finite-field-blr-test}
+\lean{BlrPcp.BLRAcceptsAt, BlrPcp.acceptanceProbabilityBLR}
+\uses{def:nonzero-field-elements}
+\leanok
 Given oracle access to $f:\bbF_q^n\to\bbF_q$, the finite-field BLR verifier
-$\BLRVerifier$ samples $a,b\in\bbF_q^\times$ and $x,y\in\bbF_q^n$ uniformly and accepts iff
+$\BLRVerifier$ samples $a,b\in\bbF_q^\times$ and $x,y\in\bbF_q^n$ independently and uniformly at random, and accepts iff
 \[
     a f(x)+b f(y)=f(ax+by).
 \]
@@ -604,13 +628,16 @@ That is,
 
 \begin{lemma}[Completeness]
 \label{lem:blr-completeness}
+\lean{BlrPcp.blr_completeness}
+\uses{def:finite-field-blr-test,def:linear-functions}
+\leanok
 If $f\in\lin$, then
 \[
     \Pr[\BLRVerifier=1]=1.
 \]
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\leanok
 If $f=\ell_\alpha$ for some $\alpha\in\bbF_q^n$, then for every
 $a,b\in\bbF_q^\times$ and $x,y\in\bbF_q^n$,
 \[
@@ -624,23 +651,20 @@ Thus the verifier accepts for every choice of randomness.
 
 \begin{lemma}[Exact BLR acceptance formula]
 \label{lem:exact-blr-acceptance}
-Let $f:\bbF_q^n\to\bbF_q$ have Fourier expansion
-$\{\fexp{\ff}{c}\}_{c\in\bbF_q^\times}$.
-For each $\alpha\in\bbF_q^n$, define
-\[
-    S_\alpha := \sum_{c\in\bbF_q^\times}
-        \widehat{\fexp{\ff}{c}}(c\alpha).
-\]
+\lean{BlrPcp.exact_blr_acceptance_formula}
+\uses{def:finite-field-blr-test,def:linear-fourier-score}
+\leanok
+Let $f:\bbF_q^n\to\bbF_q$.
 Then
 \[
     \Pr[\BLRVerifier=1]
     = \frac{1}{q}\left(1+\frac{1}{(q-1)^2}
-        \sum_{\alpha\in\bbF_q^n} S_\alpha^3
+        \sum_{\alpha\in\bbF_q^n} S_\alpha(f)^3
     \right).
 \]
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\uses{lem:character-sum-indicator,lem:fourier-inversion,lem:character-orthonormal}\leanok
 By \cref{lem:character-sum-indicator}, for fixed $a,b,x,y$,
 \[
     \ind[a f(x)+b f(y)=f(ax+by)]
@@ -708,29 +732,32 @@ As $a,b,c$ range over $\bbF_q^\times$, so do $ca$, $cb$, and $-c$. Hence this eq
     \left(\sum_{d\in\bbF_q^\times}
         \widehat{\fexp{\ff}{d}}(d\eta)
     \right)^3
-    =\frac{1}{(q-1)^2}\sum_{\eta\in\bbF_q^n}S_\eta^3.
+    =\frac{1}{(q-1)^2}\sum_{\eta\in\bbF_q^n}S_\eta(f)^3.
 \]
 Substituting into the expression for $\Pr[\BLRVerifier=1]$ proves the claim.
 \end{proof}
 
 \begin{lemma}[Second moment bound]
 \label{lem:second-moment-bound}
-With $S_\alpha$ as in \cref{lem:exact-blr-acceptance},
+\lean{BlrPcp.sum_linearFourierScore_sq_upperbound}
+\uses{def:linear-fourier-score}
+\leanok
+For every $f:\bbF_q^n\to\bbF_q$, one has
 \[
-    \sum_{\alpha\in\bbF_q^n} S_\alpha^2 \le (q-1)^2.
+    \sum_{\alpha\in\bbF_q^n} S_\alpha(f)^2 \le (q-1)^2.
 \]
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\uses{lem:parseval-identity}\leanok
 Expanding the square gives
 \[
-    \sum_{\alpha\in\bbF_q^n} S_\alpha^2
+    \sum_{\alpha\in\bbF_q^n} S_\alpha(f)^2
     =\sum_{a,b\in\bbF_q^\times}
         \sum_{\alpha\in\bbF_q^n}
         \widehat{\fexp{\ff}{a}}(a\alpha)
         \widehat{\fexp{\ff}{b}}(b\alpha).
 \]
-For fixed $a,b\in\bbF_q^\times$, Cauchy--Schwarz and
+For fixed $a,b\in\bbF_q^\times$, Cauchy-Schwarz and
 \cref{lem:parseval-identity} give
 \begin{align*}
 \abs{\sum_{\alpha\in\bbF_q^n}
@@ -749,34 +776,35 @@ Summing over the $(q-1)^2$ choices of $(a,b)$ gives the result.
 
 \begin{theorem}[Soundness of the finite-field BLR test]
 \label{thm:finite-field-blr-soundness}
-For every function $f:\bbF_q^n\to\bbF_q$,
-\[
-    \Pr[\BLRVerifier=0] \ge \delta(f,\lin).
-\]
-Equivalently,
+\lean{BlrPcp.blr_soundness}
+\uses{def:finite-field-blr-test,def:distance-to-linearity}
+\leanok
+For every function $f:\bbF_q^n\to\bbF_q$, one has
 \[
     \Pr[\BLRVerifier=1] \le 1-\delta(f,\lin).
 \]
 \end{theorem}
 
-\begin{proof}
-Let $S_\alpha$ be as in \cref{lem:exact-blr-acceptance}, and let
+\begin{proof}\uses{lem:distance-to-linearity-fourier,lem:exact-blr-acceptance,lem:second-moment-bound}\leanok
+Let $S_\alpha(f)$ be as in \cref{def:linear-fourier-score}, and let
 \[
-    M:=\max_{\alpha\in\bbF_q^n}S_\alpha.
+    M \coloneqq \max_{\alpha\in\bbF_q^n}S_\alpha(f).
 \]
 By \cref{lem:distance-to-linearity-fourier},
 \[
     1-\delta(f,\lin)=\frac{1}{q}(1+M).
 \]
-By \cref{lem:distance-to-linearity-fourier}, each $S_\alpha$ is real and $S_\alpha\le M$.
-Therefore $S_\alpha^3\le M S_\alpha^2$ for every $\alpha$, because $S_\alpha^2\ge 0$.
+By \cref{lem:distance-to-linearity-fourier}, each $S_\alpha(f)$ is real and
+$S_\alpha(f)\le M$.
+Therefore $S_\alpha(f)^3\le M S_\alpha(f)^2$ for every $\alpha$, because
+$S_\alpha(f)^2\ge 0$.
 Using \cref{lem:exact-blr-acceptance} and \cref{lem:second-moment-bound},
 \begin{align*}
     \Pr[\BLRVerifier=1]
     &=\frac{1}{q}\left(1+\frac{1}{(q-1)^2}
-        \sum_{\alpha\in\bbF_q^n}S_\alpha^3\right) \\
+        \sum_{\alpha\in\bbF_q^n}S_\alpha(f)^3\right) \\
     &\le \frac{1}{q}\left(1+\frac{M}{(q-1)^2}
-        \sum_{\alpha\in\bbF_q^n}S_\alpha^2\right) \\
+        \sum_{\alpha\in\bbF_q^n}S_\alpha(f)^2\right) \\
     &\le \frac{1}{q}(1+M) \\
     &=1-\delta(f,\lin).
 \end{align*}
