@@ -118,8 +118,8 @@ A language $L \subseteq \{0,1\}^*$ is in
 $\PCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
 if there exists a polynomial-time PCP verifier $V$
 such that for every $x \in \{0,1\}^*$,
-$V$ makes at most $q(|x|)$ queries to the proof oracle,
-uses at most $r(|x|)$ bits of randomness, and the following holds:
+$V$ makes at most $q(|x|)$ queries to the proof oracle and
+at most $r(|x|)$ randomness queries, and the following holds:
 \begin{itemize}
   \item Completeness: If $x \in L$, then
   $\exists \pi \in \Sigma^{\ell(|x|)}, \,
@@ -129,29 +129,6 @@ uses at most $r(|x|)$ bits of randomness, and the following holds:
   \Pr\left[V^{\widetilde{\pi}}(x)=1 \right] \leq \varepsilon_s$.
 \end{itemize}
 \end{definition}
-
-% The following theorem is the main goal of this chapter.
-
-% \begin{theorem}
-% \uses{QESAT,PCP}
-% \label{QESAT_exp_PCP}
-% \lean{QESAT_exp_PCP}
-% \leanok
-% \[
-%   \mathrm{QESAT}(\F_2,n) \in
-%   \mathrm{PCP}[
-%     \varepsilon_c = 0,
-%     \varepsilon_s = 1/2,
-%     \Sigma = \F_2,
-%     \ell = 2^{|x|},
-%     q = O(1),
-%     r = |x|^{O(1)}
-%   ].
-% \]
-% \end{theorem}
-% \begin{proof}\uses{QESAT_poly_LPCP,LPCP_to_PCP_ZMod2}\leanok
-% TODO
-% \end{proof}
 
 \begin{definition}
 \label{LPCPVerifier}
@@ -172,8 +149,8 @@ A language $L \subseteq \{0,1\}^*$ is in
 $\LPCP[\varepsilon_c, \varepsilon_s, \Sigma, \ell, q, r]$
 if there exists a polynomial-time LPCP verifier $V$
 such that for every $x \in \{0,1\}^*$,
-$V$ makes at most $q(|x|)$ queries to the linear proof oracle,
-uses at most $r(|x|)$ bits of randomness, and the following holds:
+$V$ makes at most $q(|x|)$ queries to the linear proof oracle and
+at most $r(|x|)$ randomness queries, and the following holds:
 \begin{itemize}
   \item Completeness: If $x \in L$, then
   $\exists \pi \in \Sigma^{\ell(|x|)}, \,

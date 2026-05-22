@@ -53,6 +53,9 @@ LINEQ
 LINEQ.verifier
 LINEQ_LPCP
 TENSORQ
+TENSORQ.verifier
+TENSORQ.tensor_check_complete
+TENSORQ.verifier_soundness_after_sampling
 TENSORQ_LPCP
 TENSORQ_LPCP_Zmod2
 LPCP_to_PCP_ZMod2
