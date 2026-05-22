@@ -35,9 +35,15 @@ sigmaNormSq_sub_eq
 gh2_average_correlation
 gowers_hatami_GH2_product
 QESAT
+OracleSpec
+randOracleSpec
+QueryImpl
+uniformSample
+OracleContext
+randOracle
+OracleComp
 PCPVerifier
 PCP
-QESAT_exp_PCP
 LPCPVerifier
 LPCP
 BLR.basicVerifier

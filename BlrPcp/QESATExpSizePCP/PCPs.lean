@@ -8,10 +8,11 @@ import VCVio.OracleComp.QueryTracking.QueryBound
 /-!
 # PCPs
 
-This file defines PCPs and LPCPs in terms of oracle computations, as well as some genetic utils.
+This file defines PCPs and LPCPs in terms of oracle computations, as well as some generic utils.
 
-For BLR, the randomness oracle gives either an element of field F or a scalar, and thus uses a different definition from
-the ones defined here.
+For BLR, the randomness oracle gives either an element of the field `F` or a scalar, and thus uses a different definition from
+the ones defined here. However, the simpler BLR verifier (for `F = {0,1}`) is compatible with `randOracleSpec`, since it
+doesn't need to sample from `Fˣ`.
 
 ## Main declarations
 
