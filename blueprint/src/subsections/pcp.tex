@@ -15,7 +15,7 @@ Let \(m,n >0\) be integers, \(\F\) be a field, \(R = \F[x_{1},\dots,x_{n}]\) be 
 
 For example, $(x + 1, xy + z) \in \QESAT(\F_2,3)$.
 The goal of this chapter is to construct an exponential-length PCP for
-\(\QESAT(\F_2,n)\). Since \(\QESAT(\F_2,n)\) is NP-complete, this will imply the existence of exponential-length PCPs for all languages in NP.
+\(\QESAT(\F_2,n)\) (Theorem \ref{QESAT_exp_PCP}). Since \(\QESAT(\F_2,n)\) is NP-complete, this will imply the existence of exponential-length PCPs for all languages in NP.
 
 \section{Oracle computations and verifiers}
 Instead of oracle Turing machines, we will define verifiers using Lean monads, specifically the \texttt{OracleComp} free monad from VCV-io.
@@ -53,16 +53,16 @@ query implementation for the randomness oracle specification that samples unifor
 \end{definition}
 This is the the oracle implementation that will be used to prove theorems about our verifiers,
 since it is compatible with the more classical notion of probability distributions used in the previous chapters.
-% \begin{remark}
+\begin{remark}[Implementing verifiers]
 If we want to actually run the verifiers, we can also use concrete implementations based on the IO monad
 and system randomness for pseudorandom sampling.
-% \end{remark}
+\end{remark}
 \begin{definition}[Oracle context]
 \label{OracleContext}
 \lean{OracleContext}
 \uses{OracleSpec, QueryImpl}
 \leanok
-An \emph{oracle context} is a bundle of an oracle specification and a query implementation for that specification.
+An \emph{oracle context} is a bundle consisting of an oracle specification and a query implementation for that specification.
 \end{definition}
 \begin{definition}[Randomness oracle]
 \label{randOracle}
@@ -84,10 +84,6 @@ A \emph{verifier} is a function that takes an input \(x \in \{0,1\}^*\) and prod
 (with query access to a randomness oracle) that outputs a boolean. This definition can be extended to include
 other oracles (typically a proof oracle).
 \end{definition}
-The price to pay for using this definition instead of Turing machines is that we have no simple way to enforce
-the time complexity of the verifier. For that, a possible approach would be to restrict the allowed operations to a strict set
-of operations instead of general Lean computations, and track the time cost using query complexity.
-
 We also need to define verifiers that do not take any inputs (for example the BLR verifier).
 Since they use the same randomness oracle specification as the normal verifiers, they can
 compose nicely with them.
@@ -98,6 +94,11 @@ A \emph{unit verifier} (or just \emph{verifier} when it is clear from the contex
 This definition can be extended to include
 other oracles (typically a proof oracle).
 \end{definition}
+\begin{remark}[Time complexity]
+The price to pay for using these definitions for verifiers instead of Turing machines is that we have no simple way to enforce
+the time complexity of the verifier. For that, a possible approach would be to restrict the allowed operations to a strict set
+of operations instead of general Lean computations, and track the time cost using query complexity.
+\end{remark}
 \section{PCP and LPCP definitions}
 
 \begin{definition}
@@ -105,8 +106,7 @@ other oracles (typically a proof oracle).
 \lean{PCPVerifier}
 \uses{Verifier}
 \leanok
-A \emph{PCP verifier} is a verifier
-$V$ with query access to a function $\pi : [\ell (|x|)] \to \Sigma$.
+A \emph{PCP verifier} is a verifier with query access to a function $\pi : [\ell (|x|)] \to \Sigma$.
 \end{definition}
 
 \begin{definition}
@@ -135,8 +135,7 @@ at most $r(|x|)$ randomness queries, and the following holds:
 \lean{LPCPVerifier}
 \uses{Verifier}
 \leanok
-A \emph{LPCP verifier} is a probabilistic oracle Turing machine
-$V$ with query access to a linear function
+A \emph{LPCP verifier} is a verifier with query access to a linear function
 $\langle \pi,\cdot \rangle : \Sigma^{\ell(|x|)} \to \Sigma$.
 \end{definition}
 

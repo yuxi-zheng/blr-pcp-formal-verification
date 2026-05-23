@@ -1,0 +1,239 @@
+% \begin{theorem}\label{old-QESAT_poly_LPCP}\lean{QESAT_poly_LPCP}\uses{QESAT, LPCP}\leanok
+% \[
+%   \mathrm{QESAT}(\F_2,n) \in
+%   \mathrm{LPCP}[
+%     \varepsilon_c = 0,
+%     \varepsilon_s = 3/4,
+%     \Sigma = \F_2,
+%     \ell = n + n^2,
+%     q = 4,
+%     r = |x| + 2*n
+%   ].
+% \]
+% \end{theorem}
+% \begin{proof}%\uses{} tensor stuff
+
+% \noindent Let $(p_1, \dots, p_m)$ be an instance of $\text{QESAT}(\mathbb{F})$ with $n$ variables. \\
+% The LPCP verifier expects a proof $\pi = (a, b) \in \mathbb{F}^{n+n^2}$ and works as follows:
+
+% \vspace{1em}
+% \noindent \textbf{Verifier} $V^{(a,b)}(p_1, \dots, p_m)$:
+% \begin{enumerate}
+%     \item Sample $r \gets \mathbb{F}^m$ and $s, t \gets \mathbb{F}^n$.
+%     \item Define 
+%     \[
+%     M := \begin{bmatrix} \text{coeff}(p_1) \\ \vdots \\ \text{coeff}(p_m) \end{bmatrix} \in \mathbb{F}^{m \times (n+n^2)} 
+%     \quad \text{and} \quad 
+%     c := \begin{bmatrix} -\text{const}(p_1) \\ \vdots \\ -\text{const}(p_m) \end{bmatrix} \in \mathbb{F}^m.
+%     \]
+%     \textit{(Note: $\text{coeff}(p_i) :=$ non-constant coeffs of $p_i$, and $\text{const}(p_i) :=$ constant coeff of $p_i$)}
+    
+%     \item \textit{(linear equation test)} $\rightarrow$ Query $(a,b)$ at $M^T r$ and check that $\langle a \parallel b, M^T r \rangle = \langle c, r \rangle$.
+    
+%     \item \textit{(tensor test)} $\rightarrow$ Query $b$ at $\text{flat}(s \otimes t)$, $a$ at $s$ and $t$, and check that 
+%     \[
+%     \langle b, \text{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle.
+%     \]
+% \end{enumerate}
+
+% \vspace{1em}
+% \noindent \textbf{Completeness:} 
+% Suppose $p_1(a) = \dots = p_m(a) = 0$ and set $b := \text{flat}(a \otimes a)$. \\
+% Then 
+% \[
+% \Pr_{s,t} \left[ \langle b, \text{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle \right] = 1
+% \]
+% and 
+% \[
+% \Pr_r \left[ \langle a \parallel b, M^T r \rangle = \langle c, r \rangle \right] = 1 \quad \left(\text{since } M \begin{bmatrix} a \\ \text{flat}(a \otimes a) \end{bmatrix} = c \right).
+% \]
+
+% \vspace{1em}
+% \noindent \textbf{Soundness:}
+% Suppose $\forall a \in \mathbb{F}^n \ \exists i \in [m] \text{ s.t. } p_i(a) \neq 0$. Fix any $\pi = (a, b)$. \\
+% Either:
+% \begin{enumerate}
+%     \item[(i)] $b \neq \text{flat}(a \otimes a) \implies$ tensor test passes w.p. $\leq \frac{2|\mathbb{F}|-1}{|\mathbb{F}|^2}$
+%     \item[OR (ii)] $b = \text{flat}(a \otimes a)$ and $M \begin{bmatrix} a \\ b \end{bmatrix} \neq c \implies$ linear equation test passes w.p. $\leq \frac{1}{|\mathbb{F}|}$
+% \end{enumerate}
+
+% \end{proof}
+
+
+\begin{definition}
+\label{QESAT.linearization}
+\uses{QESAT}
+Let \(x=(p_1,\dots,p_m)\) be a \(\QESAT(\F_2,n)\) instance. For each quadratic
+polynomial \(p_i\), form a row \(M_i\in\F_2^{n+n^2}\) by replacing every
+linear monomial \(X_j\) by the variable \(a_j\) and every quadratic monomial
+\(X_jX_k\) by the tensor variable \(b_{jk}\). Let
+    \[
+    M_{x} := \begin{bmatrix} M_1 \\ \vdots \\ M_m \end{bmatrix} \in \F_2^{m \times (n+n^2)} 
+    \quad \text{and} \quad 
+    c_{x} := \begin{bmatrix} -\operatorname{const}(p_1) \\ \vdots \\ -\operatorname{const}(p_m) \end{bmatrix} \in \F_2^m,
+    \]
+where \(\operatorname{const}(p_i)\) is the constant term of \(p_i\).
+Then \(M_{x}(a\parallel b)=c_{x}\) expresses the original equations after
+replacing \(a_ja_k\) by \(b_{jk}\).
+\end{definition}
+
+\begin{definition}
+\label{QESAT.verifier}
+\lean{QESAT.verifier}
+\uses{LPCPVerifier,QESAT.linearization,LINEQ.verifier,TENSORQ.verifier}
+\leanok
+Let \(x=(p_1,\dots,p_m) \in R_{2}^{m}\) be a QESAT instance as defined in \ref{QESAT}. Let \(V_{\QESAT(\F_2,n)}^{\pi}(x)\) be the LPCP verifier 
+with oracle access to \(\pi=a\parallel b\in\F_2^{n+n^2}\), defined as follows:
+\begin{enumerate}
+  \item Sample $r \gets \F_{2}^m$ and $s, t \gets \F_{2}^n$.
+  \item Construct \((M_{x},c_{x}) \in \F_2^{m \times (n+n^2)} \times \F_2^m\) as in \ref{QESAT.linearization}.
+  \item Check that \(V_{\LINEQ(\F_2,m,n)}^{\langle \pi, \cdot \rangle } (M_{x},c_{x}) = 1\).
+  \item Query \(\pi\) at
+  \((s,0)\), \((t,0)\), and \((0,\mathrm{flat}(s\otimes t))\) and check that
+  \[
+    \langle b,\mathrm{flat}(s\otimes t)\rangle
+    =\langle a,s\rangle\langle a,t\rangle .
+  \]
+  % TODO: fix the following issue
+  [Vincent: TODO: the last check actually uses QESAT.tensorSelfVerifier, it would be nice to
+  make TENSORQ.verifier work directly for our use case, to improve modularity and avoid duplicate code.]
+\end{enumerate}
+\end{definition}
+
+\begin{lemma}[Completeness]
+\label{QESAT.verifier_completeness}
+\lean{QESAT.verifier_correct}
+\uses{QESAT.verifier,QESAT.linearization,LINEQ.verifier,TENSORQ.tensor_check_complete}
+\leanok
+If \(x\in \QESAT(\F_2,n)\), then exists a proof
+\(\pi\in\F_2^{n+n^2}\) such that \[\Pr\!\left[V_{\QESAT(\F_2,n)}^{\pi}(x)=1\right]=1.\]
+\end{lemma}
+\begin{proof}
+Let \(a\in\F_2^n\) satisfy all equations and set
+\(b=\mathrm{flat}(a\otimes a)\). By construction of
+\ref{QESAT.linearization}, \(M_x(a\parallel b)=c_x\), so the LINEQ check
+accepts for every \(r\). The tensor self-check accepts for every \(s,t\) by
+\ref{TENSORQ.tensor_check_complete}.
+\end{proof}
+
+\begin{lemma}[Soundness]
+\label{QESAT.verifier_soundness}
+\lean{QESAT.verifier_correct}
+\uses{QESAT.verifier,QESAT.linearization,LINEQ.linear_form_uniform_prob_mul_card_le_one,TENSORQ.verifier_soundness_after_sampling}
+\leanok
+If \(x\notin \QESAT(\F_2,n)\), then for every proof
+\(\tilde\pi\in\F_2^{n+n^2}\),
+\[\Pr\!\left[V_{\QESAT(\F_2,n)}^{\tilde\pi}(x)=1\right]\leq 3 / 4.\]
+\end{lemma}
+\begin{proof}
+If some \(p_i\) has total degree \(>2\), the verifier rejects immediately, so
+the acceptance probability is \(0\). Assume now that every \(p_i\) is quadratic
+and write \(\pi=a\parallel b\). If \(b\neq\mathrm{flat}(a\otimes a)\), then
+the tensor self-check accepts with probability at most \(3/4\) by
+\ref{TENSORQ.verifier_soundness_after_sampling} specialized to \(\F_2\), and
+the full verifier accepts only if that check accepts.
+
+Otherwise \(b=\mathrm{flat}(a\otimes a)\). Since \(x\notin\QESAT(\F_2,n)\),
+the assignment \(a\) does not satisfy all equations. By
+\ref{QESAT.linearization}, \(M_x(a\parallel b)\neq c_x\). The LINEQ check
+therefore accepts with probability at most \(1/|\F_2|=1/2\) by
+\ref{LINEQ.linear_form_uniform_prob_mul_card_le_one}. Again the full verifier
+accepts only if this check accepts, so the acceptance probability is at most
+\(1/2\leq 3/4\).
+\end{proof}
+
+\begin{theorem}
+\label{QESAT_poly_LPCP}
+\lean{QESAT_poly_LPCP}
+\uses{QESAT, LPCP, QESAT.verifier}
+\leanok
+\[
+  \mathrm{QESAT}(\F_2,n) \in
+  \mathrm{LPCP}[
+    \varepsilon_c = 0,
+    \varepsilon_s = 3/4,
+    \Sigma = \F_2,
+    \ell = n + n^2,
+    q = 4,
+    r = |x| + 2n
+  ].
+\]
+\end{theorem}
+\begin{proof}\uses{QESAT.verifier_completeness,QESAT.verifier_soundness}\leanok
+% Lecture 08 gives the exact LINEQ randomness as \(m\log|\F|\). In Lean,
+% \(|x|\) is the encoded input size and bounds the number of equations \(m\);
+% after specializing to \(\F_2\), this yields the displayed \(|x|+2n\) bound.
+Use the verifier \ref{QESAT.verifier}. It makes one query for the LINEQ check
+and three queries for the tensor self-check, for a total of four. Its
+randomness is the LINEQ randomness plus two vectors in \(\F_2^n\). Completeness
+and soundness are \ref{QESAT.verifier_completeness} and
+\ref{QESAT.verifier_soundness}.
+\end{proof}
+
+\begin{theorem}
+\label{QESAT_exp_PCP_before_repetition}
+\lean{QESAT_exp_PCP_before_repetition}
+\uses{QESAT,PCP}
+\leanok
+\[
+  \mathrm{QESAT}(\F_2,n) \in
+  \mathrm{PCP}[
+    \varepsilon_c = 0,
+    \varepsilon_s = 7/8,
+    \Sigma = \F_2,
+    \ell = 2^{|x|},
+    q = O(1),
+    r = |x|^{O(1)}
+  ].
+\]
+\end{theorem}
+\begin{proof}\uses{QESAT_poly_LPCP,LPCP_to_PCP_ZMod2}\leanok
+% The lecture's final no-abstraction slide shares local-correction work in a
+% direct QESAT verifier and therefore displays different constants. This
+% formalization deliberately routes through the modular LPCP-to-PCP theorem,
+% so only the asymptotic constant-query statement is retained here.
+Apply \ref{LPCP_to_PCP_ZMod2} to \ref{QESAT_poly_LPCP}. Since the LPCP
+soundness is \(3/4\), the converted soundness is
+\[
+  \max\{7/8,\,3/4+1/100\}=7/8.
+\]
+The query bound remains constant because \(q=4\), and the randomness is
+polynomial in the input size. The Lean formalization pads the proof oracle from
+length \(2^{n+n^2}\) to length \(2^{|x|}\).
+\end{proof}
+
+\begin{lemma}
+\label{QESAT.constant_repetition}
+\uses{PCP}
+\[\PCP[0,7/8,\F_2,2^{|x|},O(1),|x|^{O(1)}] \subseteq \PCP[0,1/2,\F_2,2^{|x|},O(1),|x|^{O(1)}].\]
+\end{lemma}
+\begin{proof}
+% This repetition is folded into the Lean theorem `QESAT_exp_PCP` rather than
+% exposed as a standalone declaration.
+Run the \(7/8\)-sound verifier independently six times and accept only if all
+six runs accept. Completeness error remains \(0\). For \(x\notin L\), the
+acceptance probability is at most \((7/8)^6\leq 1/2\). Query and randomness
+bounds are multiplied by the constant \(6\).
+\end{proof}
+
+\begin{theorem}
+\uses{QESAT,PCP}
+\label{QESAT_exp_PCP}
+\lean{QESAT_exp_PCP}
+\leanok
+\[
+  \mathrm{QESAT}(\F_2,n) \in
+  \mathrm{PCP}[
+    \varepsilon_c = 0,
+    \varepsilon_s = 1/2,
+    \Sigma = \F_2,
+    \ell = 2^{|x|},
+    q = O(1),
+    r = |x|^{O(1)}
+  ].
+\]
+\end{theorem}
+\begin{proof}\uses{QESAT_exp_PCP_before_repetition,QESAT.constant_repetition}\leanok
+Combine \ref{QESAT_exp_PCP_before_repetition} with the constant repetition
+step \ref{QESAT.constant_repetition}.
+\end{proof}

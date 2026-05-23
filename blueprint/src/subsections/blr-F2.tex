@@ -25,7 +25,7 @@ Let \(n > 0\). For every linear function \(f: \F_{2}^n \to \F_{2}\), we have
   \uses{BLR.basicVerifier, def:distance-to-linearity}\leanok
 % TODO: The statement actually uses `distanceToLin`. Unify `distanceToLin` and `BlrPcp.distanceToLinear`
 Let \(n > 0\) and \(f: \F_{2}^n \to \F_{2}\).
-\[\Pr \left[V_{\mathrm{BLR}(\F_{2}, n)}^{f} = 0\right] \geq \Delta(f, \mathcal{LIN}).\]
+\[\Pr \left[V_{\mathrm{BLR}(\F_{2}, n)}^{f} = 0\right] \geq \distanceToLin{f}.\]
 \end{theorem}
 \begin{proof}\leanok
 % TODO: uses `blrBasicVerifier_rejectionProbability_eq_verifier_ZMod2' and `BLR_soundness`

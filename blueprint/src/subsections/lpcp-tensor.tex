@@ -94,28 +94,28 @@ in \(s\), so by the Schwartz--Zippel lemma applied to \(s\),
 \]
 Hence
 \[
-  \Pr_{s,t}\!\left[\text{verifier rejects}\right]
+  \Pr_{s,t}\!\left[ V_{\mathrm{TENSORQ}(\F,n)}^{\langle\pi,\cdot\rangle}(a,b)=0 \right]
   \geq \left(1 - \tfrac{1}{|\F|}\right)^{\!2},
 \]
 and therefore
 \[
-  \Pr_{s,t}\!\left[\text{verifier accepts}\right]
+  \Pr_{s,t}\!\left[ V_{\mathrm{TENSORQ}(\F,n)}^{\langle\pi,\cdot\rangle}(a,b)=1 \right]
   \leq 1 - \left(1 - \tfrac{1}{|\F|}\right)^{\!2}
   = \frac{2|\F|-1}{|\F|^2}.
 \]
 \end{proof}
 
 
-\begin{theorem}\label{TENSORQ_LPCP}\uses{tensor-product, TENSORQ}\lean{TENSORQ_LPCP}\leanok
+\begin{theorem}\label{TENSORQ_LPCP}\uses{TENSORQ, LPCP}\lean{TENSORQ_LPCP}\leanok
 For every finite field \(\F\) and \(n \in \N\),
 \[
   \mathrm{TENSORQ}(\F, n) \in
   \LPCP\!\left[
-    \varepsilon_c = 0,\;
-    \varepsilon_s = \frac{2|\F|-1}{|\F|^2},\;
-    \Sigma = \F,\;
-    \ell = n + n^2,\;
-    q = 3,\;
+    \varepsilon_c = 0,
+    \varepsilon_s = \frac{2|\F|-1}{|\F|^2},
+    \Sigma = \F,
+    \ell = n + n^2,
+    q = 3,
     r = 2n
   \right].
 \]
@@ -132,16 +132,16 @@ queries and uses two random vectors in \(\F^n\), which gives the displayed query
 and randomness bounds.
 \end{proof}
 
-\begin{corollary}\label{TENSORQ_LPCP_Zmod2}\uses{TENSORQ}\leanok
+\begin{corollary}\label{TENSORQ_LPCP_Zmod2}\uses{TENSORQ, LPCP}\leanok
 \[
   \mathrm{TENSORQ}(\F_2, n) \in
   \LPCP\!\left[
-    \varepsilon_c = 0,\;
-    \varepsilon_s = \frac{3}{4},\;
-    \Sigma = \F_2,\;
-    \ell = n + n^2,\;
-    q = 3,\;
-    r = 2 \cdot n
+    \varepsilon_c = 0,
+    \varepsilon_s = 3 / 4,
+    \Sigma = \F_2,
+    \ell = n + n^2,
+    q = 3,
+    r = 2 n
   \right].
 \]
 \end{corollary}
