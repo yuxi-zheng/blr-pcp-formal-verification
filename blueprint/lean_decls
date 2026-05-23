@@ -76,7 +76,6 @@ LPCPToPCP.verifier_accept_le_linear_add_of_query_correction
 LPCPToPCP.verifier_soundness_near_case_of_single_query_bound
 LPCPToPCP.verifier_soundness_of_cases
 LPCP_to_PCP_ZMod2
-QESAT_poly_LPCP
 QESAT.verifier
 QESAT.verifier_correct
 QESAT.verifier_correct
