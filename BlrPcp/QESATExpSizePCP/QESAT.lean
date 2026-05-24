@@ -39,11 +39,27 @@ example : QESAT (ZMod 2) 3 [X 0 + C 1, X 0 * X 1 + X 2] := by native_decide
 
 namespace QESAT
 
-/-- The size of a QESAT instance if it was a binary string
-TODO: the proper way would be to use this:
-https://leanprover-community.github.io/mathlib4_docs/Mathlib/Computability/Encoding.html -/
+/-- A coarse encoding size for one stored monomial.
+We charge for the ambient number of variables, for the total exponent mass, and for the
+coefficient/term overhead. This makes high-degree or large-support polynomials visible to
+`QESAT.size`, even before the verifier rejects them as non-quadratic. -/
+private def monomialEncodingSize {n : ℕ} (m : CMvMonomial n) : ℕ :=
+  n + m.totalDegree + 1
+
+/-- A coarse encoding size for one computable multivariate polynomial.
+The `Lawful.monomials` list is the actual stored support of the polynomial, so this term
+accounts for the representation that the verifier inspects when checking degrees and
+extracting coefficients. -/
+private def polynomialEncodingSize {n : ℕ} (p : CMvPolynomial n F) : ℕ :=
+  1 + ((Lawful.monomials p).map monomialEncodingSize).sum
+
+/-- Size proxy for a QESAT instance.
+The first summand is the dense quadratic size used by the proof-dimension bookkeeping.
+The second summand charges the actual stored polynomial representation, so pathological
+inputs with huge support or high-degree monomials are not assigned artificially small size. -/
 def size {n : ℕ} (polys : List (CMvPolynomial n F)) :
-    ℕ :=  polys.length * (n + 1)^2
+    ℕ :=
+  polys.length * (n + 1)^2 + (polys.map polynomialEncodingSize).sum
 
 private abbrev mvPoly {n : ℕ} (p : CMvPolynomial n (ZMod 2)) :
     MvPolynomial (Fin n) (ZMod 2) :=
@@ -505,7 +521,9 @@ private lemma linearCoeff_eval {n : ℕ} (p : CMvPolynomial n (ZMod 2))
 private lemma length_le_size {n : ℕ} (polys : List (CMvPolynomial n (ZMod 2))) :
     polys.length ≤ QESAT.size polys := by
   unfold QESAT.size
-  exact Nat.le_mul_of_pos_right _ (by positivity : 0 < (n + 1) ^ 2)
+  have hbase : polys.length ≤ polys.length * (n + 1) ^ 2 :=
+    Nat.le_mul_of_pos_right _ (by positivity : 0 < (n + 1) ^ 2)
+  omega
 
 private lemma verifier_queryBound {n : ℕ} (polys : List (CMvPolynomial n (ZMod 2))) :
     QueryBound (verifier polys) (QESAT.size polys + 2 * n) 4 := by
@@ -755,18 +773,17 @@ theorem verifier_correct {vars : ℕ} :
       rw [if_neg hdeg]
       simp
 
-private lemma length_eq_zero_of_not_pow_le {vars : ℕ}
+private lemma length_eq_zero_of_not_size_le {vars : ℕ}
     (x : List (CMvPolynomial vars (ZMod 2)))
-    (hlen : ¬2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)) :
+    (hlen : ¬vars + vars ^ 2 ≤ QESAT.size x) :
     x.length = 0 := by
   by_contra hx
   have hpos : 0 < x.length := Nat.pos_of_ne_zero hx
-  have hpow : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x) := by
-    unfold QESAT.size
-    apply Nat.pow_le_pow_right
-    · norm_num
-    · nlinarith [sq_nonneg (vars : ℤ), hpos]
-  exact hlen hpow
+  apply hlen
+  unfold QESAT.size
+  have hbase : vars + vars ^ 2 ≤ x.length * (vars + 1) ^ 2 := by
+    nlinarith [sq_nonneg (vars : ℤ), hpos]
+  omega
 
 private lemma mem_of_length_eq_zero {vars : ℕ} (x : List (CMvPolynomial vars (ZMod 2)))
     (hx : x.length = 0) :
@@ -956,45 +973,53 @@ theorem QESAT_exp_PCP_before_repetition {vars : ℕ} : ∃ (q : ℕ) (r : Polyno
   rcases hConverted with ⟨V₀, t, hV₀⟩
   let V : PCPVerifier (List (CMvPolynomial vars (ZMod 2))) (QESAT.size)
       (ZMod 2) (fun n => 2 ^ n) := fun x =>
-    if hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x) then
-      simulateQ (PCP.padImpl (ZMod 2) hlen) (V₀ x)
+    if hlen : vars + vars ^ 2 ≤ QESAT.size x then
+      have hlenPow : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x) :=
+        Nat.pow_le_pow_right (by norm_num) hlen
+      simulateQ (PCP.padImpl (ZMod 2) hlenPow) (V₀ x)
     else pure true
   refine ⟨V, t, fun x => ?_⟩
   rcases hV₀ x with ⟨_, hQuery, hComplete, hSound⟩
   refine ⟨by simp [RunsInTime], ?_, ?_, ?_⟩
-  · by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)
+  · by_cases hlen : vars + vars ^ 2 ≤ QESAT.size x
     · simp only [V, hlen, ↓reduceDIte]
+      let hlenPow : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x) :=
+        Nat.pow_le_pow_right (by norm_num) hlen
       have hshift :
           LPCPToPCP.numShifts (fun _ => 4) (QESAT.size x) = shift := by
         simp [shift, LPCPToPCP.numShifts, LPCPToPCP.logFactor]
       simpa [q', r', c, shift, hshift, Polynomial.eval_add, Polynomial.eval_mul] using
-        PCP.queryBound_simulateQ_padImpl hlen hQuery
+        PCP.queryBound_simulateQ_padImpl hlenPow hQuery
     · simp [V, hlen, QueryBound]
   · intro hxL
-    by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)
+    by_cases hlen : vars + vars ^ 2 ≤ QESAT.size x
     · rcases hComplete hxL with ⟨π₀, hπ₀⟩
+      let hlenPow : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x) :=
+        Nat.pow_le_pow_right (by norm_num) hlen
       let π₁ : Fin (2 ^ QESAT.size x) → ZMod 2 := fun j =>
         if hj : j.val < 2 ^ (vars + vars ^ 2) then π₀ ⟨j.val, hj⟩ else default
       refine ⟨π₁, ?_⟩
-      have hπ : ∀ i, π₁ (Fin.castLE hlen i) = π₀ i := by
+      have hπ : ∀ i, π₁ (Fin.castLE hlenPow i) = π₀ i := by
         intro i
         simp [π₁]
       simp only [V, hlen, ↓reduceDIte]
-      rw [PCP.simulateQ_padImpl_eq hlen (V₀ x) π₀ π₁ hπ]
+      rw [PCP.simulateQ_padImpl_eq hlenPow (V₀ x) π₀ π₁ hπ]
       exact hπ₀
     · refine ⟨fun _ => default, ?_⟩
       simp [V, hlen]
   · intro hxNot π₁
-    by_cases hlen : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x)
-    · let π₀ : Fin (2 ^ (vars + vars ^ 2)) → ZMod 2 := fun i => π₁ (Fin.castLE hlen i)
-      have hπ : ∀ i, π₁ (Fin.castLE hlen i) = π₀ i := by
+    by_cases hlen : vars + vars ^ 2 ≤ QESAT.size x
+    · let hlenPow : 2 ^ (vars + vars ^ 2) ≤ 2 ^ (QESAT.size x) :=
+        Nat.pow_le_pow_right (by norm_num) hlen
+      let π₀ : Fin (2 ^ (vars + vars ^ 2)) → ZMod 2 := fun i => π₁ (Fin.castLE hlenPow i)
+      have hπ : ∀ i, π₁ (Fin.castLE hlenPow i) = π₀ i := by
         intro i
         rfl
       simp only [V, hlen, ↓reduceDIte]
-      rw [PCP.simulateQ_padImpl_eq hlen (V₀ x) π₀ π₁ hπ]
+      rw [PCP.simulateQ_padImpl_eq hlenPow (V₀ x) π₀ π₁ hπ]
       exact hSound hxNot π₀
     · exfalso
-      exact hxNot (QESAT.mem_of_length_eq_zero x (QESAT.length_eq_zero_of_not_pow_le x hlen))
+      exact hxNot (QESAT.mem_of_length_eq_zero x (QESAT.length_eq_zero_of_not_size_le x hlen))
 
 theorem QESAT_exp_PCP {vars : ℕ} : ∃ (q : ℕ) (r : Polynomial ℕ),
     QESAT (ZMod 2) vars ∈
