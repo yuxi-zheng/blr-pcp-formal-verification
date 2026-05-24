@@ -74,11 +74,11 @@ def verifier {n : ℕ} :
     LPCPVerifier ((Fin n → F) × (Fin n × Fin n → F)) size F (fun _ => n + n * n) :=
   fun x => do
     let (a, b) := x
-    let s ← OracleUtil.sampleVector ((liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inl ())) : OracleComp (fullSpec_fin_vector F (n + n * n)) F)) n
-    let t ← OracleUtil.sampleVector ((liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inl ())) : OracleComp (fullSpec_fin_vector F (n + n * n)) F)) n
-    let yA : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA s))
-    let yA' : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA t))
-    let yB : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryB s t))
+    let s ← OracleUtil.sampleVector ((liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inl ())) : OracleComp (LPCP.fullSpec F (n + n * n)) F)) n
+    let t ← OracleUtil.sampleVector ((liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inl ())) : OracleComp (LPCP.fullSpec F (n + n * n)) F)) n
+    let yA : F ← query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA s))
+    let yA' : F ← query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA t))
+    let yB : F ← query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryB s t))
     pure (yA = a ⬝ᵥ s ∧ yA' = a ⬝ᵥ t ∧ yB = ∑ i, ∑ j, b (i, j) * (s i * t j) ∧
           yB = yA * yA')
 
@@ -103,14 +103,14 @@ lemma verifier_queryBound {n : ℕ}
       QueryBound
         (do
           let yA : F ←
-            (liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA s))) :
-              OracleComp (fullSpec_fin_vector F (n + n * n)) F)
+            (liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA s))) :
+              OracleComp (LPCP.fullSpec F (n + n * n)) F)
           let yA' : F ←
-            (liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA t))) :
-              OracleComp (fullSpec_fin_vector F (n + n * n)) F)
+            (liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA t))) :
+              OracleComp (LPCP.fullSpec F (n + n * n)) F)
           let yB : F ←
-            (liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryB s t))) :
-              OracleComp (fullSpec_fin_vector F (n + n * n)) F)
+            (liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryB s t))) :
+              OracleComp (LPCP.fullSpec F (n + n * n)) F)
           pure (decide (yA = x.1 ⬝ᵥ s ∧ yA' = x.1 ⬝ᵥ t ∧
                 yB = ∑ i, ∑ j, x.2 (i, j) * (s i * t j) ∧ yB = yA * yA'))) 0 3 := by
     intro s t

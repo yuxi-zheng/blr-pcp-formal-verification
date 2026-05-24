@@ -107,21 +107,21 @@ def verifier {F : Type} [Field F] [DecidableEq F] {n : ℕ} :
 
 
 /-- Sample one field element using the standard randomness oracle. -/
-def basicSampleField {F : Type} {n : ℕ} : OracleComp (fullSpec_fin_vector F n) F :=
-  query (spec := fullSpec_fin_vector F n) (.inl ())
+def basicSampleField {F : Type} {n : ℕ} : OracleComp (LPCP.fullSpec F n) F :=
+  query (spec := LPCP.fullSpec F n) (.inl ())
 
 /-- Sample a vector in `F^n` using the standard randomness oracle. -/
-def basicSampleVector (F : Type) (n : ℕ) : OracleComp (fullSpec_fin_vector F n) (Fin n → F) :=
+def basicSampleVector (F : Type) (n : ℕ) : OracleComp (LPCP.fullSpec F n) (Fin n → F) :=
   Fin.mOfFn n fun _ => basicSampleField (F := F)
 
 /-- The additive BLR verifier, using only the standard field-valued randomness oracle. -/
 def basicVerifier {F : Type} [Add F] [DecidableEq F] {n : ℕ} :
-    OracleComp (fullSpec_fin_vector F n) Bool := do
+    OracleComp (LPCP.fullSpec F n) Bool := do
   let x : Fin n → F ← basicSampleVector F n
   let y : Fin n → F ← basicSampleVector F n
-  let fx : F ← query (spec := fullSpec_fin_vector F n) (.inr x)
-  let fy : F ← query (spec := fullSpec_fin_vector F n) (.inr y)
-  let fxy : F ← query (spec := fullSpec_fin_vector F n) (.inr fun i => x i + y i)
+  let fx : F ← query (spec := LPCP.fullSpec F n) (.inr x)
+  let fy : F ← query (spec := LPCP.fullSpec F n) (.inr y)
+  let fxy : F ← query (spec := LPCP.fullSpec F n) (.inr fun i => x i + y i)
   return decide (fx + fy = fxy)
 
 lemma sampleField_queryBound {F : Type} [Field F] {n : ℕ} :
@@ -195,14 +195,14 @@ theorem BLR_basic_query_complexity {F : Type} [Add F] [DecidableEq F] {n : ℕ} 
       QueryBound
         (do
           let fx : F ←
-            (liftM (query (spec := fullSpec_fin_vector F n) (.inr x)) :
-              OracleComp (fullSpec_fin_vector F n) F)
+            (liftM (query (spec := LPCP.fullSpec F n) (.inr x)) :
+              OracleComp (LPCP.fullSpec F n) F)
           let fy : F ←
-            (liftM (query (spec := fullSpec_fin_vector F n) (.inr y)) :
-              OracleComp (fullSpec_fin_vector F n) F)
+            (liftM (query (spec := LPCP.fullSpec F n) (.inr y)) :
+              OracleComp (LPCP.fullSpec F n) F)
           let fxy : F ←
-            (liftM (query (spec := fullSpec_fin_vector F n) (.inr fun i => x i + y i)) :
-              OracleComp (fullSpec_fin_vector F n) F)
+            (liftM (query (spec := LPCP.fullSpec F n) (.inr fun i => x i + y i)) :
+              OracleComp (LPCP.fullSpec F n) F)
           return decide (fx + fy = fxy)) 0 3 := by
     intro x y
     simp only [QueryBound]
