@@ -25,15 +25,17 @@ For a field \(\F\) and \(n \in \N\), define the tensor test language
 % multiplicativity check.
 Given \((a,b) \in \F^n \times \F^{n^2}\), the LPCP verifier
 \(V_{\mathrm{TENSORQ}(\F,n)}^{\langle \pi,\cdot\rangle}(a,b)\) uses a proof
-\(\pi \in \F^{n+n^2}\), viewed as a pair of linear oracles \((\langle a,\cdot\rangle, \langle b,\cdot\rangle)\), and proceeds as follows:
+\(\pi=\alpha\parallel\beta \in \F^{n+n^2}\), intended to be the linear encoding of the public input
+\((a,b)\). Since the proof may be dishonest, the verifier checks consistency with \((a,b)\) on the sampled
+queries before checking the tensor relation:
 \begin{enumerate}
   % \item Sample \(s,t \leftarrow \F^n\).
   % \item Query the \(a\)-part of \(\pi\) at \(s\) and at \(t\), obtaining \(\langle a, s \rangle\) and \(\langle a, t \rangle\).
   % \item Query the \(b\)-part of \(\pi\) at \(\mathrm{flat}(s\otimes t)\), obtaining \(\langle b, \mathrm{flat}(s \otimes t) \rangle\).
   % \item Accept if and only if \(\langle b, \mathrm{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle\).
   \item Sample \(s,t \leftarrow \F^n\).
-  \item Query the \(a\)-part of \(\pi\) at \(s\) and at \(t\), obtaining \(y_s\) and \(y_t\).
-  \item Query the \(b\)-part of \(\pi\) at \(\mathrm{flat}(s\otimes t)\), obtaining \(y_{s,t}\).
+  \item Query the \(\alpha\)-part of \(\pi\) at \(s\) and at \(t\), obtaining \(y_s\) and \(y_t\).
+  \item Query the \(\beta\)-part of \(\pi\) at \(\mathrm{flat}(s\otimes t)\), obtaining \(y_{s,t}\).
   \item Accept if and only if
   \[
       y_s=\langle a,s\rangle,\qquad
@@ -42,6 +44,18 @@ Given \((a,b) \in \F^n \times \F^{n^2}\), the LPCP verifier
       y_{s,t}=y_s y_t.
     \]
 \end{enumerate}
+\end{definition}
+
+\begin{definition}\label{TENSORQ.selfVerifier}\lean{TENSORQ.selfVerifier}\uses{tensor-product}\leanok
+In settings where \(a\) and \(b\) are supplied only by the proof oracle, the tensor self-check uses the same three
+queries but has no public input to compare against. Given oracle access to
+\(\pi=\alpha\parallel\beta\in\F^{n+n^2}\), sample \(s,t\leftarrow\F^n\), query
+\[
+  y_s=\langle\alpha,s\rangle,\qquad
+  y_t=\langle\alpha,t\rangle,\qquad
+  y_{s,t}=\langle\beta,\mathrm{flat}(s\otimes t)\rangle,
+\]
+and accept if and only if \(y_{s,t}=y_s y_t\). This is the tensor component used inside the QESAT verifier.
 \end{definition}
 
 \begin{lemma}\label{TENSORQ.tensor_check_complete}\lean{TENSORQ.tensor_check_complete}\uses{tensor-product}\leanok
@@ -74,7 +88,9 @@ Let \(\F\) be a finite field. If \(b \neq \mathrm{flat}(a\otimes a)\), then for 
 Suppose \(b \neq \mathrm{flat}(a \otimes a)\), i.e., there exists \(i^*, j^* \in [n]\) such that
 \(b_{i^* j^*} \neq a_{i^*} \cdot a_{j^*}\).
 For each \(i \in [n]\) define the linear polynomial \(p_i(t) := \sum_{j \in [n]} (b_{ij} - a_i a_j)\, t_j\).
-The check can be rewritten as
+For fixed \(s,t\), if the verifier accepts, then its consistency checks force
+\(y_s=\langle a,s\rangle\), \(y_t=\langle a,t\rangle\), and
+\(y_{s,t}=\langle b,\mathrm{flat}(s\otimes t)\rangle\). Thus acceptance can only occur when
 \[
   \langle b, \mathrm{flat}(s \otimes t) \rangle - \langle a,s\rangle\langle a,t\rangle
   = \sum_{i \in [n]}  \sum_{j \in [n]} (b_{ij} - a_i a_j)\, s_i t_j
@@ -103,6 +119,18 @@ and therefore
   \leq 1 - \left(1 - \tfrac{1}{|\F|}\right)^{\!2}
   = \frac{2|\F|-1}{|\F|^2}.
 \]
+\end{proof}
+
+\begin{lemma}\label{TENSORQ.selfVerifier_soundness_after_sampling}\lean{TENSORQ.selfVerifier_soundness_after_sampling}\uses{TENSORQ.selfVerifier,TENSORQ.verifier_soundness_after_sampling}\leanok
+Let \(\F\) be a finite field and let \(\pi=\alpha\parallel\beta\in\F^{n+n^2}\). If
+\((\alpha,\beta)\notin\mathrm{TENSORQ}(\F,n)\), then the tensor self-check accepts with probability at most
+\[
+  \frac{2|\F|-1}{|\F|^2}.
+\]
+\end{lemma}
+\begin{proof}\leanok
+Apply \ref{TENSORQ.verifier_soundness_after_sampling} to the public pair \((\alpha,\beta)\). The self-check is
+exactly the multiplicativity part of that verifier, with \((\alpha,\beta)\) read from the proof oracle itself.
 \end{proof}
 
 

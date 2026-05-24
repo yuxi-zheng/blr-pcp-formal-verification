@@ -54,8 +54,10 @@ LINEQ.verifier
 LINEQ_LPCP
 TENSORQ
 TENSORQ.verifier
+TENSORQ.selfVerifier
 TENSORQ.tensor_check_complete
 TENSORQ.verifier_soundness_after_sampling
+TENSORQ.selfVerifier_soundness_after_sampling
 TENSORQ_LPCP
 TENSORQ_LPCP_Zmod2
 LPCPToPCP.chernoff_bound

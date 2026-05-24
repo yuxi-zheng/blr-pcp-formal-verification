@@ -80,7 +80,7 @@ replacing \(a_ja_k\) by \(b_{jk}\).
 \begin{definition}
 \label{QESAT.verifier}
 \lean{QESAT.verifier}
-\uses{LPCPVerifier,QESAT.linearization,LINEQ.verifier,TENSORQ.verifier}
+\uses{LPCPVerifier,QESAT.linearization,LINEQ.verifier,TENSORQ.selfVerifier}
 \leanok
 Let \(x=(p_1,\dots,p_m) \in R_{2}^{m}\) be a QESAT instance as defined in \ref{QESAT}. Let \(V_{\QESAT(\F_2,n)}^{\pi}(x)\) be the LPCP verifier 
 with oracle access to \(\pi=a\parallel b\in\F_2^{n+n^2}\), defined as follows:
@@ -94,9 +94,7 @@ with oracle access to \(\pi=a\parallel b\in\F_2^{n+n^2}\), defined as follows:
     \langle b,\mathrm{flat}(s\otimes t)\rangle
     =\langle a,s\rangle\langle a,t\rangle .
   \]
-  % TODO: fix the following issue
-  [Vincent: TODO: the last check actually uses QESAT.tensorSelfVerifier, it would be nice to
-  make TENSORQ.verifier work directly for our use case, to improve modularity and avoid duplicate code.]
+  Equivalently, this last step is the tensor self-check of \ref{TENSORQ.selfVerifier} specialized to \(\F_2\).
 \end{enumerate}
 \end{definition}
 
@@ -119,7 +117,7 @@ accepts for every \(r\). The tensor self-check accepts for every \(s,t\) by
 \begin{lemma}[Soundness]
 \label{QESAT.verifier_soundness}
 \lean{QESAT.verifier_correct}
-\uses{QESAT.verifier,QESAT.linearization,LINEQ.linear_form_uniform_prob_mul_card_le_one,TENSORQ.verifier_soundness_after_sampling}
+\uses{QESAT.verifier,QESAT.linearization,LINEQ.linear_form_uniform_prob_mul_card_le_one,TENSORQ.selfVerifier_soundness_after_sampling}
 \leanok
 If \(x\notin \QESAT(\F_2,n)\), then for every proof
 \(\tilde\pi\in\F_2^{n+n^2}\),
@@ -130,7 +128,7 @@ If some \(p_i\) has total degree \(>2\), the verifier rejects immediately, so
 the acceptance probability is \(0\). Assume now that every \(p_i\) is quadratic
 and write \(\pi=a\parallel b\). If \(b\neq\mathrm{flat}(a\otimes a)\), then
 the tensor self-check accepts with probability at most \(3/4\) by
-\ref{TENSORQ.verifier_soundness_after_sampling} specialized to \(\F_2\), and
+\ref{TENSORQ.selfVerifier_soundness_after_sampling} specialized to \(\F_2\), and
 the full verifier accepts only if that check accepts.
 
 Otherwise \(b=\mathrm{flat}(a\otimes a)\). Since \(x\notin\QESAT(\F_2,n)\),

@@ -167,22 +167,13 @@ private def linearTarget {n : ℕ} (polys : List (CMvPolynomial n (ZMod 2))) :
     Fin polys.length → ZMod 2 :=
   fun i => -constantCoeff (polys.get i)
 
-private def tensorSelfVerifier {n : ℕ} :
-    OracleComp (LPCP.fullSpec (ZMod 2) (n + n * n)) Bool := do
-  let s ← OracleUtil.sampleRandomVector (ZMod 2) n (n + n * n)
-  let t ← OracleUtil.sampleRandomVector (ZMod 2) n (n + n * n)
-  let yA : ZMod 2 ← query (spec := LPCP.fullSpec (ZMod 2) (n + n * n)) (.inr (TENSORQ.queryA s))
-  let yA' : ZMod 2 ← query (spec := LPCP.fullSpec (ZMod 2) (n + n * n)) (.inr (TENSORQ.queryA t))
-  let yB : ZMod 2 ← query (spec := LPCP.fullSpec (ZMod 2) (n + n * n)) (.inr (TENSORQ.queryB s t))
-  pure (yB = yA * yA')
-
 def verifier {n : ℕ} :
     LPCPVerifier (List (CMvPolynomial n (ZMod 2))) size (ZMod 2) (fun _ => n + n * n) :=
   fun polys =>
     if ∀ p ∈ polys, p.totalDegree ≤ 2 then do
       let hLine ← LINEQ.verifier (F := ZMod 2)
         (linearMatrix polys, linearTarget polys)
-      let hTensor ← tensorSelfVerifier (n := n)
+      let hTensor ← TENSORQ.selfVerifier (F := ZMod 2) (n := n)
       pure (hLine && hTensor)
     else
       pure false
@@ -511,37 +502,6 @@ private lemma linearCoeff_eval {n : ℕ} (p : CMvPolynomial n (ZMod 2))
       exact h0 (hz ▸ hm)
     rw [← hterm m hm hm0]
 
-private lemma tensorSelfVerifier_queryBound {n : ℕ} :
-    QueryBound (tensorSelfVerifier (n := n)) (2 * n) 3 := by
-  have hQuery : ∀ s t : Fin n → ZMod 2,
-      QueryBound
-        (do
-          let yA : ZMod 2 ←
-            (liftM (query (spec := LPCP.fullSpec (ZMod 2) (n + n * n))
-              (.inr (TENSORQ.queryA s))) :
-              OracleComp (LPCP.fullSpec (ZMod 2) (n + n * n)) (ZMod 2))
-          let yA' : ZMod 2 ←
-            (liftM (query (spec := LPCP.fullSpec (ZMod 2) (n + n * n))
-              (.inr (TENSORQ.queryA t))) :
-              OracleComp (LPCP.fullSpec (ZMod 2) (n + n * n)) (ZMod 2))
-          let yB : ZMod 2 ←
-            (liftM (query (spec := LPCP.fullSpec (ZMod 2) (n + n * n))
-              (.inr (TENSORQ.queryB s t))) :
-              OracleComp (LPCP.fullSpec (ZMod 2) (n + n * n)) (ZMod 2))
-          pure (decide (yB = yA * yA'))) 0 3 := by
-    intro s t
-    simp only [QueryBound]
-    rw [OracleComp.isQueryBound_query_bind_iff]
-    refine ⟨by simp, fun _ => ?_⟩
-    rw [OracleComp.isQueryBound_query_bind_iff]
-    refine ⟨by simp, fun _ => ?_⟩
-    rw [OracleComp.isQueryBound_query_bind_iff]
-    exact ⟨by simp, fun _ => trivial⟩
-  simpa [tensorSelfVerifier, two_mul, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using
-    queryBound_bind (OracleUtil.sampleRandomVector_queryBound (F := ZMod 2) n (n + n * n)) fun s =>
-      queryBound_bind (OracleUtil.sampleRandomVector_queryBound (F := ZMod 2) n (n + n * n)) fun t =>
-        hQuery s t
-
 private lemma length_le_size {n : ℕ} (polys : List (CMvPolynomial n (ZMod 2))) :
     polys.length ≤ QESAT.size polys := by
   unfold QESAT.size
@@ -555,14 +515,14 @@ private lemma verifier_queryBound {n : ℕ} (polys : List (CMvPolynomial n (ZMod
           (do
             let hLine ← LINEQ.verifier (F := ZMod 2)
               (linearMatrix polys, linearTarget polys)
-            let hTensor ← tensorSelfVerifier (n := n)
+            let hTensor ← TENSORQ.selfVerifier (F := ZMod 2) (n := n)
             pure (hLine && hTensor)) (polys.length + 2 * n) 4 := by
       simpa [Nat.add_assoc] using
         queryBound_bind
           (LINEQ.verifier_queryBound (F := ZMod 2)
             (linearMatrix polys, linearTarget polys))
           (fun hLine =>
-            queryBound_bind (tensorSelfVerifier_queryBound (n := n)) fun hTensor => by
+            queryBound_bind (TENSORQ.selfVerifier_queryBound (F := ZMod 2) (n := n)) fun hTensor => by
               show QueryBound
                 (pure (hLine && hTensor) :
                   OracleComp (LPCP.fullSpec (ZMod 2) (n + n * n)) Bool) 0 0
@@ -655,16 +615,12 @@ private lemma lineSubcheck_soundness {n : ℕ} (polys : List (CMvPolynomial n (Z
       ((linearMatrix polys) *ᵥ π) r rfl, sub_eq_zero]]
   simpa [ZMod.card] using LINEQ.linear_form_uniform_prob_mul_card_le_one (F := ZMod 2) hd
 
-private lemma tensorSelfVerifier_soundness {n : ℕ}
+private lemma tensorSelfCheck_soundness {n : ℕ}
     (π : Fin (n + n * n) → ZMod 2)
     (hπ : (TENSORQ.projA π, TENSORQ.projB π) ∉ TENSORQ (ZMod 2) n) :
     Pr[= true | simulateQ ((randOracle (ZMod 2)).impl + (LPCP.proofOracle π).impl)
-      (tensorSelfVerifier (n := n))] ≤ 3 / 4 := by
-  simp [tensorSelfVerifier]
-  rw [← probEvent_eq_eq_probOutput]
-  rw [OracleUtil.simulateQ_sampleRandomVector (F := ZMod 2) n (n + n * n) (LPCP.proofOracle π).impl]
-  have h := TENSORQ.verifier_soundness_after_sampling (F := ZMod 2)
-    (TENSORQ.projA π) (TENSORQ.projB π) π hπ
+      (TENSORQ.selfVerifier (F := ZMod 2) (n := n))] ≤ 3 / 4 := by
+  have h := TENSORQ.selfVerifier_soundness_after_sampling (F := ZMod 2) π hπ
   have hcard :
       (2 * (Fintype.card (ZMod 2) : ENNReal) - 1)
           / (Fintype.card (ZMod 2) : ENNReal) ^ 2 = 3 / 4 := by
@@ -673,7 +629,7 @@ private lemma tensorSelfVerifier_soundness {n : ℕ}
     rw [show (4 : ENNReal) - 1 = 3 by
       exact ENNReal.sub_eq_of_eq_add (by simp : (1 : ENNReal) ≠ ⊤) (by norm_num)]
   rw [hcard] at h
-  simpa [TENSORQ.dotProduct_queryA, TENSORQ.dotProduct_queryB] using h
+  exact h
 
 theorem verifier_correct {vars : ℕ} :
     ∀ polys : List (CMvPolynomial vars (ZMod 2)),
@@ -703,7 +659,7 @@ theorem verifier_correct {vars : ℕ} :
         (TENSORQ.honestProof (a, fun q : Fin vars × Fin vars => a q.1 * a q.2))
         (linearTarget polys) r hlin
     simp [verifier, LINEQ.verifier, OracleUtil.sampleVector, OracleUtil.sampleRandomVector, hline_r,
-      tensorSelfVerifier, TENSORQ.dotProduct_queryA, TENSORQ.dotProduct_queryB,
+      TENSORQ.selfVerifier, TENSORQ.dotProduct_queryA, TENSORQ.dotProduct_queryB,
       TENSORQ.projA_honestProof, TENSORQ.projB_honestProof,
       TENSORQ.tensor_check_complete]
     rw [if_pos hdeg]
@@ -711,7 +667,7 @@ theorem verifier_correct {vars : ℕ} :
     by_cases hdeg : ∀ p ∈ polys, p.totalDegree ≤ 2
     · let impl := (randOracle (ZMod 2)).impl + (LPCP.proofOracle π).impl
       let line := LINEQ.verifier (F := ZMod 2) (linearMatrix polys, linearTarget polys)
-      let tensor := tensorSelfVerifier (n := vars)
+      let tensor := TENSORQ.selfVerifier (F := ZMod 2) (n := vars)
       by_cases htensor : (TENSORQ.projA π, TENSORQ.projB π) ∈ TENSORQ (ZMod 2) vars
       · have hd :
             (linearMatrix polys) *ᵥ π - linearTarget polys ≠ 0 := by
@@ -757,7 +713,7 @@ theorem verifier_correct {vars : ℕ} :
           · rw [ENNReal.toReal_div, ENNReal.toReal_div]
             all_goals norm_num
         exact hmain_le_line.trans (hline.trans hhalf)
-      · have htensor_bound := tensorSelfVerifier_soundness (n := vars) π htensor
+      · have htensor_bound := tensorSelfCheck_soundness (n := vars) π htensor
         have hmain_le_tensor :
             Pr[= true | simulateQ impl (verifier (n := vars) polys)] ≤
               Pr[= true | simulateQ impl tensor] := by
