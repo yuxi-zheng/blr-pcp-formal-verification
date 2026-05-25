@@ -434,7 +434,7 @@ theorem gh_blr_correlation (f : ScalarFn F Idx) :
       (Fintype.card (Twist F Idx) : ℝ) ≥ 1 - (Fintype.card F / Fintype.card Fˣ : ℝ) * rejGG f :=
   gh2_average_correlation (Twist F Idx) sigmaFin (liftFin f) _ (liftFin_isApproxRepresentation f)
 
-/-! ## M7: Gowers–Hatami implies BLR soundness (`lem:gh_linearity_3`)
+/-! ## M7: Gowers–Hatami implies BLR soundness (`lem:gh_linearity_formalized`)
 
 The full argument extracts a *dominant character* from the Gowers–Hatami
 witness: it decomposes the right-regular representation `R` over the twisted
@@ -1085,14 +1085,14 @@ lemma gh_inner_reindex (f : ScalarFn F Idx) (c : Fˣ) :
 
 /-- The **phase-collision score** of `f` against the linear function `ℓ_α`,
 `𝔼_{x∈X} 𝔼_{b∈A} ω^{Tr b(ℓ_α(x) − f(x))}` (the quantity `E*` of
-`lem:gh_linearity_3`).  By character orthogonality over `A = 𝔽_q^×` the inner
+`lem:gh_linearity_formalized`).  By character orthogonality over `A = 𝔽_q^×` the inner
 average is `1` where `ℓ_α(x)=f(x)` and `−1/(q−1)` elsewhere. -/
 noncomputable def phaseCollisionScore (f : ScalarFn F Idx) (α : Vec F Idx) : ℂ :=
   (Fintype.card (Vec F Idx) : ℂ)⁻¹ * (Fintype.card Fˣ : ℂ)⁻¹ *
     ∑ x : Vec F Idx, ∑ b : Fˣ, baseChar (F := F) ((b : F) * (linearFn α x - f x))
 
 /-- The phase-collision score equals `1 − (q/(q−1))·δ(f, ℓ_α)` — the closed form
-at the end of `lem:gh_linearity_3`.  It is real-valued (an `ℝ` cast). -/
+at the end of `lem:gh_linearity_formalized`.  It is real-valued (an `ℝ` cast). -/
 lemma phaseCollisionScore_eq_distance (f : ScalarFn F Idx) (α : Vec F Idx) :
     phaseCollisionScore f α
       = (((1 : ℝ) - (Fintype.card F : ℝ) / (Fintype.card Fˣ : ℝ)
@@ -1127,7 +1127,7 @@ lemma phaseCollisionScore_eq_distance (f : ScalarFn F Idx) (α : Vec F Idx) :
   rw [hdist]
   field_simp
 
-/-- **Final step of `lem:gh_linearity_3`.**  If the dominant linear function
+/-- **Final step of `lem:gh_linearity_formalized`.**  If the dominant linear function
 `ℓ_α` achieves phase-collision score `≥ 1 − ε`, then its Hamming distance to
 `f` is at most `(q−1)/q · ε`. -/
 lemma distance_le_of_phaseCollisionScore_re (f : ScalarFn F Idx) (α : Vec F Idx) (ε : ℝ)
@@ -1178,7 +1178,7 @@ lemma gFourierCoeff_one_eq_phaseCollisionScore (f : ScalarFn F Idx) (β : Vec F 
   simp only [hneg]
   rw [phaseCollisionScore, Twist.card_eq, Nat.cast_mul, mul_inv]
 
-/-- **The `c`-collapse (heart of `lem:gh_linearity_3`).**  Averaging the spectral
+/-- **The `c`-collapse (heart of `lem:gh_linearity_formalized`).**  Averaging the spectral
 weights over the scaling factor `c ∈ A` kills every nontrivial multiplicative
 character `ψ ≠ ψ₀` (orthogonality `∑_c ψ(c) = 0`), collapsing the double sum over
 `(c, χ)` to a single sum over the trivial-character coefficients `φ̂_1(β, ψ₀)`. -/
@@ -1246,37 +1246,34 @@ lemma cube_max_extraction {ι : Type*} [Fintype ι] [Nonempty ι] (r : ι → �
   have hfin : r i₀ * ∑ i, (r i) ^ 2 ≤ r i₀ := mul_le_of_le_one_right hM0 hsq
   linarith [hcorr, hub, hfin]
 
-/-- **`lem:gh_linearity_3` (soundness).**  If the Gowers–Hatami operator
-pair-correlation `𝔼_{g,h} Re tr((F_g F_h)ᴴ F_{gh} σ)` is nonnegative and at least
-`1 − ε`, then `f` is `(q−1)/q · ε`-close to a linear function `ℓ_α`.  No condition on
-`ε` is imposed here: the regime `ε ≤ 1` is only what makes the correlation
-nonnegative, and that is assumed structurally via `hCorrpos` (supplied at the
-soundness theorem from the BLR rejection bound).
+/-- **`lem:gh_linearity_formalized` (Gowers–Hatami ⟹ linearity).**  If the Gowers–Hatami
+operator pair-correlation `𝒞(f) = 𝔼_{g,h} Re tr((F_g F_h)ᴴ F_{gh} σ)` is at least `1 − ε`,
+and `ε ≤ 1`, then `f` is `(q−1)/q · ε`-close to a linear function `ℓ_α`.
+
+The hypothesis `ε ≤ 1` is exactly what makes the correlation nonnegative
+(`0 ≤ 1 − ε ≤ 𝒞(f)`); this in turn forces the maximiser of the phase-collision scores
+to be `≥ 0` in the third-moment extraction (without it, the extraction is false).
 
 The proof: spectral form (`gh_pair_spectral_re`) ⟶ `c`-collapse onto the trivial
 character (`gh_collapse`) ⟶ identify the surviving coefficients with phase-collision
 scores (`gFourierCoeff_one_eq_phaseCollisionScore`) ⟶ third-moment max extraction
 (`cube_max_extraction`) ⟶ distance bound (`distance_le_of_phaseCollisionScore_re`). -/
-theorem gh_linearity_3 (f : ScalarFn F Idx) (ε : ℝ)
-    (hCorrpos : 0 ≤ (Fintype.card (Twist F Idx) : ℝ)⁻¹ * (Fintype.card (Twist F Idx) : ℝ)⁻¹
-        * ∑ g : Twist F Idx, ∑ h : Twist F Idx,
-            (Matrix.trace ((liftMatrix f g * liftMatrix f h)ᴴ
-              * liftMatrix f (g * h) * sigmaBLR)).re)
+theorem gh_linearity (f : ScalarFn F Idx) (ε : ℝ) (hε : ε ≤ 1)
     (hCorr : 1 - ε ≤ (Fintype.card (Twist F Idx) : ℝ)⁻¹ * (Fintype.card (Twist F Idx) : ℝ)⁻¹
         * ∑ g : Twist F Idx, ∑ h : Twist F Idx,
             (Matrix.trace ((liftMatrix f g * liftMatrix f h)ᴴ
               * liftMatrix f (g * h) * sigmaBLR)).re) :
     ∃ α : Vec F Idx, distance f (linearFn α) ≤ (Fintype.card Fˣ : ℝ) / (Fintype.card F : ℝ) * ε := by
   classical
-  rw [gh_pair_spectral_re, gh_collapse] at hCorr hCorrpos
-  simp_rw [gFourierCoeff_one_eq_phaseCollisionScore] at hCorr hCorrpos
+  rw [gh_pair_spectral_re, gh_collapse] at hCorr
+  simp_rw [gFourierCoeff_one_eq_phaseCollisionScore] at hCorr
   have hreal : ∀ β : Vec F Idx,
       Complex.normSq (phaseCollisionScore f β) * (phaseCollisionScore f β).re
         = ((phaseCollisionScore f β).re) ^ 2 * (phaseCollisionScore f β).re := by
     intro β
     rw [phaseCollisionScore_eq_distance, Complex.normSq_ofReal, Complex.ofReal_re]
     ring
-  simp_rw [hreal] at hCorr hCorrpos
+  simp_rw [hreal] at hCorr
   have hsq : ∑ β : Vec F Idx, ((phaseCollisionScore f β).re) ^ 2 ≤ 1 := by
     have hpar := liftDiag_parseval f 1
     rw [← hpar]
@@ -1293,8 +1290,12 @@ theorem gh_linearity_3 (f : ScalarFn F Idx) (ε : ℝ)
     exact Finset.single_le_sum
       (f := fun ψ : MulChar F ℂ => Complex.normSq (gFourierCoeff (liftDiag f 1) (β, ψ)))
       (fun ψ _ => Complex.normSq_nonneg _) (Finset.mem_univ (1 : MulChar F ℂ))
+  -- correlation positivity follows from the regime `ε ≤ 1`: `0 ≤ 1 − ε ≤ 𝒞(f)`
+  have hcorr0 : 0 ≤ ∑ β : Vec F Idx,
+      ((phaseCollisionScore f β).re) ^ 2 * (phaseCollisionScore f β).re := by
+    linarith [hCorr]
   obtain ⟨α, hα⟩ :=
-    cube_max_extraction (fun β => (phaseCollisionScore f β).re) ε hsq hCorrpos hCorr
+    cube_max_extraction (fun β => (phaseCollisionScore f β).re) ε hsq hcorr0 hCorr
   exact ⟨α, distance_le_of_phaseCollisionScore_re f α ε hα⟩
 
 /-! ## M8: Gowers–Hatami soundness of the BLR test (`thm:main`) -/
@@ -1344,7 +1345,7 @@ to the nearest linear function is at most the `G×G` rejection fraction `rejGG f
 
 This is the *only* statement carrying the regime hypothesis; every intermediate lemma
 is unconditional.  The loose factor `q/(q−1)` of the approximate representation cancels
-the tight factor `(q−1)/q` of `gh_linearity_3`, leaving the clean bound `δ ≤ rejGG`. -/
+the tight factor `(q−1)/q` of `gh_linearity`, leaving the clean bound `δ ≤ rejGG`. -/
 theorem gh_blr_soundness (f : ScalarFn F Idx)
     (hrej : rejGG f ≤ (Fintype.card Fˣ : ℝ) / (Fintype.card F : ℝ)) :
     distanceToLinear f ≤ rejGG f := by
@@ -1353,18 +1354,13 @@ theorem gh_blr_soundness (f : ScalarFn F Idx)
   have hFxne : (Fintype.card Fˣ : ℝ) ≠ 0 := hcardFx.ne'
   have hFne : (Fintype.card F : ℝ) ≠ 0 := hcardF.ne'
   have hcorr_eq := gh_pair_correlation_eq f
-  -- regime: `ε := (q/(q−1))·rejGG ≤ 1`, hence the correlation `1 − ε` is nonnegative
+  -- regime: `ε := (q/(q−1))·rejGG ≤ 1` (equivalently `rejGG ≤ (q−1)/q`)
   have hεle : (Fintype.card F / Fintype.card Fˣ : ℝ) * rejGG f ≤ 1 := by
     rw [div_mul_eq_mul_div, div_le_one hcardFx, mul_comm, ← le_div_iff₀ hcardF]
     exact hrej
-  have hCorrpos : 0 ≤ (Fintype.card (Twist F Idx) : ℝ)⁻¹ * (Fintype.card (Twist F Idx) : ℝ)⁻¹
-      * ∑ g : Twist F Idx, ∑ h : Twist F Idx,
-          (Matrix.trace ((liftMatrix f g * liftMatrix f h)ᴴ
-            * liftMatrix f (g * h) * sigmaBLR)).re := by
-    rw [hcorr_eq]; linarith
   have hCorr := hcorr_eq.ge
   obtain ⟨α, hα⟩ :=
-    gh_linearity_3 f ((Fintype.card F / Fintype.card Fˣ : ℝ) * rejGG f) hCorrpos hCorr
+    gh_linearity f ((Fintype.card F / Fintype.card Fˣ : ℝ) * rejGG f) hεle hCorr
   -- the `q/(q−1)` and `(q−1)/q` factors cancel: `(q−1)/q · ε = rejGG`
   have hcancel : (Fintype.card Fˣ : ℝ) / (Fintype.card F : ℝ)
       * ((Fintype.card F / Fintype.card Fˣ : ℝ) * rejGG f) = rejGG f := by
@@ -1374,5 +1370,87 @@ theorem gh_blr_soundness (f : ScalarFn F Idx)
         rw [distanceToLinear_eq_inf_linearFn]
         exact Finset.inf'_le _ (Finset.mem_univ α)
     _ ≤ rejGG f := hα
+
+/-! ## M8b: `rejGG` is the BLR rejection probability (`rejGG = 1 − acceptance`) -/
+
+/-- A sum over the `Finset` `nonzeroF` equals the sum over `Fˣ` of the coerced values. -/
+private lemma sum_nonzeroF_eq_sum_units (g : F → ℝ) :
+    ∑ a ∈ nonzeroF (F := F), g a = ∑ u : Fˣ, g (u : F) := by
+  classical
+  rw [Finset.sum_subtype (nonzeroF (F := F)) (p := fun x => x ≠ 0)
+      (fun x => by simp [nonzeroF]) g]
+  exact (Equiv.sum_comp unitsEquivNeZero (fun x : {x : F // x ≠ 0} => g (x : F))).symm
+
+/-- The units of `F` biject with `nonzeroF`, so `|Fˣ| = |nonzeroF|`. -/
+private lemma card_units_eq_card_nonzeroF :
+    Fintype.card Fˣ = (nonzeroF (F := F)).card := by
+  classical
+  rw [Fintype.card_congr unitsEquivNeZero]
+  simp [Fintype.card_subtype, nonzeroF]
+
+/-- The BLR sampling reindexing `(g, h) ↦ (h.unit⁻¹, g.unit⁻¹, g.vec, h.vec)`, identifying the
+`G × G` sampling of `rejGG` with the `(a, b, x, y)` sampling of the BLR test. -/
+def blrReindex :
+    Twist F Idx × Twist F Idx ≃ Fˣ × Fˣ × Vec F Idx × Vec F Idx where
+  toFun gh := (gh.2.unit⁻¹, gh.1.unit⁻¹, gh.1.vec, gh.2.vec)
+  invFun t := (⟨t.2.2.1, t.2.1⁻¹⟩, ⟨t.2.2.2, t.1⁻¹⟩)
+  left_inv := by rintro ⟨g, h⟩; simp only [inv_inv]
+  right_inv := by rintro ⟨ua, ub, x, y⟩; simp only [inv_inv]
+
+/-- **`rejGG` is exactly the BLR rejection probability.**  The `G × G` failure fraction equals
+`1 − acceptanceProbabilityBLR f`, via the bijection `blrReindex` (`(g,h) ↦ (h.unit⁻¹, g.unit⁻¹,
+g.vec, h.vec)`) and `defect_eq_zero_iff`. -/
+lemma rejGG_eq_one_sub_acceptance (f : ScalarFn F Idx) :
+    rejGG f = 1 - acceptanceProbabilityBLR f := by
+  classical
+  have hX : (Fintype.card (Vec F Idx) : ℝ) ≠ 0 := by exact_mod_cast Fintype.card_ne_zero
+  have hU : (Fintype.card Fˣ : ℝ) ≠ 0 := by exact_mod_cast Fintype.card_ne_zero
+  -- accept count over `G × G` matches the BLR accept count
+  have hAcc : (∑ g : Twist F Idx, ∑ h : Twist F Idx,
+        if BLRAcceptsAt f (↑h.unit⁻¹) (↑g.unit⁻¹) g.vec h.vec then (1 : ℝ) else 0)
+      = ∑ ua : Fˣ, ∑ ub : Fˣ, ∑ x : Vec F Idx, ∑ y : Vec F Idx,
+          if BLRAcceptsAt f (↑ua) (↑ub) x y then (1 : ℝ) else 0 := by
+    calc (∑ g : Twist F Idx, ∑ h : Twist F Idx,
+            if BLRAcceptsAt f (↑h.unit⁻¹) (↑g.unit⁻¹) g.vec h.vec then (1 : ℝ) else 0)
+        = ∑ p : Twist F Idx × Twist F Idx,
+            if BLRAcceptsAt f (↑p.2.unit⁻¹) (↑p.1.unit⁻¹) p.1.vec p.2.vec then (1 : ℝ) else 0 :=
+          (Fintype.sum_prod_type' _).symm
+      _ = ∑ t : Fˣ × Fˣ × Vec F Idx × Vec F Idx,
+            if BLRAcceptsAt f (↑t.1) (↑t.2.1) t.2.2.1 t.2.2.2 then (1 : ℝ) else 0 :=
+          Fintype.sum_equiv blrReindex _ _ (fun p => rfl)
+      _ = ∑ ua : Fˣ, ∑ ub : Fˣ, ∑ x : Vec F Idx, ∑ y : Vec F Idx,
+            if BLRAcceptsAt f (↑ua) (↑ub) x y then (1 : ℝ) else 0 := by
+          simp only [Fintype.sum_prod_type]
+  -- rejGG numerator = `|G|² − (accept count)`
+  have hnum : (∑ g : Twist F Idx, ∑ h : Twist F Idx,
+        if liftPhase f (g * h) - liftPhase f g - liftPhase f h = 0 then (0 : ℝ) else 1)
+      = (Fintype.card (Twist F Idx) : ℝ) ^ 2
+        - ∑ ua : Fˣ, ∑ ub : Fˣ, ∑ x : Vec F Idx, ∑ y : Vec F Idx,
+            if BLRAcceptsAt f (↑ua) (↑ub) x y then (1 : ℝ) else 0 := by
+    have hrw : ∀ g h : Twist F Idx,
+        (if liftPhase f (g * h) - liftPhase f g - liftPhase f h = 0 then (0 : ℝ) else 1)
+          = 1 - (if BLRAcceptsAt f (↑h.unit⁻¹) (↑g.unit⁻¹) g.vec h.vec then (1 : ℝ) else 0) := by
+      intro g h
+      simp only [defect_eq_zero_iff]
+      split_ifs <;> ring
+    simp only [hrw, Finset.sum_sub_distrib, Finset.sum_const, Finset.card_univ, nsmul_eq_mul,
+      mul_one]
+    rw [hAcc]
+    ring
+  rw [rejGG, hnum]
+  unfold acceptanceProbabilityBLR
+  simp_rw [sum_nonzeroF_eq_sum_units]
+  rw [Twist.card_eq, ← card_units_eq_card_nonzeroF, Nat.cast_mul]
+  field_simp
+
+/-- **Soundness of the BLR test, Gowers–Hatami route, in `blr_soundness` form.**  In the regime
+`rejGG f ≤ (q−1)/q`, the GH route yields exactly the conclusion of the direct `blr_soundness`:
+`acceptanceProbabilityBLR f ≤ 1 − distanceToLinear f`. -/
+theorem gh_blr_soundness_acceptance (f : ScalarFn F Idx)
+    (hrej : rejGG f ≤ (Fintype.card Fˣ : ℝ) / (Fintype.card F : ℝ)) :
+    acceptanceProbabilityBLR f ≤ 1 - distanceToLinear f := by
+  have h := gh_blr_soundness f hrej
+  rw [rejGG_eq_one_sub_acceptance] at h
+  linarith
 
 end BlrPcp

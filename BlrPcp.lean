@@ -7,3 +7,4 @@ import BlrPcp.QESATExpSizePCP.TensorEq
 import BlrPcp.GowersHatami.Concrete
 import BlrPcp.GowersHatami.GH2
 import BlrPcp.GowersHatami.GowersHatami
+import BlrPcp.GowersHatami.GHBlr
