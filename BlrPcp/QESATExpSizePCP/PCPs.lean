@@ -8,10 +8,11 @@ import VCVio.OracleComp.QueryTracking.QueryBound
 /-!
 # PCPs
 
-This file defines PCPs and LPCPs in terms of oracle computations, as well as some genetic utils.
+This file defines PCPs and LPCPs in terms of oracle computations, as well as some generic utils.
 
-For BLR, the randomness oracle gives either an element of field F or a scalar, and thus uses a different definition from
-the ones defined here.
+For BLR, the randomness oracle gives either an element of the field `F` or a scalar, and thus uses a different definition from
+the ones defined here. However, the simpler BLR verifier (for `F = {0,1}`) is compatible with `randOracleSpec`, since it
+doesn't need to sample from `Fˣ`.
 
 ## Main declarations
 
@@ -30,27 +31,30 @@ open OracleComp
 open scoped Matrix
 open BlrPcp (Vec ScalarFn linearFn IsLinear LinearSet distance)
 
-/-- Specification of oracles that sample a random element from `F`. -/
-abbrev randOracleSpec_unit_fin (F : Type) : OracleSpec Unit :=
+/-- Specification (i.e. signature) of oracles that sample a random element from the finite field `F`.
+Unit is a type admitting only one value `()`, meaning that the only possible query is `()`.
+When a query is made, a field element from `F` ia returned. -/
+abbrev randOracleSpec (F : Type) : OracleSpec Unit :=
   Unit →ₒ F
 
-/-- We only work in finite fields. -/
-abbrev randOracleSpec (F : Type) := randOracleSpec_unit_fin F
-
-/-- An oracle that samples a random element from `F`. -/
+/-- An oracle that samples a random element from the finite field `F`.
+It uses the specification `randOracleSpec` defined above,
+and the implementation sampled an element u.a.r. with `$ᵗ F` -/
 abbrev randOracle (F : Type) [SampleableType F] : OracleContext Unit ProbComp where
   spec := randOracleSpec F
   impl := fun _ => $ᵗ F
 
+/-- Specification (i.e. signature) of proof oracles for ordinary PCPs.
+`Fin ℓ` is the type of valid proof-table indices, meaning that a query chooses one position
+in a proof of length `ℓ`. When a query is made, a field element from `F` is returned. -/
 abbrev proofOracleSpec_fin (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ) :=
   Fin ℓ →ₒ F
 
+/-- Specification (i.e. signature) of proof oracles for linear PCPs/BLR.
+`Fin ℓ → F` is the type of length-`ℓ` field vectors.
+When a vector is queried, a field element from `F` is returned. -/
 abbrev proofOracleSpec_fin_vector (F : Type) (ℓ : ℕ) : OracleSpec (Fin ℓ → F) :=
   (Fin ℓ → F) →ₒ F
-
-/- Used in LPCP, basic BLR, ... where they both proof-query an F-vector and get back an element. -/
-abbrev fullSpec_fin_vector (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ (Fin ℓ → F)) :=
-  randOracleSpec F + proofOracleSpec_fin_vector F ℓ
 
 /-- `RunsInTime oa n` means `oa` halts in at most `n` steps. -/
 abbrev RunsInTime {ι α : Type} {spec : OracleSpec ι}
@@ -58,8 +62,14 @@ abbrev RunsInTime {ι α : Type} {spec : OracleSpec ι}
   true -- TODO: look into https://api.cslib.io/docs/Cslib/Algorithms/Lean/TimeM.html
        -- or even https://github.com/Shreyas4991/Algolean
 
-/-- `QueryBound oa r q` means `oa` makes at most `r` randomness queries
-and at most `q` proof queries. -/
+/-- `QueryBound oa r q` means that the oracle computation/algorithm `oa` makes at most
+`r` randomness queries and at most `q` proof queries.
+Here `oa` is a computation/algorithm which has access to a combined oracle specification `randOracleSpec + proofSpec`.
+Queries to the left side, written `(.inl _)`, are counted as randomness queries; in the
+PCP/LPCP applications this is usually `randOracleSpec F`, whose implementation samples field
+elements from `F`. Queries to the right side, written `(.inr _)`, are counted as proof queries;
+in the PCP/LPCP applications `proofSpec` is a proof-oracle specification, representing access to a proof
+of length `ℓ`. -/
 abbrev QueryBound {ρ ι α : Type} {randOracleSpec : OracleSpec ρ} {proofSpec : OracleSpec ι}
     (oa : OracleComp (randOracleSpec + proofSpec) α) (r q : ℕ) : Prop :=
   OracleComp.IsQueryBound oa (r, q)
@@ -70,6 +80,9 @@ abbrev QueryBound {ρ ι α : Type} {randOracleSpec : OracleSpec ρ} {proofSpec 
       | .inl _, (r, q) => (r - 1, q)
       | .inr _, (r, q) => (r, q - 1))
 
+/-- Monotonicity of query bounds.
+If `oa` makes at most `r` randomness queries and at most `q` proof queries, then it also
+satisfies any larger randomness and proof budgets `r'` and `q'`. -/
 lemma queryBound_mono {ρ ι α : Type} {randOracleSpec : OracleSpec ρ} {proofSpec : OracleSpec ι}
     {oa : OracleComp (randOracleSpec + proofSpec) α} {q r q' r' : ℕ}
     (h : QueryBound oa r q) (hq : q ≤ q') (hr : r ≤ r') :
@@ -90,6 +103,11 @@ lemma queryBound_mono {ρ ι α : Type} {randOracleSpec : OracleSpec ρ} {proofS
           refine ⟨Nat.lt_of_lt_of_le h.1 hq, fun u => ?_⟩
           exact ih u (h.2 u) (Nat.sub_le_sub_right hq _) hr
 
+/-- Query bounds for monadic sequencing.
+The computation `oa >>= ob` first runs `oa`, then feeds its output `x` to the continuation
+`ob x` and runs that second computation. If `oa` uses at most `(r₁, q₁)` randomness/proof
+queries, and every continuation `ob x` uses at most `(r₂, q₂)`, then the whole sequenced
+computation uses at most `(r₁ + r₂, q₁ + q₂)`. -/
 lemma queryBound_bind {ρ ι α β : Type} {randOracleSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι}
     {oa : OracleComp (randOracleSpec + proofSpec) α}
@@ -116,24 +134,30 @@ lemma queryBound_bind {ρ ι α β : Type} {randOracleSpec : OracleSpec ρ}
 
 namespace PCP
 
-/-- A proof is represented as a function `π : [ℓ] → F`, i.e. a vector of size ℓ in field F.
-`π(q)` is the answer to query `q`. -/
+/-- A proof is represented as a function `π : Fin ℓ → F`, i.e. a vector of size `ℓ` with entries in the finite field `F`.
+This proof oracle uses the specification `proofOracleSpec_fin F ℓ` defined above: queries are indices `q : Fin ℓ`.
+Its implementation answers deterministically with `π q`, the proof-table entry at position `q`. -/
 abbrev proofOracle {F : Type} {ℓ : ℕ}
     (π : Fin ℓ → F) : OracleContext (Fin ℓ) ProbComp where
   spec := proofOracleSpec_fin F ℓ
   impl := fun q => return π q
 
-/-- Specification of a PCP instance, which includes a random Oracle and a proof Oracle. -/
+/-- Combined oracle interface for PCP verifiers with access to randomness and to a proof table of length `ℓ`. -/
 abbrev fullSpec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ Fin ℓ) :=
   randOracleSpec F + proofOracleSpec_fin F ℓ
 
 end PCP
 
+/-- Type of ordinary PCP verifiers.
+For an input type `α` with size function `size`, field `F`, and proof-length function `ℓ`,
+a verifier maps each input `x : α` to an oracle computation with access to randomness and
+to a proof table of length `ℓ (size x)`. The computation returns a `Bool`, interpreted as
+accept/reject. -/
 abbrev PCPVerifier (α : Type) (size : α → ℕ) (F : Type) (ℓ : ℕ → ℕ) : Type :=
   (x : α) → OracleComp (PCP.fullSpec F (ℓ (size x))) Bool
 
 /-- The complexity class PCP. Note that we use a randomness oracle that samples elements from `F`
-and not `{0,1}`. To recover the bit randomness compleixty, we need to multiply `r` by `log |F|`.-/
+and not `{0,1}`. To recover the bit randomness complexity, we need to multiply `r` by `log |F|`.-/
 def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
     [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F]
     (ℓ q r : ℕ → ℕ) : Set (Set α) :=
@@ -147,17 +171,30 @@ def PCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
 
 namespace LPCP
 
-/-- A linear-query proof: a query is a vector `u`,
-and the answer is the inner product `⟨π, u⟩`. -/
+/-- A proof is represented as a function `π : Fin ℓ → F`, i.e. a vector of size `ℓ` with entries in the finite field `F`.
+This linear proof oracle uses the specification `proofOracleSpec_fin_vector F ℓ` defined above: queries are vectors `u : Fin ℓ → F`.
+Its implementation answers deterministically with `π ⬝ᵥ u`, the inner product of the proof and the query vector `u`. -/
 abbrev proofOracle {F : Type} [Field F] {ℓ : ℕ}
     (π : Fin ℓ → F) : OracleContext (Fin ℓ → F) ProbComp where
   spec := proofOracleSpec_fin_vector F ℓ
   impl := fun u => return π ⬝ᵥ u
 
-abbrev fullSpec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ (Fin ℓ → F)) := fullSpec_fin_vector F ℓ
+/-- Combined oracle specification for LPCP verifiers.
+The left side `randOracleSpec F` handles randomness queries: a query `(.inl ())` returns an
+element of `F`. The right side `proofOracleSpec_fin_vector F ℓ` handles proof queries:
+a query `(.inr u)`, where `u : Fin ℓ → F`, returns the value of the linear proof oracle at `u`.
+This is the oracle interface used by LPCP verifiers with access to randomness and to a
+linear-query proof of length `ℓ`. -/
+abbrev fullSpec (F : Type) (ℓ : ℕ) : OracleSpec (Unit ⊕ (Fin ℓ → F)) :=
+  randOracleSpec F + proofOracleSpec_fin_vector F ℓ
 
 end LPCP
 
+/-- Type of linear PCP verifiers.
+For an input type `α` with size function `size`, field `F`, and proof-length function `ℓ`,
+a verifier maps each input `x : α` to an oracle computation with access to randomness and
+to a linear-query proof oracle of length `ℓ (size x)`. The computation returns a `Bool`,
+interpreted as accept/reject. -/
 abbrev LPCPVerifier (α : Type) (size : α → ℕ) (F : Type) [Field F] (ℓ : ℕ → ℕ) : Type :=
   (x : α) → OracleComp (LPCP.fullSpec F (ℓ (size x))) Bool
 
@@ -176,7 +213,22 @@ def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
 
 namespace OracleUtil
 
-def sampleVectorAux {ι F : Type} {spec : OracleSpec ι} (query1 : OracleComp spec F) :
+/-- Sample one scalar from the standard (Unit-indexed) randomness oracle.
+This is how the verifier uses the random oracle. -/
+def sampleScalar {ι F : Type} {spec : OracleSpec ι} :
+    OracleComp (randOracleSpec F + spec) F :=
+  liftM (query (spec := randOracleSpec F + spec) (.inl ()))
+
+/-- `sampleScalar` satisfies the query bound `(1, 0)`: it makes one query to the
+randomness oracle and no queries to the proof/auxiliary oracle `spec`. -/
+lemma sampleScalar_queryBound {ι F : Type} {spec : OracleSpec ι} :
+    QueryBound (sampleScalar (F := F) (spec := spec)) 1 0 := by
+  simp [sampleScalar, QueryBound]
+
+/-- Auxiliary recursive sampler for fixed-length vectors.
+Given a computation `query1` that samples one value of type `F`, `sampleVectorAux query1 m`
+runs it `m` times and returns the results as a `Vector F m`. -/
+private def sampleVectorAux {ι F : Type} {spec : OracleSpec ι} (query1 : OracleComp spec F) :
     (m : ℕ) → OracleComp spec (Vector F m)
   | 0     => pure #v[]
   | m + 1 => Vector.push <$> sampleVectorAux query1 m <*> query1
@@ -186,26 +238,21 @@ def sampleVector {ι F : Type} {spec : OracleSpec ι} (query1 : OracleComp spec 
     OracleComp spec (Vec F (Fin m)) :=
   (·.get) <$> sampleVectorAux query1 m
 
-/-- Sample one field element from the standard (Unit-indexed) randomness oracle. -/
-def sampleField {ι F : Type} {spec : OracleSpec ι} :
-    OracleComp (randOracleSpec F + spec) F :=
-  liftM (query (spec := randOracleSpec F + spec) (.inl ()))
-
-lemma sampleField_queryBound {ι F : Type} {spec : OracleSpec ι} :
-    QueryBound (sampleField (F := F) (spec := spec)) 1 0 := by
-  simp [sampleField, QueryBound]
-
-/-- Sample `m` independent random field elements using the randomness oracle of
-`fullSpec_fin_vector F N`. -/
-def sampleRandomVector (F : Type) [SampleableType F] (m N : ℕ) :
-    OracleComp (fullSpec_fin_vector F N) (Fin m → F) :=
-  sampleVector ((liftM (query (spec := fullSpec_fin_vector F N) (.inl ())) :
-    OracleComp (fullSpec_fin_vector F N) F)) m
+/-- Sample `m` independent random field elements using the randomness oracle of `LPCP.fullSpec F N`.
+This is how the verifier uses the random oracle. -/
+def sampleRandomVector (F : Type) (m N : ℕ) :
+    OracleComp (LPCP.fullSpec F N) (Fin m → F) :=
+  sampleVector ((liftM (query (spec := LPCP.fullSpec F N) (.inl ())) :
+    OracleComp (LPCP.fullSpec F N) F)) m
 
 variable {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F]
 
+/- Generic query-bound lemma for `sampleVectorAux`.
+If one execution of `query1` uses at most one randomness query and no proof queries, then
+running it `m` times through `sampleVectorAux` uses at most `m` randomness queries and no
+proof queries. -/
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma sampleVectorAux_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
+private lemma sampleVectorAux_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι}
     {query1 : OracleComp (randSpec + proofSpec) F}
     (hq : QueryBound query1 1 0) : ∀ m,
@@ -218,12 +265,18 @@ lemma sampleVectorAux_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
       simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc] using
         queryBound_bind ih fun _ => by simpa [QueryBound] using hq
 
+/- Query-bound specialization of `sampleVectorAux_queryBound'` to the randomness oracle in
+`LPCP.fullSpec F n`. Sampling an auxiliary vector of length `m` makes at most `m`
+randomness queries and no proof queries. -/
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma sampleVectorAux_queryBound (m n : ℕ) :
+private lemma sampleVectorAux_queryBound (m n : ℕ) :
     QueryBound (sampleVectorAux ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) :
       OracleComp (LPCP.fullSpec F n) F)) m) m 0 :=
   sampleVectorAux_queryBound' (by simp [QueryBound]) m
 
+/- Generic query-bound lemma for `sampleVector`.
+If one execution of `query1` uses at most one randomness query and no proof queries, then
+`sampleVector query1 m` uses at most `m` randomness queries and no proof queries. -/
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
 lemma sampleVector_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι}
@@ -236,12 +289,19 @@ lemma sampleVector_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
       fun _ => by simp [QueryBound])
     (by omega) (by omega)
 
+/- Query-bound specialization of `sampleVector_queryBound'` to the randomness oracle in
+`LPCP.fullSpec F n`. Sampling a vector of length `m` makes at most `m` randomness queries
+and no proof queries. -/
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
 lemma sampleVector_queryBound (m n : ℕ) :
     QueryBound (sampleVector ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) :
       OracleComp (LPCP.fullSpec F n) F)) m) m 0 :=
   sampleVector_queryBound' (by simp [QueryBound]) m
 
+/- Generic simulation lemma for `sampleVector`.
+If the implementation `impl` interprets one execution of `query1` as a uniform sample from
+`F`, then simulating `sampleVector query1 m` produces the uniform distribution on
+functions `Fin m → F`. -/
 omit [Field F] [Fintype F] [Inhabited F] in
 lemma simulateQ_sampleVector' {ρ ι F : Type} {randSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι} [DecidableEq F] [Fintype F] [SampleableType F]
@@ -260,6 +320,10 @@ lemma simulateQ_sampleVector' {ρ ι F : Type} {randSpec : OracleSpec ρ}
       rw [ih, h]
       rfl
 
+/- Simulation lemma for vector sampling in `LPCP.fullSpec`.
+When the left randomness oracle is implemented by `randOracle F`, sampling `m` field
+elements through `sampleVector` gives the uniform distribution on `Fin m → F`, independent
+of the proof-oracle implementation `impl`. -/
 omit [Field F] [Fintype F] [Inhabited F] in
 lemma simulateQ_sampleVector (m n : ℕ)
     (impl : QueryImpl ((Fin n → F) →ₒ F) ProbComp) :
@@ -286,6 +350,9 @@ lemma simulateQ_sampleVector (m n : ℕ)
       rw [ih]
       rfl
 
+/- Simulation lemma for `sampleRandomVector`.
+Running `sampleRandomVector F m N` with the standard randomness implementation produces the
+uniform distribution on `Fin m → F`, regardless of the vector proof-oracle implementation. -/
 omit [Field F] [Fintype F] [Inhabited F] in
 lemma simulateQ_sampleRandomVector (m N : ℕ)
     (impl : QueryImpl (proofOracleSpec_fin_vector F N) ProbComp) :
@@ -293,7 +360,10 @@ lemma simulateQ_sampleRandomVector (m N : ℕ)
     ($ᵗ (Fin m → F) : ProbComp (Fin m → F)) := by
   simp [sampleRandomVector, simulateQ_sampleVector m N impl]
 
-omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] in
+/- Query-bound lemma for `sampleRandomVector`.
+Sampling a random vector of length `m` from `LPCP.fullSpec F N` uses at most `m`
+randomness queries and no proof queries. -/
+omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
 lemma sampleRandomVector_queryBound (m N : ℕ) :
     QueryBound (sampleRandomVector F m N) m 0 := by
   simp [sampleRandomVector, sampleVector_queryBound (F := F) m N]

@@ -91,7 +91,11 @@ lemma linearFn_fiber_card_mul_card {a : Vec F Idx}
         exact (hfibers u).symm
     _ = Fintype.card (Vec F Idx) := hpartition
 
-section Phases
+/-! ## Phases Of Linear Functions
+
+This group records how additive phase lifts and Fourier coefficients specialize
+when the scalar function is linear.
+-/
 
 omit [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 /-- The `c`-phase of the linear function `ℓ_α` is the character `χ_{cα}`. -/
@@ -111,9 +115,11 @@ lemma fourierCoeff_phaseLift_linearFn (α β : Vec F Idx) (c : F) :
   simpa [fourierCoeff, eq_comm] using
     (characters_orthonormal (F := F) (Idx := Idx)).1 (fun i => c * α i) β
 
-end Phases
+/-! ## Distance To Linearity
 
-section DistanceToLinear
+This group defines distance to the finite set of linear functions and rewrites
+it in terms of the largest linear Fourier score.
+-/
 
 omit [Nonempty Idx] in
 /-- the set of linear function is non-empty,
@@ -367,9 +373,11 @@ lemma distance_to_linearity_fourier (f : ScalarFn F Idx) :
   intro α
   exact linearFourierScore_bounds (F := F) (Idx := Idx) f α
 
-end DistanceToLinear
+/-! ## Error-Correction Diameter
 
-section ErrorCorrectionDiamater
+This group proves that distinct linear functions are separated by the expected
+finite-field relative Hamming distance.
+-/
 
 /-- Distinct linear scalar functions are separated by exactly
 `1 - 1 / |F|` in relative Hamming distance. -/
@@ -453,7 +461,5 @@ theorem linearSet_wellSeparated {f g : ScalarFn F Idx}
         simp [Finset.sum_sub_distrib, mul_sub]
     _ = 1 - (Fintype.card F : Real)⁻¹ := by
         rw [hagreement, hratio]
-
-end ErrorCorrectionDiamater
 
 end BlrPcp

@@ -9,7 +9,7 @@ set_option linter.unusedSectionVars false
 
 # BLR test as an approximate representation
 
-Lemma `lem:affine-to-approx-rep` from the blueprint section
+Lemma `lem:affine-to-approx-rep` from the blueprint part
 "Gowers-Hatami for classical BLR" (the `F_q^n` version):
 
 > If `f : F^Idx → F` satisfies `Pr_{a,b,x,y}[f(ax+by) = a·f(x) + b·f(y)] ≥ 1-ε`

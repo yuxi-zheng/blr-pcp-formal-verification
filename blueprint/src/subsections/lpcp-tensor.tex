@@ -1,15 +1,13 @@
-\begin{definition}\label{tensor-product}
-For a field \(\F\), vectors \(a \in \F^n\) and \(b \in \F^m\), the tensor product \(a \otimes b \in \F^{n \times m}\) 
+For a field \(\F\), vectors \(a \in \F^n\) and \(b \in \F^m\), the tensor product \(a \otimes b \in \F^{n \times m}\)
 is the matrix defined by
 \[
-  (a \otimes b)_{i,j} := a_i \cdot b_j \quad \forall i \in [n],\, j \in [m].
+  (a \otimes b)_{i,j} := a_i b_j \quad \forall i \in [n],\, j \in [m].
 \]
-We write \(\mathrm{flat}(a \otimes b) \in \F^{n \cdot m}\) for the row-concatenation of \(a \otimes b\).
-\end{definition}
+We write \(\mathrm{flat}(a \otimes b) \in \F^{nm}\) for the row-concatenation of \(a \otimes b\).
 
-For our purposes, we would love to test to check if $\mathrm{flat}(a \otimes a) = b$
+For our purposes, we want a test that checks whether $\mathrm{flat}(a \otimes a) = b$
 
-\begin{definition}\label{tensor-language}\lean{TENSORQ}\leanok
+\begin{definition}\label{TENSORQ}\lean{TENSORQ}\leanok
 For a field \(\F\) and \(n \in \N\), define the tensor test language
 \[
   \mathrm{TENSORQ}(\F, n) :=
@@ -17,89 +15,160 @@ For a field \(\F\) and \(n \in \N\), define the tensor test language
 \]
 \end{definition}
 
-\begin{theorem}\label{tensor-lpcp}\uses{tensor-product, tensor-language}\lean{TENSORQ_LPCP}\leanok
-For every finite field \(\F\) and \(n \in \N\),
-\[
-  \mathrm{TENSORQ}(\F, n) \in
-  \LPCP\!\left[
-    \varepsilon_c = 0,\;
-    \varepsilon_s = \frac{2|\F|-1}{|\F|^2},\;
-    \Sigma = \F,\;
-    \ell = n + n^2,\;
-    q = 3,\;
-    r = 2n \cdot \log(|\F|)
-  \right].
-\]
-\end{theorem}
-\begin{proof}
-Consider the following LPCP verifier \(V^{\langle a,\cdot\rangle, \langle b,\cdot\rangle}\) proceeds as follows:
+\begin{definition}\label{TENSORQ.verifier}\lean{TENSORQ.verifier}\uses{LPCPVerifier,TENSORQ}\leanok
+% Lecture 08 presents this as a subcheck inside the QESAT verifier, where the
+% queried proof oracles are already named \(a\) and \(b\). The standalone Lean
+% language has explicit input \((a,b)\), so its verifier also checks that the
+% proof's two linear parts agree with that input before running the tensor
+% multiplicativity check.
+Given \((a,b) \in \F^n \times \F^{n^2}\), the LPCP verifier
+\(V_{\mathrm{TENSORQ}(\F,n)}^{\langle \pi,\cdot\rangle}(a,b)\) uses a proof
+\(\pi=\alpha\parallel\beta \in \F^{n+n^2}\), intended to be the linear encoding of the public input
+\((a,b)\). Since the proof may be dishonest, the verifier checks consistency with \((a,b)\) on the sampled
+queries before checking the tensor relation:
 \begin{enumerate}
-  \item Sample \(s, t \leftarrow \F^n\).
-  \item Query \(a\) at \(s\) and at \(t\), obtaining \(\langle a, s \rangle\) and \(\langle a, t \rangle\).
-  \item Query \(b\) at \(\mathrm{flat}(s \otimes t)\), obtaining \(\langle b, \mathrm{flat}(s \otimes t) \rangle\).
-  \item Check if \(\langle b, \mathrm{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle\).
+  % \item Sample \(s,t \leftarrow \F^n\).
+  % \item Query the \(a\)-part of \(\pi\) at \(s\) and at \(t\), obtaining \(\langle a, s \rangle\) and \(\langle a, t \rangle\).
+  % \item Query the \(b\)-part of \(\pi\) at \(\mathrm{flat}(s\otimes t)\), obtaining \(\langle b, \mathrm{flat}(s \otimes t) \rangle\).
+  % \item Accept if and only if \(\langle b, \mathrm{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle\).
+  \item Sample \(s,t \leftarrow \F^n\).
+  \item Query the \(\alpha\)-part of \(\pi\) at \(s\) and at \(t\), obtaining \(y_s\) and \(y_t\).
+  \item Query the \(\beta\)-part of \(\pi\) at \(\mathrm{flat}(s\otimes t)\), obtaining \(y_{s,t}\).
+  \item Accept if and only if
+  \[
+      y_s=\langle a,s\rangle,\qquad
+      y_t=\langle a,t\rangle,\qquad
+      y_{s,t}=\langle b,\mathrm{flat}(s\otimes t)\rangle,\qquad
+      y_{s,t}=y_s y_t.
+    \]
 \end{enumerate}
+\end{definition}
 
-\emph{Completeness.}
-Suppose \(b = \mathrm{flat}(a \otimes a)\). Then  \(\forall s, t \in \F^n\),
+\begin{definition}\label{TENSORQ.selfVerifier}\lean{TENSORQ.selfVerifier}\uses{OracleComp,randOracleSpec}\leanok
+In settings where \(a\) and \(b\) are supplied only by the proof oracle, the tensor self-check uses the same three
+queries but has no public input to compare against. Given oracle access to
+\(\pi=\alpha\parallel\beta\in\F^{n+n^2}\), sample \(s,t\leftarrow\F^n\), query
+\[
+  y_s=\langle\alpha,s\rangle,\qquad
+  y_t=\langle\alpha,t\rangle,\qquad
+  y_{s,t}=\langle\beta,\mathrm{flat}(s\otimes t)\rangle,
+\]
+and accept if and only if \(y_{s,t}=y_s y_t\). This is the tensor component used inside the QESAT verifier.
+\end{definition}
+
+\begin{lemma}\label{TENSORQ.tensor_check_complete}\lean{TENSORQ.tensor_check_complete}\leanok
+For every \(a,s,t\in\F^n\),
+\[
+  \langle \mathrm{flat}(a\otimes a),\mathrm{flat}(s\otimes t)\rangle
+  = \langle a,s\rangle \langle a,t\rangle.
+\]
+\end{lemma}
+\begin{proof}\leanok
 \begin{align*}
-  \langle b,\, \mathrm{flat}(s \otimes t) \rangle
-    &= \langle \mathrm{flat}(a \otimes a),\, \mathrm{flat}(s \otimes t) \rangle
-     = \sum_{i,j \in [n]} a_i a_j s_i t_j \\
-    &= \Bigl(\sum_{i \in [n]} a_i s_i\Bigr) \cdot \Bigl(\sum_{j \in [n]} a_j t_j\Bigr)
-     = \langle a, s \rangle \cdot \langle a, t \rangle,
+  \langle \mathrm{flat}(a\otimes a),\mathrm{flat}(s\otimes t)\rangle
+    &= \sum_{i,j} a_i a_j s_i t_j
+     = \left(\sum_i a_i s_i\right)\left(\sum_j a_j t_j\right)
+     = \langle a,s\rangle \langle a,t\rangle.
 \end{align*}
+\end{proof}
 
-\emph{Soundness.}
+\begin{lemma}\label{TENSORQ.verifier_soundness_after_sampling}\lean{TENSORQ.verifier_soundness_after_sampling}\uses{TENSORQ.verifier}\leanok
+Let \(\F\) be a finite field. If \(b \neq \mathrm{flat}(a\otimes a)\), then for every proof
+\(\pi\in \F^{n+n^2}\),
+\[
+  \Pr_{s,t}\!\left[
+    V_{\mathrm{TENSORQ}(\F,n)}^{\langle\pi,\cdot\rangle}(a,b)=1
+  \right]
+  \leq \frac{2|\F|-1}{|\F|^2}.
+\]
+\end{lemma}
+\begin{proof}\uses{TENSORQ.verifier,LINEQ.linear_form_uniform_prob_mul_card_le_one}\leanok
 Suppose \(b \neq \mathrm{flat}(a \otimes a)\), i.e., there exists \(i^*, j^* \in [n]\) such that
 \(b_{i^* j^*} \neq a_{i^*} \cdot a_{j^*}\).
 For each \(i \in [n]\) define the linear polynomial \(p_i(t) := \sum_{j \in [n]} (b_{ij} - a_i a_j)\, t_j\).
-The check can be rewritten as
+For fixed \(s,t\), if the verifier accepts, then its consistency checks force
+\(y_s=\langle a,s\rangle\), \(y_t=\langle a,t\rangle\), and
+\(y_{s,t}=\langle b,\mathrm{flat}(s\otimes t)\rangle\). Thus acceptance can only occur when
 \[
   \langle b, \mathrm{flat}(s \otimes t) \rangle - \langle a,s\rangle\langle a,t\rangle
   = \sum_{i \in [n]}  \sum_{j \in [n]} (b_{ij} - a_i a_j)\, s_i t_j
   = \sum_{i \in [n]} p_i(t)\, s_i.
 \]
-
 Immediate application of Polynomial Identity Testing yields a lower bound of $1 - \tfrac{2}{|\F|}$ but we can do better.
 Since \(b_{i^* j^*} \neq a_{i^*} a_{j^*}\), the polynomial \(p_{i^*}\) is nonzero, so by the
 Schwartz--Zippel lemma applied to \(t\),
 \[
-  \Pr_{t}\!\bigl[p_{i^*}(t) \neq 0\bigr] \geq 1 - \tfrac{1}{|\F|}.
+  \Pr_{t}\!\left[p_{i^*}(t) \neq 0\right] \geq 1 - \tfrac{1}{|\F|}.
 \]
 Conditioned on \(p_{i^*}(t) \neq 0\), the expression \(\sum_i p_i(t)\,s_i\) is a nonzero linear polynomial
 in \(s\), so by the Schwartz--Zippel lemma applied to \(s\),
 \[
-  \Pr_{s \leftarrow \F^n}\!\Bigl[\sum_i p_i(t)\,s_i \neq 0 \;\Big|\; p_{i^*}(t) \neq 0\Bigr]
+  \Pr_{s \leftarrow \F^n}\!\left[\sum_i p_i(t)\,s_i \neq 0 \mid p_{i^*}(t) \neq 0\right]
   \geq 1 - \tfrac{1}{|\F|}.
 \]
 Hence
 \[
-  \Pr_{s,t}\!\bigl[\text{verifier rejects}\bigr]
-  \;\geq\; \Bigl(1 - \tfrac{1}{|\F|}\Bigr)^{\!2},
+  \Pr_{s,t}\!\left[ V_{\mathrm{TENSORQ}(\F,n)}^{\langle\pi,\cdot\rangle}(a,b)=0 \right]
+  \geq \left(1 - \tfrac{1}{|\F|}\right)^{\!2},
 \]
 and therefore
 \[
-  \Pr_{s,t}\!\bigl[\text{verifier accepts}\bigr]
-  \;\leq\; 1 - \Bigl(1 - \tfrac{1}{|\F|}\Bigr)^{\!2}
-  = \frac{2|\F|-1}{|\F|^2}. \qedhere
+  \Pr_{s,t}\!\left[ V_{\mathrm{TENSORQ}(\F,n)}^{\langle\pi,\cdot\rangle}(a,b)=1 \right]
+  \leq 1 - \left(1 - \tfrac{1}{|\F|}\right)^{\!2}
+  = \frac{2|\F|-1}{|\F|^2}.
 \]
 \end{proof}
 
+\begin{lemma}\label{TENSORQ.selfVerifier_soundness_after_sampling}\lean{TENSORQ.selfVerifier_soundness_after_sampling}\uses{TENSORQ.selfVerifier}\leanok
+Let \(\F\) be a finite field and let \(\pi=\alpha\parallel\beta\in\F^{n+n^2}\). If
+\((\alpha,\beta)\notin\mathrm{TENSORQ}(\F,n)\), then the tensor self-check accepts with probability at most
+\[
+  \frac{2|\F|-1}{|\F|^2}.
+\]
+\end{lemma}
+\begin{proof}\uses{TENSORQ.verifier_soundness_after_sampling}\leanok
+Apply \ref{TENSORQ.verifier_soundness_after_sampling} to the public pair \((\alpha,\beta)\). The self-check is
+exactly the multiplicativity part of that verifier, with \((\alpha,\beta)\) read from the proof oracle itself.
+\end{proof}
 
-\begin{corollary}\label{tensor-lpcp-binary}\uses{tensor-product, tensor-language}\lean{TENSORQ_LPCP_Zmod2}\leanok
+
+\begin{theorem}\label{TENSORQ_LPCP}\uses{TENSORQ, LPCP}\lean{TENSORQ_LPCP}\leanok
+For every finite field \(\F\) and \(n \in \N\),
+\[
+  \mathrm{TENSORQ}(\F, n) \in
+  \LPCP\!\left[
+    \varepsilon_c = 0,
+    \varepsilon_s = \frac{2|\F|-1}{|\F|^2},
+    \Sigma = \F,
+    \ell = n + n^2,
+    q = 3,
+    r = 2n
+  \right].
+\]
+\end{theorem}
+\begin{proof}\uses{TENSORQ.verifier,TENSORQ.tensor_check_complete,TENSORQ.verifier_soundness_after_sampling}\leanok
+Use the verifier of \ref{TENSORQ.verifier}. If
+\((a,b)\in\mathrm{TENSORQ}(\F,n)\), the honest proof \(\pi=(a,b)\) passes the
+three input-consistency checks identically, and the multiplicativity check is
+\ref{TENSORQ.tensor_check_complete}. Soundness is
+\ref{TENSORQ.verifier_soundness_after_sampling}. The verifier makes three proof
+queries and uses two random vectors in \(\F^n\), which gives the displayed query
+and randomness bounds.
+\end{proof}
+
+\begin{corollary}\label{TENSORQ_LPCP_Zmod2}\uses{TENSORQ, LPCP}\leanok
 \[
   \mathrm{TENSORQ}(\F_2, n) \in
   \LPCP\!\left[
-    \varepsilon_c = 0,\;
-    \varepsilon_s = \frac{3}{4},\;
-    \Sigma = \F_2,\;
-    \ell = n + n^2,\;
-    q = 3,\;
-    r = 2 \cdot n
+    \varepsilon_c = 0,
+    \varepsilon_s = 3 / 4,
+    \Sigma = \F_2,
+    \ell = n + n^2,
+    q = 3,
+    r = 2 n
   \right].
 \]
 \end{corollary}
-\begin{proof}
-  Immediate.
+\begin{proof}\uses{TENSORQ_LPCP}\lean{TENSORQ_LPCP_Zmod2}\leanok
+Specialize \ref{TENSORQ_LPCP} to \(\F_2\), where \(|\F_2|=2\).
 \end{proof}

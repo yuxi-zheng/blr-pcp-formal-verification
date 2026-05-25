@@ -26,6 +26,8 @@ and accepts iff `⟨b, flat (s ⊗ t)⟩ = ⟨a, s⟩ * ⟨a, t⟩`.
 - `TENSORQ`: the language of pairs `(a, b)` with `b (i, j) = a i * a j`.
 - `TENSORQ.size`: the binary-size proxy for TENSORQ instances.
 - `TENSORQ.verifier`: the LPCP verifier for TENSORQ.
+- `TENSORQ.selfVerifier`: the tensor multiplicativity check used when `a` and
+  `b` are both supplied by the proof oracle, as in the QESAT verifier.
 - `TENSORQ_LPCP`: TENSORQ has a three-query LPCP verifier with soundness
   `(2 |F| - 1) / |F|^2`.
 -/
@@ -36,12 +38,14 @@ open scoped Matrix
 variable {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F]
     [SampleableType F]
 
+/-- The language of tensor-consistent pairs `(a, b)`, where `b i j = a i * a j`. -/
 abbrev TENSORQ (F : Type) (n : ℕ) [Field F] :
     Set ((Fin n → F) × (Fin n × Fin n → F)) :=
   { (a, b) | b = fun (i, j) => a i * a j }
 
 namespace TENSORQ
 
+/-- Size proxy for a TENSORQ instance: one linear vector plus one flattened `n × n` tensor. -/
 def size {n : ℕ} (_ : (Fin n → F) × (Fin n × Fin n → F)) : ℕ :=
   (n + n * n) * Nat.clog 2 (Fintype.card F)
 
@@ -68,19 +72,34 @@ lemma tensor_check_complete {n : ℕ} (a : Fin n → F) (s t : Fin n → F) :
   intro j _
   ring
 
+/-- The TENSORQ LPCP verifier checks consistency with public `(a, b)` and tensor multiplicativity. -/
 def verifier {n : ℕ} :
     LPCPVerifier ((Fin n → F) × (Fin n × Fin n → F)) size F (fun _ => n + n * n) :=
   fun x => do
     let (a, b) := x
-    let s ← OracleUtil.sampleVector ((liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inl ())) : OracleComp (fullSpec_fin_vector F (n + n * n)) F)) n
-    let t ← OracleUtil.sampleVector ((liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inl ())) : OracleComp (fullSpec_fin_vector F (n + n * n)) F)) n
-    let yA : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA s))
-    let yA' : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA t))
-    let yB : F ← query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryB s t))
+    let s ← OracleUtil.sampleVector ((liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inl ())) : OracleComp (LPCP.fullSpec F (n + n * n)) F)) n
+    let t ← OracleUtil.sampleVector ((liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inl ())) : OracleComp (LPCP.fullSpec F (n + n * n)) F)) n
+    let yA : F ← query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA s))
+    let yA' : F ← query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA t))
+    let yB : F ← query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryB s t))
     pure (yA = a ⬝ᵥ s ∧ yA' = a ⬝ᵥ t ∧ yB = ∑ i, ∑ j, b (i, j) * (s i * t j) ∧
           yB = yA * yA')
 
+/-- The tensor self-check used when the purported `a` and `b` are both supplied
+by the proof oracle. This is the tensor component used inside the QESAT
+verifier: it checks only the multiplicativity relation, rather than consistency
+with a public input `(a, b)`. -/
+def selfVerifier {n : ℕ} :
+    OracleComp (LPCP.fullSpec F (n + n * n)) Bool := do
+  let s ← OracleUtil.sampleRandomVector F n (n + n * n)
+  let t ← OracleUtil.sampleRandomVector F n (n + n * n)
+  let yA : F ← query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA s))
+  let yA' : F ← query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA t))
+  let yB : F ← query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryB s t))
+  pure (yB = yA * yA')
+
 omit [Inhabited F] [SampleableType F] in
+/-- The TENSORQ verifier uses `2 * n` randomness queries and three proof queries. -/
 lemma verifier_queryBound {n : ℕ}
     (x : (Fin n → F) × (Fin n × Fin n → F)) :
     QueryBound (verifier (F := F) x) (2 * n) 3 := by
@@ -88,14 +107,14 @@ lemma verifier_queryBound {n : ℕ}
       QueryBound
         (do
           let yA : F ←
-            (liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA s))) :
-              OracleComp (fullSpec_fin_vector F (n + n * n)) F)
+            (liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA s))) :
+              OracleComp (LPCP.fullSpec F (n + n * n)) F)
           let yA' : F ←
-            (liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryA t))) :
-              OracleComp (fullSpec_fin_vector F (n + n * n)) F)
+            (liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryA t))) :
+              OracleComp (LPCP.fullSpec F (n + n * n)) F)
           let yB : F ←
-            (liftM (query (spec := fullSpec_fin_vector F (n + n * n)) (.inr (queryB s t))) :
-              OracleComp (fullSpec_fin_vector F (n + n * n)) F)
+            (liftM (query (spec := LPCP.fullSpec F (n + n * n)) (.inr (queryB s t))) :
+              OracleComp (LPCP.fullSpec F (n + n * n)) F)
           pure (decide (yA = x.1 ⬝ᵥ s ∧ yA' = x.1 ⬝ᵥ t ∧
                 yB = ∑ i, ∑ j, x.2 (i, j) * (s i * t j) ∧ yB = yA * yA'))) 0 3 := by
     intro s t
@@ -111,6 +130,39 @@ lemma verifier_queryBound {n : ℕ}
       queryBound_bind (OracleUtil.sampleVector_queryBound n (n + n * n) (F := F)) fun t =>
         hQuery s t
 
+omit [Fintype F] [Inhabited F] [SampleableType F] in
+/-- The tensor self-check uses `2 * n` randomness queries and three proof queries. -/
+lemma selfVerifier_queryBound {n : ℕ} :
+    QueryBound (selfVerifier (F := F) (n := n)) (2 * n) 3 := by
+  have hQuery : ∀ s t : Fin n → F,
+      QueryBound
+        (do
+          let yA : F ←
+            (liftM (query (spec := LPCP.fullSpec F (n + n * n))
+              (.inr (queryA s))) :
+              OracleComp (LPCP.fullSpec F (n + n * n)) F)
+          let yA' : F ←
+            (liftM (query (spec := LPCP.fullSpec F (n + n * n))
+              (.inr (queryA t))) :
+              OracleComp (LPCP.fullSpec F (n + n * n)) F)
+          let yB : F ←
+            (liftM (query (spec := LPCP.fullSpec F (n + n * n))
+              (.inr (queryB s t))) :
+              OracleComp (LPCP.fullSpec F (n + n * n)) F)
+          pure (decide (yB = yA * yA'))) 0 3 := by
+    intro s t
+    simp only [QueryBound]
+    rw [OracleComp.isQueryBound_query_bind_iff]
+    refine ⟨by simp, fun _ => ?_⟩
+    rw [OracleComp.isQueryBound_query_bind_iff]
+    refine ⟨by simp, fun _ => ?_⟩
+    rw [OracleComp.isQueryBound_query_bind_iff]
+    exact ⟨by simp, fun _ => trivial⟩
+  simpa [selfVerifier, two_mul, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using
+    queryBound_bind (OracleUtil.sampleRandomVector_queryBound (F := F) n (n + n * n)) fun s =>
+      queryBound_bind (OracleUtil.sampleRandomVector_queryBound (F := F) n (n + n * n)) fun t =>
+        hQuery s t
+
 /-- Project an oracle of length `n + n*n` to its first `n` entries (the
 linear-part `a`). -/
 def projA {n : ℕ} (π : Fin (n + n * n) → F) : Fin n → F :=
@@ -122,6 +174,7 @@ def projB {n : ℕ} (π : Fin (n + n * n) → F) : Fin n × Fin n → F :=
   fun p => π (Fin.natAdd n (finProdFinEquiv p))
 
 omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- The proof-oracle response to `queryA s` is the dot product of the projected `a` part with `s`. -/
 lemma dotProduct_queryA {n : ℕ} (π : Fin (n + n * n) → F) (s : Fin n → F) :
     π ⬝ᵥ queryA s = projA π ⬝ᵥ s := by
   simp only [dotProduct, queryA, projA]
@@ -129,6 +182,7 @@ lemma dotProduct_queryA {n : ℕ} (π : Fin (n + n * n) → F) (s : Fin n → F)
   simp [Fin.append_left, Fin.append_right, mul_comm]
 
 omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- The proof-oracle response to `queryB s t` is the bilinear form induced by the projected `b` part. -/
 lemma dotProduct_queryB {n : ℕ} (π : Fin (n + n * n) → F) (s t : Fin n → F) :
     π ⬝ᵥ queryB s t = ∑ i, ∑ j, projB π (i, j) * (s i * t j) := by
   simp only [dotProduct, queryB, projB]
@@ -148,6 +202,7 @@ def honestProof {n : ℕ}
   Fin.append x.1 (fun k => x.2 (finProdFinEquiv.symm k))
 
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- Projecting the first half of the honest proof recovers the public linear part. -/
 lemma projA_honestProof {n : ℕ}
     (x : (Fin n → F) × (Fin n × Fin n → F)) :
     projA (honestProof x) = x.1 := by
@@ -155,6 +210,7 @@ lemma projA_honestProof {n : ℕ}
   simp [projA, honestProof, Fin.append_left]
 
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- Projecting the second half of the honest proof recovers the public tensor part. -/
 lemma projB_honestProof {n : ℕ}
     (x : (Fin n → F) × (Fin n × Fin n → F)) :
     projB (honestProof x) = x.2 := by
@@ -163,6 +219,7 @@ lemma projB_honestProof {n : ℕ}
   rw [finProdFinEquiv.symm_apply_apply]
 
 omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- Rewrite the row-linearized tensor error as the verifier's bilinear error. -/
 lemma row_dot_eq_bilinear_sub_tensor {n : ℕ} (a : Fin n → F)
     (b : Fin n × Fin n → F) (s t : Fin n → F) :
     (fun j => ∑ i, (b (i, j) - a i * a j) * s i) ⬝ᵥ t =
@@ -186,6 +243,7 @@ lemma row_dot_eq_bilinear_sub_tensor {n : ℕ} (a : Fin n → F)
           ring
 
 omit [Fintype F] [Inhabited F] [SampleableType F] in
+/-- Any accepting transcript forces the row-linearized tensor error to vanish. -/
 lemma accept_implies_row_dot_zero {n : ℕ} (a : Fin n → F)
     (b : Fin n × Fin n → F) (π : Fin (n + n * n) → F) (s t : Fin n → F)
     (hacc : decide (π ⬝ᵥ queryA s = a ⬝ᵥ s) &&
@@ -202,7 +260,7 @@ lemma accept_implies_row_dot_zero {n : ℕ} (a : Fin n → F)
           rw [hB, hA, hA']
     _ = 0 := by rw [hMul, sub_self]
 
-/-- 2/|F|: direct PIL --/
+/-- Weak tensor soundness after sampling, obtained by applying the linear-form bound directly. -/
 lemma verifier_soundness_after_sampling_weak {n : ℕ} (a : Fin n → F)
     (b : Fin n × Fin n → F) (π : Fin (n + n * n) → F)
     (hab : (a, b) ∉ TENSORQ F n) :
@@ -272,7 +330,7 @@ lemma verifier_soundness_after_sampling_weak {n : ℕ} (a : Fin n → F)
         (Or.inr (by simp : (1 : ENNReal) ≠ ⊤))).2 ?_
       exact LINEQ.linear_form_uniform_prob_mul_card_le_one (F := F) hrow
 
-/-- 2/|F| - 1/|F|^2: apply PIL twice --/
+/-- Sharp tensor soundness after sampling, applying the linear-form bound in both sampled variables. -/
 lemma verifier_soundness_after_sampling {n : ℕ} (a : Fin n → F)
     (b : Fin n × Fin n → F) (π : Fin (n + n * n) → F)
     (hab : (a, b) ∉ TENSORQ F n) :
@@ -502,8 +560,26 @@ lemma verifier_soundness_after_sampling {n : ℕ} (a : Fin n → F)
     rw [← this, ENNReal.add_sub_cancel_left hqm1_sq_ne_top]
   rw [heq_num]
 
+/-- Soundness of the tensor self-check used inside larger verifiers such as
+QESAT. If the proof oracle's own `a` and `b` parts are not tensor-consistent,
+then the multiplicativity check accepts with the same probability bound as the
+standalone TENSORQ verifier. -/
+lemma selfVerifier_soundness_after_sampling {n : ℕ}
+    (π : Fin (n + n * n) → F)
+    (hπ : (projA π, projB π) ∉ TENSORQ F n) :
+    Pr[= true | simulateQ ((randOracle F).impl + (LPCP.proofOracle π).impl)
+      (selfVerifier (F := F) (n := n))] ≤
+        (2 * ↑(Fintype.card F) - 1) / ↑(Fintype.card F) ^ 2 := by
+  simp [selfVerifier]
+  rw [← probEvent_eq_eq_probOutput]
+  rw [OracleUtil.simulateQ_sampleRandomVector (F := F) n (n + n * n) (LPCP.proofOracle π).impl]
+  have h := verifier_soundness_after_sampling (F := F)
+    (projA π) (projB π) π hπ
+  simpa [dotProduct_queryA, dotProduct_queryB] using h
+
 end TENSORQ
 
+/-- A weaker LPCP statement for TENSORQ with soundness error `2 / |F|`. -/
 theorem TENSORQ_LPCP_weak {n : ℕ} :
     TENSORQ F n ∈ LPCP (TENSORQ.size) 0 (2 / (Fintype.card F : ENNReal)) F
       (fun _ => n + n * n) (fun _ => 3) (fun _ => 2 * n) := by
@@ -526,6 +602,7 @@ theorem TENSORQ_LPCP_weak {n : ℕ} :
     exact TENSORQ.verifier_soundness_after_sampling_weak (F := F) a b π hab
 
 
+/-- TENSORQ has a three-query LPCP with soundness `(2 |F| - 1) / |F|^2`. -/
 theorem TENSORQ_LPCP {n : ℕ} :
     TENSORQ F n ∈ LPCP (TENSORQ.size) 0 (((2 * Fintype.card F - 1 : ℕ) : ENNReal) / (Fintype.card F : ENNReal) ^ 2) F
       (fun _ => n + n * n) (fun _ => 3) (fun _ => 2 * n) := by
@@ -547,6 +624,7 @@ theorem TENSORQ_LPCP {n : ℕ} :
       rw [OracleUtil.simulateQ_sampleVector (F := F) n (n + n*n) (LPCP.proofOracle π).impl]
       exact TENSORQ.verifier_soundness_after_sampling (F := F) a b π hab
 
+/-- Over `ZMod 2`, the TENSORQ LPCP soundness bound specializes to `3 / 4`. -/
 theorem TENSORQ_LPCP_Zmod2 {n : ℕ} :
     TENSORQ (ZMod 2) n ∈ LPCP (TENSORQ.size) 0 (3 / 4) (ZMod 2)
       (fun _ => n + n^2) (fun _ => 3) (fun _ => 2 * n) := by

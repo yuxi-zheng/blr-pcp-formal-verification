@@ -180,6 +180,8 @@ def searchAssignment (ci : FastInstance) : ℕ → Bool
   | 0 => false
   | fuel + 1 => allRowsSatisfied ci fuel || searchAssignment ci fuel
 
+/-- Exponential brute-force baseline for executable tests only.
+This enumerates all assignments and is not one of the formal PCP verifier constructions. -/
 def trivialAcceptsFast (ci : FastInstance) : Bool :=
   ci.degreeOk && searchAssignment ci (2 ^ ci.vars)
 

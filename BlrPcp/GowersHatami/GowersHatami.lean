@@ -36,19 +36,22 @@ variable (G : Type u) [Group G] [Fintype G]
 
 namespace GowersHatami
 
-noncomputable section
+/-! ## Sigma-Weighted Seminorm
 
-section SigmaSeminorm
+This group defines the `σ`-weighted Hilbert--Schmidt seminorm and proves the
+basic algebraic identities used later in the stability estimate.
+-/
 
 /-- The `σ`-weighted matrix inner product, linear in the second matrix. -/
-def sigmaInner {n : ℕ} (σ A B : Matrix (Fin n) (Fin n) ℂ) : ℂ :=
+noncomputable def sigmaInner {n : ℕ} (σ A B : Matrix (Fin n) (Fin n) ℂ) : ℂ :=
   Matrix.trace (Aᴴ * B * σ)
 
 /--
 The squared `σ`-seminorm.  We use mathlib's
 seminormed group instance attached to `σ`.
 -/
-def sigmaNormSq {n : ℕ} (σ A : Matrix (Fin n) (Fin n) ℂ) (hσ : Matrix.PosSemidef σ) : ℝ := by
+noncomputable def sigmaNormSq {n : ℕ} (σ A : Matrix (Fin n) (Fin n) ℂ)
+    (hσ : Matrix.PosSemidef σ) : ℝ := by
   classical
   letI : SeminormedAddCommGroup (Matrix (Fin n) (Fin n) ℂ) :=
     Matrix.toMatrixSeminormedAddCommGroup σ hσ
@@ -192,17 +195,15 @@ private lemma sigmaNormSq_left_unitary_mul
   rw [hUU]
   simp
 
-end SigmaSeminorm
-
 /-- The `σ`-weighted average distance between two maps `f` and `g`. -/
-def averageSigmaDistance
+noncomputable def averageSigmaDistance
     (σ : Matrix (Fin d) (Fin d) ℂ)
     (hσ : Matrix.PosSemidef σ)
     (f g : G → Matrix (Fin d) (Fin d) ℂ) : ℝ :=
   (∑ x : G, sigmaNormSq σ (f x - g x) hσ) / Fintype.card G
 
 /-- The approximate representation hypothesis used by the final theorem. -/
-def IsApproxRepresentation
+noncomputable def IsApproxRepresentation
     (σ : Matrix (Fin d) (Fin d) ℂ)
     (f : G → Matrix (Fin d) (Fin d) ℂ)
     (ε : ℝ) : Prop :=
@@ -212,7 +213,7 @@ def IsApproxRepresentation
       (Fintype.card G ^ 2 : ℝ) ≥ 1 - ε
 
 /-- The `σ`-weighted average correlation of `f`, measuring how multiplicative `f` is. -/
-def averageCorrelation
+noncomputable def averageCorrelation
     (σ : Matrix (Fin d) (Fin d) ℂ)
     (f : G → Matrix (Fin d) (Fin d) ℂ) : ℝ :=
   (∑ x : G, ∑ y : G,
@@ -220,13 +221,13 @@ def averageCorrelation
     (Fintype.card G ^ 2 : ℝ)
 
 /-- How far `f` is from being a homomorphism: `1 - averageCorrelation G σ f`. -/
-def correlationDefect
+noncomputable def correlationDefect
     (σ : Matrix (Fin d) (Fin d) ℂ)
     (f : G → Matrix (Fin d) (Fin d) ℂ) : ℝ :=
   1 - averageCorrelation G σ f
 
 /-- Predicate asserting that every value of `f` lies in the unitary group. -/
-def UnitaryValued
+noncomputable def UnitaryValued
     (f : G → Matrix (Fin d) (Fin d) ℂ) : Prop :=
   ∀ x, f x ∈ Matrix.unitaryGroup (Fin d) Complex
 
@@ -249,19 +250,23 @@ private lemma sigmaNormSq_sub_unitary_mul_eq
   rw [haa]
   simp
 
-section RegularRepresentation
+/-! ## Regular Representation
 
-private abbrev RegularIndex (G : Type u) (d : Nat) : Type u :=
+This group builds the finite left-regular unitary representation on `G × Fin d`
+that will serve as the enlarged exact representation.
+-/
+
+private noncomputable abbrev RegularIndex (G : Type u) (d : Nat) : Type u :=
   G × Fin d
 
 omit [Fintype G] in
-private def invEquiv : G ≃ G where
+private noncomputable def invEquiv : G ≃ G where
   toFun x := x⁻¹
   invFun x := x⁻¹
   left_inv := by intro x; simp
   right_inv := by intro x; simp
 
-private def regularNormalization (G : Type u) [Fintype G] : Complex :=
+private noncomputable def regularNormalization (G : Type u) [Fintype G] : Complex :=
   ((Real.sqrt (Fintype.card G : ℝ) : ℂ))⁻¹
 
 private lemma regularNormalization_mul_star_mul_card :
@@ -327,7 +332,7 @@ private lemma stinespring_inner_sum_of_unitaryValued
         (1 : Matrix (Fin d) (Fin d) Complex) i j := by
           rw [hx']
 
-private def leftRegularPerm (g : G) : Equiv.Perm (RegularIndex G d) :=
+private noncomputable def leftRegularPerm (g : G) : Equiv.Perm (RegularIndex G d) :=
   (Equiv.mulLeft g).prodCongr (Equiv.refl (Fin d))
 
 omit [Fintype G] in
@@ -341,7 +346,7 @@ private lemma leftRegularPerm_mul (g h : G) :
       leftRegularPerm (G := G) (d := d) g * leftRegularPerm (G := G) (d := d) h := by
   ext x <;> simp [leftRegularPerm, mul_assoc]
 
-private def leftRegularMatrix [DecidableEq G] (g : G) :
+private noncomputable def leftRegularMatrix [DecidableEq G] (g : G) :
     Matrix (RegularIndex G d) (RegularIndex G d) Complex :=
   Equiv.Perm.permMatrix Complex (leftRegularPerm (G := G) (d := d) g)
 
@@ -404,7 +409,7 @@ private lemma leftRegularMatrix_mem_unitary [DecidableEq G] (g : G) :
     simp [hij, leftRegularMatrix, Equiv.Perm.permMatrix, PEquiv.toMatrix_apply,
       Matrix.star_apply, sum_perm_double_ite_eq_zero (leftRegularPerm (G := G) (d := d) g) hij]
 
-private def leftRegularUnitary [DecidableEq G] (g : G) :
+private noncomputable def leftRegularUnitary [DecidableEq G] (g : G) :
     Matrix.unitaryGroup (RegularIndex G d) Complex :=
   ⟨leftRegularMatrix (G := G) (d := d) g, leftRegularMatrix_mem_unitary (G := G) (d := d) g⟩
 
@@ -421,7 +426,7 @@ private lemma leftRegularMatrix_one [DecidableEq G] :
   simp [leftRegularMatrix, leftRegularPerm_one, Equiv.Perm.permMatrix,
     PEquiv.toMatrix_apply, Matrix.one_apply]
 
-private def regularUnitaryRep [DecidableEq G] :
+private noncomputable def regularUnitaryRep [DecidableEq G] :
     G →* Matrix.unitaryGroup (RegularIndex G d) Complex where
   toFun g := leftRegularUnitary (G := G) (d := d) g⁻¹
   map_one' := by
@@ -435,21 +440,23 @@ private def regularUnitaryRep [DecidableEq G] :
           leftRegularMatrix (G := G) (d := d) h⁻¹) i j
     rw [mul_inv_rev, leftRegularMatrix_mul]
 
-end RegularRepresentation
+/-! ## Stinespring Construction
 
-section StinespringConstruction
+This group constructs the Stinespring isometry and proves the formulas relating
+its compressed regular representation to group averages of `rho`.
+-/
 
-private def stinespringMap
+private noncomputable def stinespringMap
     (rho : G → Matrix (Fin d) (Fin d) Complex) :
     Matrix (Fin d) (RegularIndex G d) Complex :=
   fun i xj => regularNormalization G * (rho xj.1)ᴴ i xj.2
 
-private def inverseIndexedRho
+private noncomputable def inverseIndexedRho
     (rho : G → Matrix (Fin d) (Fin d) Complex) :
     G → Matrix (Fin d) (Fin d) Complex :=
   fun x => rho x⁻¹
 
-private def inverseStinespringMap
+private noncomputable def inverseStinespringMap
     (rho : G → Matrix (Fin d) (Fin d) Complex) :
     Matrix (Fin d) (RegularIndex G d) Complex :=
   stinespringMap G (inverseIndexedRho G rho)
@@ -465,12 +472,12 @@ private lemma stinespringMap_mul_leftRegularMatrix_apply [DecidableEq G]
   exact sum_leftRegular_single (G := G) (d := d) g x k
     (fun z => regularNormalization G * (starRingEnd ℂ) (rho z.1 z.2 i))
 
-private def stinespringCompression [DecidableEq G]
+private noncomputable def stinespringCompression [DecidableEq G]
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (g : G) : Matrix (Fin d) (Fin d) Complex :=
   stinespringMap G rho * leftRegularMatrix (G := G) (d := d) g * (stinespringMap G rho)ᴴ
 
-private def inverseStinespringCompression [DecidableEq G]
+private noncomputable def inverseStinespringCompression [DecidableEq G]
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (g : G) : Matrix (Fin d) (Fin d) Complex :=
   inverseStinespringMap G rho *
@@ -478,22 +485,22 @@ private def inverseStinespringCompression [DecidableEq G]
       Matrix (RegularIndex G d) (RegularIndex G d) Complex) *
     (inverseStinespringMap G rho)ᴴ
 
-private def averagedTranslate
+private noncomputable def averagedTranslate
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (g : G) : Matrix (Fin d) (Fin d) Complex :=
   (regularNormalization G * star (regularNormalization G)) •
     ∑ x : G, (rho (g⁻¹ * x))ᴴ * rho x
 
-private def StinespringCompressionFormula [DecidableEq G]
+private noncomputable def StinespringCompressionFormula [DecidableEq G]
     (rho : G → Matrix (Fin d) (Fin d) Complex) : Prop :=
   ∀ g : G, stinespringCompression G rho g = averagedTranslate G rho g
 
-private def inverseAveragedTranslate
+private noncomputable def inverseAveragedTranslate
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (g : G) : Matrix (Fin d) (Fin d) Complex :=
   averagedTranslate G (inverseIndexedRho G rho) g⁻¹
 
-private def InverseStinespringCompressionFormula [DecidableEq G]
+private noncomputable def InverseStinespringCompressionFormula [DecidableEq G]
     (rho : G → Matrix (Fin d) (Fin d) Complex) : Prop :=
   ∀ g : G, inverseStinespringCompression G rho g = inverseAveragedTranslate G rho g
 
@@ -593,11 +600,11 @@ private lemma inverseCompression_error_eq_average [DecidableEq G]
           rw [Finset.mul_sum]
           simp
 
-private def StinespringIsometry
+private noncomputable def StinespringIsometry
     (rho : G → Matrix (Fin d) (Fin d) Complex) : Prop :=
   stinespringMap G rho * (stinespringMap G rho)ᴴ = 1
 
-private def InverseStinespringIsometry
+private noncomputable def InverseStinespringIsometry
     (rho : G → Matrix (Fin d) (Fin d) Complex) : Prop :=
   inverseStinespringMap G rho * (inverseStinespringMap G rho)ᴴ = 1
 
@@ -651,11 +658,13 @@ private lemma inverseStinespring_isometry_of_unitaryValued
   exact stinespring_isometry_of_unitaryValued G (inverseIndexedRho G rho)
     (inverseIndexedRho_unitaryValued (G := G) hunit)
 
-end StinespringConstruction
+/-! ## Stability Estimate
 
-section StabilityEstimate
+This group bounds the inverse Stinespring compression error by the averaged
+multiplicative defect, then by the correlation defect.
+-/
 
-private def InverseStinespringCloseToInput [DecidableEq G]
+private noncomputable def InverseStinespringCloseToInput [DecidableEq G]
     (sigma : Matrix (Fin d) (Fin d) Complex)
     (rho : G → Matrix (Fin d) (Fin d) Complex)
     (eps : Real)
@@ -811,7 +820,11 @@ private lemma inverseStinespringCloseToInput_of_correlationDefect [DecidableEq G
   rw [averageMultiplicativeDefect_eq_two_correlationDefect (G := G) hσ htr hunit] at hdist
   exact le_trans hdist (by nlinarith)
 
-end StabilityEstimate
+/-! ## Approximation Hypothesis
+
+This group repackages the approximation hypothesis into unitary-valuedness and
+a correlation-defect bound.
+-/
 
 /-- Repackage the original approximation hypothesis in terms of `correlationDefect`. -/
 lemma isApproxRepresentation_iff
@@ -848,10 +861,14 @@ lemma IsApproxRepresentation.correlationDefect_le
     correlationDefect G σ f ≤ ε :=
   (isApproxRepresentation_iff G σ f ε).mp h |>.2
 
-section Witness
+/-! ## Finite Witness
+
+This group packages the Stinespring construction into the finite Hilbert-space
+witness used by the abstract theorem.
+-/
 
 /-- The compression of a unitary representation `rho0` by an isometry `V`. -/
-def compression {ι : Type*} [Fintype ι] [DecidableEq ι]
+noncomputable def compression {ι : Type*} [Fintype ι] [DecidableEq ι]
     (V : Matrix (Fin d) ι Complex)
     (rho0 : G →* Matrix.unitaryGroup ι Complex)
     (x : G) : Matrix (Fin d) (Fin d) Complex :=
@@ -861,7 +878,7 @@ def compression {ι : Type*} [Fintype ι] [DecidableEq ι]
 The target conclusion: a finite Hilbert space, an isometry `V`, and a genuine
 unitary representation whose compression is close to the original map.
 -/
-def HasFiniteHilbertWitness
+noncomputable def HasFiniteHilbertWitness
     (sigma : Matrix (Fin d) (Fin d) Complex)
     (hσ : Matrix.PosSemidef sigma)
     (rho : G → Matrix (Fin d) (Fin d) Complex)
@@ -886,9 +903,6 @@ private lemma inverse_stinespring_close_has_witness [DecidableEq G]
   dsimp [InverseStinespringCloseToInput, averageSigmaDistance] at hclose
   dsimp [compression, inverseStinespringCompression, averageSigmaDistance] at hclose ⊢
   simpa using hclose
-
-end Witness
-
 
 /--
 Abstract Gowers--Hatami stability in this finite-dimensional formulation.

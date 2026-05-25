@@ -2,7 +2,7 @@
 For a field \(\F\) and parameters \(m, n \in \N\), we define the language
 \[\LINEQ(\F,m,n) := \{ (M, c) \in \F^{m\times n} \times \F^{m} \mid \exists b\in \F^n, \, Mb = c \}.\]
 \end{definition}
-\begin{definition}\label{LINEQ.verifier}\lean{LINEQ.verifier}\uses{LPCPVerifier}\leanok
+\begin{definition}\label{LINEQ.verifier}\lean{LINEQ.verifier}\uses{LPCPVerifier,LINEQ}\leanok
 Let \(V_{\LINEQ(\F,m,n)}^{\langle b, \cdot \rangle } (M,c)\) be the LPCP verifier defined as follows:
 \begin{enumerate}
   \item Sample \(r \leftarrow \F^m\).
@@ -10,10 +10,28 @@ Let \(V_{\LINEQ(\F,m,n)}^{\langle b, \cdot \rangle } (M,c)\) be the LPCP verifie
   \item Accept if and only if \(\langle b,u\rangle = \langle c, r\rangle\).
 \end{enumerate}
 \end{definition}
+
+\begin{lemma}
+\label{LINEQ.linear_form_uniform_prob_mul_card_le_one}
+\lean{LINEQ.linear_form_uniform_prob_mul_card_le_one}
+\leanok
+Let \(a\in\F^m\) be nonzero. Then
+\[
+  |\F|\cdot\Pr_{r\leftarrow\F^m}\!\left[\langle a,r\rangle=0\right]\leq 1.
+\]
+Equivalently, a nonzero linear form over \(\F^m\) vanishes on a uniformly
+random input with probability at most \(1/|\F|\).
+\end{lemma}
+\begin{proof}\leanok
+Choose a coordinate \(i\) with \(a_i\neq 0\). After fixing all other
+coordinates of \(r\), there is exactly one value of \(r_i\) making
+\(\langle a,r\rangle=0\).
+\end{proof}
+
 \begin{theorem}\label{LINEQ_LPCP}\lean{LINEQ_LPCP}\uses{LINEQ, LPCP}\leanok
-  \[\LINEQ(\F,m,n) \in \LPCP\left[\varepsilon_c=0, \varepsilon_s= 1 / |\F|, \Sigma = \F, \ell = |x|, q = 1, r = m \log |\F|\right].\]
+  \[\LINEQ(\F,m,n) \in \LPCP\left[\varepsilon_c=0, \varepsilon_s= 1 / |\F|, \Sigma = \F, \ell = |x|, q = 1, r = m\right].\]
 \end{theorem}
-\begin{proof}\uses{LINEQ.verifier}\leanok
+\begin{proof}\uses{LINEQ.verifier,LINEQ.linear_form_uniform_prob_mul_card_le_one}\leanok
 Consider the LPCP verifier \(V_{\LINEQ(\F,m,n)}^{\langle b, \cdot \rangle } (M,c)\).\\
 \emph{Completeness:} If \(Mb =c\), then for every \(r \in \F^m\), we have \[\langle b, u \rangle = \Transpose{b} (\Transpose{M} r) = \Transpose{(Mb)} r = \langle c , r\rangle.\]
 \emph{Soundness:} If \(Mb \neq c\), then 
@@ -21,5 +39,5 @@ Consider the LPCP verifier \(V_{\LINEQ(\F,m,n)}^{\langle b, \cdot \rangle } (M,c
   \Pr_{r\leftarrow \F^m} \left[\langle b, u \rangle =  \langle c , r\rangle \right] = \Pr_{r\leftarrow \F^m} \left[\langle Mb, r \rangle =  \langle c , r\rangle \right] 
   \\= \Pr_{r\leftarrow \F^m} \left[ \sum_{i=1}^{m} (Mb - c)_{i} \cdot r_{i} =  0\right] \leq 1 / |\F|,
 \end{gather*}
-where the last inequality follows from the Schwartz-Zippel lemma.
+where the last inequality follows from \ref{LINEQ.linear_form_uniform_prob_mul_card_le_one}.
 \end{proof}

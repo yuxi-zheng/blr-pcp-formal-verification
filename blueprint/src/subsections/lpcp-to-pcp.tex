@@ -1,10 +1,13 @@
 \begin{lemma}[Chernoff bound]
+\label{LPCPToPCP.chernoff_bound}
+\lean{LPCPToPCP.chernoff_bound}
+\leanok
   Let $X_1,\dots, X_N$ be independent random variables over $\{0,1\}$, and let $\mu=\EE\left[\sum_{i = 1}^N X_i\right]$. For any $\Delta > 0$ one has
   \begin{equation*}
     \Pr\left[\sum_{i = 1}^N X_i \ge \mu+\Delta\right] \le \exp(-2\Delta^2/N)
   \end{equation*}
 \end{lemma}
-\begin{proof}
+\begin{proof}\leanok
   Write $p_i=\EE[X_i]$, so that $\mu=\sum_{i=1}^N p_i$. We first prove the elementary exponential-moment estimate
   \[
     \EE[\exp(\lambda(X_i-p_i))]\le \exp(\lambda^2/8)
@@ -55,130 +58,245 @@
   \]
 \end{proof}
 
+\begin{definition}
+\label{LPCPToPCP.numShifts}
+\uses{LPCPVerifier}
+\lean{LPCPToPCP.numShifts}
+\leanok
+For an LPCP verifier making at most \(q\) linear queries, set
+\[
+  t := 8\bigl(\lfloor \log_2(100q)\rfloor+1\bigr).
+\]
+% Lecture 08 only needs \(t=O(\log q)\). The Lean proof fixes this base-two
+% value because the formalization uses `Nat.log2`; it is stronger than needed
+% for \(q\exp(-t/8)\le 1/100\).
+This is the concrete logarithmic shift count used in Lean. The converted PCP
+verifier uses \(t\) independent random shifts to decode each linear query by
+plurality.
+\end{definition}
+
+\begin{definition}[Encoded proof]
+\label{LPCPToPCP.encodedProof}
+% TODO: define LPCP proofs and add it to \uses
+\lean{LPCPToPCP.encodedProof}
+\leanok
+For a linear LPCP proof \(\pi\in\F_2^\ell\), its PCP encoding \(\widehat{\pi}_{\mathrm{lin}} \in \F_2^{\F_2^\ell}\) is the truth
+table
+\[
+  \widehat{\pi}_{\mathrm{lin}}(a) := \langle \pi,a\rangle,
+  \qquad a\in\F_2^\ell.
+\]
+\end{definition}
+
+\begin{definition}
+\label{LPCPToPCP.correctedAnswer}
+% TODO: define PCP proofs and add it to \uses
+\lean{LPCPToPCP.correctedAnswer,LPCPToPCP.decodedLinearQuery,LPCPToPCP.pluralityZMod2}
+\leanok
+Given a PCP proof \(\widehat{\pi}:\F_2^\ell\to\F_2\), shifts
+\(r_1,\dots,r_t\in\F_2^\ell\), and a linear query \(a\in\F_2^\ell\), define
+the locally corrected answer
+\[
+  \mathsf{Corr}_{\widehat{\pi}}(a;r_1,\dots,r_t)
+  :=
+  \operatorname{plurality}_{i\in[t]}
+  \bigl(\widehat{\pi}(a+r_i)-\widehat{\pi}(r_i)\bigr).
+\]
+\end{definition}
+
+\begin{definition}
+\label{LPCPToPCP.verifier}
+\lean{LPCPToPCP.verifier}
+\uses{PCPVerifier,LPCPVerifier,BLR.basicVerifier,LPCPToPCP.numShifts,LPCPToPCP.correctedAnswer}
+\leanok
+Let \(V\) be an LPCP verifier over \(\F_2\). The converted PCP verifier
+\(\overline V\), with oracle access to
+\(\widehat{\pi}:\F_2^\ell\to\F_2\), proceeds as follows on input \(x\):
+\begin{enumerate}
+  \item If \(V_{\mathrm{BLR}(\F_{2}, n)}^{\widehat{\pi}}=0\), reject. Otherwise, proceed to the next step.
+  \item Sample \(t\) shifts \(r_1,\dots,r_t\in\F_2^\ell\), with \(t\) as in
+    \ref{LPCPToPCP.numShifts}.
+  \item Simulate \(V(x)\). Whenever \(V\) asks a linear query
+    \(a\in\F_2^\ell\), answer it by
+    \(\mathsf{Corr}_{\widehat{\pi}}(a;r_1,\dots,r_t)\).
+\end{enumerate}
+% We define a PCP verifier as follows, for any $\bar{pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ and $x \in \{0,1\}^*$.
+% \vspace{1em}
+% \noindent \textbf{Verifier} $\bar{V}^{\bar{\pi}} (x)$:
+% \begin{enumerate}
+%     \item If $V_{\text{BLR}}^{\bar{\pi}}=0$ output $0$ and halt, otherwise proceed with the next step.
+%     \item Independently for each $i \in [t]$, sample $r_i \gets \mathbb{F}_2^\ell$.
+%     \item Simulate $V$ by answering each linear query $a$ with $\text{plurality}(\bar{\pi}(a+r_i)-\bar{\pi}(r_i))_{i \in [t]}$.
+% \end{enumerate}
+\end{definition}
+
+
+\begin{lemma}[Completeness]
+\label{LPCPToPCP.verifier_completeness}
+\lean{LPCPToPCP.verifier_completeness}
+\uses{LPCPToPCP.verifier,LPCPToPCP.encodedProof}
+\leanok
+If \(\Pr\!\left[V^{\langle \pi, \cdot \rangle}(x)=1\right]\ge 1-\varepsilon_c\), then \(\Pr\!\left[\overline{V}^{\widehat{\pi}_{\mathrm{lin}}}(x)=1\right]\ge 1-\varepsilon_c\).
+\end{lemma}
+\begin{proof}\uses{LPCPToPCP.verifier,LPCPToPCP.encodedProof,BLR_basic_completeness_ZMod2}\leanok
+The encoded proof is linear, so the BLR test accepts with probability \(1\) by
+\ref{BLR_basic_completeness_ZMod2}. For every query \(a\) and every shift
+\(r_i\),
+\[
+  \widehat{\pi}_{\mathrm{lin}}(a+r_i)-\widehat{\pi}_{\mathrm{lin}}(r_i)
+  = \langle \pi,a\rangle.
+\]
+Thus every plurality answer equals the corresponding LPCP oracle answer, and
+the simulation has exactly the same acceptance probability as \(V\).
+\end{proof}
+
+
+\begin{lemma}[Soundness, far case]
+\label{LPCPToPCP.verifier_soundness_far_case_of_isFar}
+\lean{LPCPToPCP.verifier_soundness_far_case_of_isFar}
+\uses{LPCPToPCP.verifier,def:distance-to-linearity}
+\leanok
+If \(\distanceToLin{\widehat{\pi}} \geq  1 / 8\), then
+\[
+  \Pr[\overline V^{\widehat{\pi}}(x)=1]\leq 7/8 .
+\]
+\end{lemma}
+\begin{proof}\uses{LPCPToPCP.verifier,BLR_basic_soundness_ZMod2}\leanok
+By \ref{BLR_basic_soundness_ZMod2}, the BLR precheck accepts with probability at most
+\(1-\distanceToLin{\widehat{\pi}}\leq 7/8\). Since \(\overline V\) accepts only when this test accepts, its
+acceptance probability is at most \(7/8\).
+\end{proof}
+
 \begin{lemma}
-\uses{LPCP,PCP}
+\label{LPCPToPCP.local_correction}
+\lean{LPCPToPCP.localCorrectionBad_single_le_quarter_of_not_far,LPCPToPCP.correctedAnswer_failure_le_exp_of_single,LPCPToPCP.chernoff_half_of_mean_le_quarter,LPCPToPCP.numShifts_eta_bound}
+\uses{LPCPToPCP.correctedAnswer,def:relative-hamming-distance}
+\leanok
+If \(\distance{\widehat{\pi}}{f} < 1 / 8\) for some linear
+function \(f\) of the form \(u\mapsto\langle\pi,u\rangle\), then
+\[
+  \Pr_{r_1,\dots,r_t}\!\left[
+    \mathsf{Corr}_{\widehat{\pi}}(a;r_1,\dots,r_t)\neq \langle\pi,a\rangle
+  \right]
+  \leq \exp(-t/8), \quad \forall a\in\F_2^\ell.
+\]
+\end{lemma}
+\begin{proof}\uses{LPCPToPCP.correctedAnswer,LPCPToPCP.chernoff_bound}\leanok
+For one shift \(r\), the corrected sample can be wrong only if
+\(\widehat{\pi}(a+r)\) or \(\widehat{\pi}(r)\) disagrees \(f\). A union bound gives error probability at most
+\(2\cdot(1/8)=1/4\). If \(X_i\) is the indicator of failure for shift \(r_i\),
+then \(\EE[\sum_i X_i]\le t/4\). The plurality answer is wrong only if
+\(\sum_i X_i\ge t/2\), so \ref{LPCPToPCP.chernoff_bound} with
+\(\Delta=t/4\) gives \(\exp(-t/8)\).
+% Lecture 07 states a looser concentration estimate with different constants.
+% The blueprint follows the Hoeffding normalization used by the Lean lemma
+% `chernoff_half_of_mean_le_quarter`, which is mathematically stronger here.
+\end{proof}
+
+\begin{lemma}
+\label{LPCPToPCP.corrected_simulation_hybrid}
+\lean{LPCPToPCP.corrected_run_accept_le_linear_add,LPCPToPCP.verifier_accept_le_linear_add_of_query_correction}
+\uses{LPCPToPCP.verifier}
+\leanok
+Assume every possible linear query \(a\) is locally corrected incorrectly with
+probability at most \(\eta\). If the simulated LPCP computation makes at most
+\(q\) proof queries, then its acceptance probability under the corrected PCP
+oracle is at most the acceptance probability under the nearby linear proof
+plus \(q\eta\).
+\end{lemma}
+\begin{proof}\leanok
+Expose the LPCP computation one oracle query at a time. At a proof query, the
+two simulations can diverge only when the local correction for the queried
+linear form is wrong; by assumption this has probability at most \(\eta\).
+Inducting over the query-bound derivation gives an additive loss of at most
+\(q\eta\).
+% Lecture 08 presents this step as a union bound over the verifier's \(q\)
+% queries. The Lean proof phrases the same estimate as a sequential hybrid,
+% which also covers adaptive LPCP verifiers whose later queries may depend on
+% earlier corrected answers.
+\end{proof}
+
+
+\begin{lemma}[Soundness, near case]
+\label{LPCPToPCP.verifier_soundness_near_case}
+\lean{LPCPToPCP.verifier_soundness_near_case_of_single_query_bound}
+\uses{LPCPToPCP.verifier,LPCP,def:relative-hamming-distance}
+\leanok
+If \(x\notin L\), \(V\) has LPCP soundness \(\varepsilon_s\), and
+\(\distance{\widehat{\pi}}{f} < 1/8\) for some linear function \(f\) of the form \(u\mapsto\langle\pi,u\rangle\), then
+\[
+  \Pr[\overline V^{\widehat{\pi}}(x)=1]\leq \varepsilon_s+\frac{1}{100}.
+\]
+\end{lemma}
+\begin{proof}\uses{LPCPToPCP.local_correction,LPCPToPCP.corrected_simulation_hybrid,LPCPToPCP.numShifts,LPCP}\leanok
+By \ref{LPCPToPCP.local_correction}, every possible linear query has local
+correction error at most \(\eta=\exp(-t/8)\). The hybrid estimate
+\ref{LPCPToPCP.corrected_simulation_hybrid} compares the corrected simulation
+with the simulation using the nearby linear proof and loses at most
+\(q\eta\). The choice of \(t\) in \ref{LPCPToPCP.numShifts} gives
+\(q\eta\le 1/100\). The nearby linear proof is a valid LPCP proof, so its
+acceptance probability is at most \(\varepsilon_s\) because \(x\notin L\).
+
+  % \paragraph{Case $\delta(\hat{\pi}, \text{LIN}) < 1/8$}
+  % Let $S = \{\tilde{\pi} \in \lin: \, \delta(\hat{\pi},\tilde{\pi} \le \delta(\hat{\pi}, \text{LIN}))\}$.
+  % Suppose for a contradiction that $|S| \ge 2$, and let $\bar{\pi},\tilde{\pi} \in S$ be distinct: since 
+  % $\delta(\hat{\pi},\bar{\pi} \le \delta(\hat{\pi}, \text{LIN})) < 1/8$ and $\delta(\hat{\pi},\tilde{\pi} \le \delta(\hat{\pi}, \text{LIN})) < 1/8$,
+  % by triangle inequality we have $\delta(\bar{\pi},\tilde{\pi}) < 1/4$;
+  % since $|\bbF_2|=2$, this contradicts the fact that any two distinct $\bar{\pi},\tilde{\pi} \in \lin$ satisfy $\delta(\bar{\pi},\tilde{\pi}) \ge 1/2$.
+
+  % Let then $\tilde{\pi}$ be the unique element of $\lin$ with minimal distance to $\hat{\pi}$, and let $z \in \bbF^\ell$ the unique vector such that $\tilde{\pi}(x)=\langle z, x \rangle$ for all $x$.
+  % If for every query $a$ that $V$ asks we have $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}=\tilde{\pi}(a)$, then $\bar{V}^{\hat{\pi}}(x)=V^{\langle z, \cdot \rangle}(x)$, so
+  % provided that the $r_i$ satisfy this condition we have that $\Pr[\bar{V}^{\hat{\pi}}(x)=1]=\Pr[V^{\langle z, \cdot \rangle}(x)=1] \le \varepsilon_s$.
+  % We are only left to bound the probability that for each of the $q$ queries that $V$ asks we have $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}=\tilde{\pi}(a)$.
+  % Note that for any $a$ and $r_i$, if $\hat{\pi}(a+r_i)=\tilde{\pi}(a+r_i)$ and $\hat{\pi}(r_i)=\tilde{\pi}(r_i)$ then $\hat{\pi}(a+r_i)-\hat{\pi}(r_i)=\tilde{\pi}(a)$.
+  % Hence, the proabability over one $r_i$ that $\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)$ is at most $2\cdot \delta(\hat{\pi},\tilde{\pi})\le 1/4$ by a union bound.
+  % Also note that $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}\neq \tilde{\pi}(a)$ means that $\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)$ for at least $\lceil t/2 \rceil \ge t/2$ of the $i$'s.
+  % Let $X_i = \ind[\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)]$. Then $\mu = \EE[\sum_{i \in [t]}X_i] \le t/4$. Applying Chernoff bound with $\Delta = t/4$, the probability over the choice of $r_1,\dots, r_t$ that there are at least $t/2$ $i$'s with $X_i=1$ is at most $\exp(-t/8)$.
+  % Union bounding over the $q$ queries that $V$ asks, we have that the local correction fails with probability at most $q\cdot \exp(-t/8) \le 1/100$ by our choice of $t$.
+
+\end{proof}
+
+
+\begin{lemma}[Soundness]
+\label{LPCPToPCP.verifier_soundness_of_cases}
+\lean{LPCPToPCP.verifier_soundness_of_cases}
+\uses{LPCPToPCP.verifier}
+\leanok
+For every \(x\notin L\) and every PCP proof \(\widehat{\pi}\),
+\[
+  \Pr[\overline V^{\widehat{\pi}}(x)=1]
+  \leq \max\{7/8,\varepsilon_s+1/100\}.
+\]
+\end{lemma}
+\begin{proof}\uses{LPCPToPCP.verifier_soundness_far_case_of_isFar,LPCPToPCP.verifier_soundness_near_case}\leanok
+If \(\distanceToLin{\widehat{\pi}} \geq 1 / 8\), apply \ref{LPCPToPCP.verifier_soundness_far_case_of_isFar}. Otherwise, apply
+\ref{LPCPToPCP.verifier_soundness_near_case}.
+\end{proof}
+
+\begin{lemma}[LPCPs admit exponential-size PCPs]
+\uses{LPCP,PCP,LPCPToPCP.numShifts}
 \label{LPCP_to_PCP_ZMod2}
 \lean{LPCP_to_PCP_ZMod2}
 \leanok
-\[
-\LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r] \subseteq
+\begin{gather*}
+\LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r] \subseteq\\
 \PCP\left[
 \varepsilon_c,\
 \varepsilon_s'=\max\{7/8,\varepsilon_s+1/100\},
 \Sigma'=\F_{2},\
 \ell'=2^{\ell},\
-q'=3+16\lceil\log(100q)\rceil q,\
-r'=r+(2+8\lceil\log(100q)\rceil)\ell
+q'=3+2tq,\
+r'=r+(2+t)\ell
 \right].
-\]
+\end{gather*}
 \end{lemma}
-\begin{proof}\uses{LINEQ_LPCP, BLR.basicVerifier, BLR_basic_completeness_ZMod2, BLR_basic_soundness_ZMod2}
-Let $L \in \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$, and let $V$ be the LPCP verifier for $L$. Set $t=8\lceil\log(100q)\rceil$, where $\log$ denotes the natural logarithm. We define a PCP verifier as follows, for any $\bar{pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ and $x \in \{0,1\}^*$.
-
-\vspace{1em}
-\noindent \textbf{Verifier} $\bar{V}^{\bar{\pi}} (x)$:
-\begin{enumerate}
-    \item If $V_{\text{BLR}}^{\bar{\pi}}=0$ output $0$ and halt, otherwise proceed with the next step.
-    \item Independently for each $i \in [t]$, sample $r_i \gets \mathbb{F}_2^\ell$.
-    \item Simulate $V$ by answering each linear query $a$ with $\text{plurality}(\bar{\pi}(a+r_i)-\bar{\pi}(r_i))_{i \in [t]}$.
-\end{enumerate}
-
-\begin{claim}[Completeness]
-  For every $x \in L$, there exists $\bar{\pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ such that $\Pr[\bar{V}^{\bar{\pi}}(x)=1]\ge 1-\varepsilon_c$.
-\end{claim}
-\begin{proof}
-Since $x \in L$ and $L \in  \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$, let $\pi \in \mathbb{F}_2^\ell$ such that $\Pr[V^{\langle \pi, \cdot \rangle}(x)=1]\ge 1-\varepsilon_c$.
-Then we construct $\bar{\pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$ as follows: we define $\bar{\pi}(x)= \langle \pi, x \rangle$ for each $x \in \mathbb{F}^\ell$.
-Using the completeness of $V_{\text{BLR}}$ we know that $V_{\text{BLR}}^{\bar{\pi}}=1$ with probability $1$.
-Also, $\text{plurality}(\bar{\pi}(a+r_i)-\bar{\pi}(r_i))_{i \in [t]}=\langle \pi, a\rangle$ for any query $a$ and any $r_i$.
-We then conclude that $V^{\langle \pi, \cdot \rangle}(x)=\bar{V}^{\bar{\pi}} (x)$ for any $r_1,\dots, r_t$. Thus $\Pr[\bar{V}^{\bar{\pi}}(x)=1]=\Pr[V^{\langle \pi, \cdot \rangle}(x)=1]\ge 1-\varepsilon_c$.
-\end{proof}
-\begin{claim}[Soundness]
-  For every $x \notin L$ and every $\hat{\pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$, one has $\Pr[\bar{V}^{\hat{\pi}}(x)=1]\le \max\{7/8,\varepsilon_s+1/100\}$.
-\end{claim}
-\begin{proof}
-  Let $x \notin L$ and $\hat{\pi} \in \mathbb{F}_2^{\mathbb{F}_2^\ell}$. We consider two cases.
-
-  \paragraph{Case $\delta(\hat{\pi}, \text{LIN}) \ge 1/8$}. Using the soundness of $V_{\text{BLR}}$, we know that $\Pr[V_{\text{BLR}}^{\bar{\pi}}=0]\ge 1/8$. Since $\Pr[\bar{V}^{\hat{\pi}}(x)=1] \le \Pr[V_{\text{BLR}}^{\bar{\pi}}=1]$
-  we conclude $\Pr[\bar{V}^{\hat{\pi}}(x)=1] \le 1-1/8=7/8$.
-
-
-  \paragraph{Case $\delta(\hat{\pi}, \text{LIN}) < 1/8$}
-  Let $S = \{\tilde{\pi} \in \lin: \, \delta(\hat{\pi},\tilde{\pi} \le \delta(\hat{\pi}, \text{LIN}))\}$.
-  Suppose for a contradiction that $|S| \ge 2$, and let $\bar{\pi},\tilde{\pi} \in S$ be distinct: since 
-  $\delta(\hat{\pi},\bar{\pi} \le \delta(\hat{\pi}, \text{LIN})) < 1/8$ and $\delta(\hat{\pi},\tilde{\pi} \le \delta(\hat{\pi}, \text{LIN})) < 1/8$,
-  by triangle inequality we have $\delta(\bar{\pi},\tilde{\pi}) < 1/4$;
-  since $|\bbF_2|=2$, this contradicts the fact that any two distinct $\bar{\pi},\tilde{\pi} \in \lin$ satisfy $\delta(\bar{\pi},\tilde{\pi}) \ge 1/2$.
-
-  Let then $\tilde{\pi}$ be the unique element of $\lin$ with minimal distance to $\hat{\pi}$, and let $z \in \bbF^\ell$ the unique vector such that $\tilde{\pi}(x)=\langle z, x \rangle$ for all $x$.
-  If for every query $a$ that $V$ asks we have $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}=\tilde{\pi}(a)$, then $\bar{V}^{\hat{\pi}}(x)=V^{\langle z, \cdot \rangle}(x)$, so
-  provided that the $r_i$ satisfy this condition we have that $\Pr[\bar{V}^{\hat{\pi}}(x)=1]=\Pr[V^{\langle z, \cdot \rangle}(x)=1] \le \varepsilon_s$.
-  We are only left to bound the probability that for each of the $q$ queries that $V$ asks we have $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}=\tilde{\pi}(a)$.
-  Note that for any $a$ and $r_i$, if $\hat{\pi}(a+r_i)=\tilde{\pi}(a+r_i)$ and $\hat{\pi}(r_i)=\tilde{\pi}(r_i)$ then $\hat{\pi}(a+r_i)-\hat{\pi}(r_i)=\tilde{\pi}(a)$.
-  Hence, the proabability over one $r_i$ that $\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)$ is at most $2\cdot \delta(\hat{\pi},\tilde{\pi})\le 1/4$ by a union bound.
-  Also note that $\text{plurality}(\hat{\pi}(a+r_i)-\hat{\pi}(r_i))_{i \in [t]}\neq \tilde{\pi}(a)$ means that $\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)$ for at least $\lceil t/2 \rceil \ge t/2$ of the $i$'s.
-  Let $X_i = \ind[\hat{\pi}(a+r_i)-\hat{\pi}(r_i) \neq \tilde{\pi}(a)]$. Then $\mu = \EE[\sum_{i \in [t]}X_i] \le t/4$. Applying Chernoff bound with $\Delta = t/4$, the probability over the choice of $r_1,\dots, r_t$ that there are at least $t/2$ $i$'s with $X_i=1$ is at most $\exp(-t/8)$.
-  Union bounding over the $q$ queries that $V$ asks, we have that the local correction fails with probability at most $q\cdot \exp(-t/8) \le 1/100$ by our choice of $t$.
-\end{proof}
-\end{proof}
-
-\begin{theorem}\label{QESAT_poly_LPCP}\lean{QESAT_poly_LPCP}\uses{QESAT, LPCP}\leanok
-\[
-  \mathrm{QESAT}(\F_2,n) \in
-  \mathrm{LPCP}[
-    \varepsilon_c = 0,
-    \varepsilon_s = 3/4,
-    \Sigma = \F_2,
-    \ell = n + n^2,
-    q = 4,
-    r = |x| + 2*n
-  ].
-\]
-\end{theorem}
-\begin{proof}%\uses{} tensor stuff
-
-\noindent Let $(p_1, \dots, p_m)$ be an instance of $\text{QESAT}(\mathbb{F})$ with $n$ variables. \\
-The LPCP verifier expects a proof $\pi = (a, b) \in \mathbb{F}^{n+n^2}$ and works as follows:
-
-\vspace{1em}
-\noindent \textbf{Verifier} $V^{(a,b)}(p_1, \dots, p_m)$:
-\begin{enumerate}
-    \item Sample $r \gets \mathbb{F}^m$ and $s, t \gets \mathbb{F}^n$.
-    \item Define 
-    \[
-    M := \begin{bmatrix} \text{coeff}(p_1) \\ \vdots \\ \text{coeff}(p_m) \end{bmatrix} \in \mathbb{F}^{m \times (n+n^2)} 
-    \quad \text{and} \quad 
-    c := \begin{bmatrix} -\text{const}(p_1) \\ \vdots \\ -\text{const}(p_m) \end{bmatrix} \in \mathbb{F}^m.
-    \]
-    \textit{(Note: $\text{coeff}(p_i) :=$ non-constant coeffs of $p_i$, and $\text{const}(p_i) :=$ constant coeff of $p_i$)}
-    
-    \item \textit{(linear equation test)} $\rightarrow$ Query $(a,b)$ at $M^T r$ and check that $\langle a \parallel b, M^T r \rangle = \langle c, r \rangle$.
-    
-    \item \textit{(tensor test)} $\rightarrow$ Query $b$ at $\text{flat}(s \otimes t)$, $a$ at $s$ and $t$, and check that 
-    \[
-    \langle b, \text{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle.
-    \]
-\end{enumerate}
-
-\vspace{1em}
-\noindent \textbf{Completeness:} 
-Suppose $p_1(a) = \dots = p_m(a) = 0$ and set $b := \text{flat}(a \otimes a)$. \\
-Then 
-\[
-\Pr_{s,t} \left[ \langle b, \text{flat}(s \otimes t) \rangle = \langle a, s \rangle \cdot \langle a, t \rangle \right] = 1
-\]
-and 
-\[
-\Pr_r \left[ \langle a \parallel b, M^T r \rangle = \langle c, r \rangle \right] = 1 \quad \left(\text{since } M \begin{bmatrix} a \\ \text{flat}(a \otimes a) \end{bmatrix} = c \right).
-\]
-
-\vspace{1em}
-\noindent \textbf{Soundness:}
-Suppose $\forall a \in \mathbb{F}^n \ \exists i \in [m] \text{ s.t. } p_i(a) \neq 0$. Fix any $\pi = (a, b)$. \\
-Either:
-\begin{enumerate}
-    \item[(i)] $b \neq \text{flat}(a \otimes a) \implies$ tensor test passes w.p. $\leq \frac{2|\mathbb{F}|-1}{|\mathbb{F}|^2}$
-    \item[OR (ii)] $b = \text{flat}(a \otimes a)$ and $M \begin{bmatrix} a \\ b \end{bmatrix} \neq c \implies$ linear equation test passes w.p. $\leq \frac{1}{|\mathbb{F}|}$
-\end{enumerate}
-
+\begin{proof}\uses{LPCPToPCP.verifier,LPCPToPCP.verifier_completeness,LPCPToPCP.verifier_soundness_of_cases}\leanok
+Let $L \in \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$ and let $V$ be the LPCP verifier for $L$. Use the converted PCP verifier $\overline V$ defined in \ref{LPCPToPCP.verifier}.
+Completeness is
+\ref{LPCPToPCP.verifier_completeness}, and soundness is
+\ref{LPCPToPCP.verifier_soundness_of_cases}. The BLR test makes three proof
+queries. Each simulated LPCP query uses two PCP queries for each of the \(t\)
+shifts, so the query bound is \(3+2tq\). The randomness consists of the
+original \(r\) random bits, \(2\ell\) bits for the BLR test, and \(t\ell\) bits
+for the shifts.
 \end{proof}

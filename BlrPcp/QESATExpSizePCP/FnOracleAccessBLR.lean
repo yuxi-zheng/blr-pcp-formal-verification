@@ -4,14 +4,18 @@ import BlrPcp.FnFiniteFIelds.BLR
 /-!
 # BLR linearity test with finite-function oracle access
 
-The finite-field BLR verifier as an oracle computation.
+The finite-field BLR verifier as an oracle computation, plus the additive
+`ZMod 2` verifier used by the LPCP-to-PCP construction.
 
 ## Main declarations
 
-- `BLR.verifier`: the BLR linearity test, which makes three queries to the proof oracle and uses two random vectors and two scalars.
-- `BLR.basicVerifier`: the additive BLR linearity test, which makes three queries to the proof oracle and uses two random vectors, but no scalar randomness. In the case of `F = ZMod 2`, this is the same as `BLR.verifier`.
-- `BLR_soundness`: soundness of `BLR.verifier` for finite fields.
-- `BLR_completeness`: completeness of `BLR.verifier` for finite fields.
+- `distanceToLin`: the `ENNReal` version of analytical distance to linearity.
+- `BLR.basicSampleVector`: samples a vector using the standard field-valued randomness oracle.
+- `BLR.basicVerifier`: the additive BLR linearity test, which makes three queries
+  to the proof oracle and uses two random vectors, but no scalar randomness.
+- `BLR_basic_query_complexity`: query complexity of `BLR.basicVerifier`.
+- `BLR_soundness`: finite-field BLR soundness as an acceptance-probability upper bound.
+- `BLR_completeness`: finite-field BLR completeness.
 - `BLR_basic_soundness_ZMod2`: soundness of `BLR.basicVerifier` over `ZMod 2`.
 - `BLR_basic_completeness_ZMod2`: completeness of `BLR.basicVerifier` over `ZMod 2`.
 -/
@@ -26,75 +30,79 @@ noncomputable def distanceToLin {F : Type} [Field F] [Fintype F] [DecidableEq F]
   ENNReal.ofReal (BlrPcp.distanceToLinear (F := F) (Idx := Fin n) f)
 
 /-- The `ENNReal` version of the analytical finite-field BLR acceptance probability. -/
-noncomputable def acceptanceProbabilityBLR {F : Type} [Field F] [Fintype F] [DecidableEq F]
+private noncomputable def acceptanceProbabilityBLR {F : Type} [Field F] [Fintype F] [DecidableEq F]
     {n : ℕ} [Nonempty (Fin n)] (f : (Fin n → F) → F) : ENNReal :=
   ENNReal.ofReal (BlrPcp.acceptanceProbabilityBLR (F := F) (Idx := Fin n) f)
 
-/-- The `ENNReal` rejection probability corresponding to the analytical finite-field BLR test. -/
-noncomputable def rejectionProbabilityBLR {F : Type} [Field F] [Fintype F] [DecidableEq F]
-    {n : ℕ} [Nonempty (Fin n)] (f : (Fin n → F) → F) : ENNReal :=
-  1 - acceptanceProbabilityBLR f
-
-/-- The analytical finite-field BLR soundness theorem, converted to `ENNReal`. -/
-theorem blrSoundnessAnalytical {F : Type} [Field F] [Fintype F] [DecidableEq F] {n : ℕ}
-    [Nonempty (Fin n)] (f : (Fin n → F) → F) :
-    distanceToLin f ≤ rejectionProbabilityBLR f := by
+/-- The real-valued distance to linearity is nonnegative. -/
+private lemma distanceToLinear_nonneg {F : Type} [Field F] [Fintype F] [DecidableEq F]
+    {n : ℕ} [Nonempty (Fin n)] (f : (Fin n → F) → F) :
+    0 ≤ BlrPcp.distanceToLinear (F := F) (Idx := Fin n) f := by
   classical
-  have hAcceptNonneg :
-      0 ≤ BlrPcp.acceptanceProbabilityBLR (F := F) (Idx := Fin n) f := by
-    unfold BlrPcp.acceptanceProbabilityBLR
-    positivity
-  have hReal :
-      BlrPcp.distanceToLinear (F := F) (Idx := Fin n) f ≤
-        1 - BlrPcp.acceptanceProbabilityBLR (F := F) (Idx := Fin n) f := by
-    have hSound := BlrPcp.blr_soundness (F := F) (Idx := Fin n) f
-    nlinarith
-  rw [distanceToLin, rejectionProbabilityBLR, acceptanceProbabilityBLR]
+  rw [BlrPcp.distanceToLinear_eq_inf_linearFn]
+  apply Finset.le_inf'
+  intro α _
+  unfold BlrPcp.distance
+  positivity
+
+/-- The analytical finite-field BLR soundness theorem, converted to `ENNReal`
+and stated in terms of acceptance probability. -/
+private theorem blrSoundnessAnalytical {F : Type} [Field F] [Fintype F] [DecidableEq F] {n : ℕ}
+    [Nonempty (Fin n)] (f : (Fin n → F) → F) :
+    acceptanceProbabilityBLR f ≤ 1 - distanceToLin f := by
+  classical
+  have hDistNonneg := distanceToLinear_nonneg (F := F) (n := n) f
+  have hReal := BlrPcp.blr_soundness (F := F) (Idx := Fin n) f
+  rw [acceptanceProbabilityBLR, distanceToLin]
   rw [← ENNReal.ofReal_one]
-  rw [← ENNReal.ofReal_sub (1 : ℝ) hAcceptNonneg]
+  rw [← ENNReal.ofReal_sub (1 : ℝ) hDistNonneg]
   exact ENNReal.ofReal_le_ofReal hReal
 
 namespace BLR
 
+/-! ### Finite-Field BLR Verifier -/
+
 /-- Randomness used by the finite-field BLR verifier. -/
-inductive Rand (F : Type) where
+private inductive Rand (F : Type) where
   | field
   | unit
 
 /-- BLR randomness is either a field element or a nonzero scalar. -/
-def randRange (F : Type) [Field F] : Rand F → Type
+private def randRange (F : Type) [Field F] : Rand F → Type
   | .field => F
   | .unit => Fˣ
 
-abbrev normalRandOracleSpec (F : Type) [Field F] : OracleSpec (Rand F) :=
+/-- Oracle specification for finite-field BLR randomness. -/
+private abbrev normalRandOracleSpec (F : Type) [Field F] : OracleSpec (Rand F) :=
   OracleSpec.ofFn (randRange F)
 
-abbrev fullSpec (F : Type) [Field F] (n : ℕ) : OracleSpec (Rand F ⊕ (Fin n → F)) :=
+/-- Combined randomness and proof-oracle specification for the finite-field BLR verifier. -/
+private abbrev fullSpec (F : Type) [Field F] (n : ℕ) : OracleSpec (Rand F ⊕ (Fin n → F)) :=
   normalRandOracleSpec F + proofOracleSpec_fin_vector F n
 
 /-- The BLR randomness implementation: field samples for vector coordinates,
 and unit samples for the scalar coefficients. -/
-abbrev normalRandOracle (F : Type) [Field F] [SampleableType F] [SampleableType Fˣ] :
+private abbrev normalRandOracle (F : Type) [Field F] [SampleableType F] [SampleableType Fˣ] :
     OracleContext (Rand F) ProbComp where
   spec := normalRandOracleSpec F
   impl
     | .field => $ᵗ F
     | .unit => $ᵗ Fˣ
 
-/-- Sample one field element. -/
-def sampleField {F : Type} [Field F] {n : ℕ} : OracleComp (fullSpec F n) F :=
+/-- Sample one scalar. -/
+private def sampleScalar {F : Type} [Field F] {n : ℕ} : OracleComp (fullSpec F n) F :=
   query (spec := fullSpec F n) (.inl .field)
 
 /-- Sample one nonzero scalar. -/
-def sampleUnit {F : Type} [Field F] {n : ℕ} : OracleComp (fullSpec F n) Fˣ :=
+private def sampleUnit {F : Type} [Field F] {n : ℕ} : OracleComp (fullSpec F n) Fˣ :=
   query (spec := fullSpec F n) (.inl .unit)
 
 /-- Sample a vector in `F^n` using `n` calls to the field-valued randomness oracle. -/
-def sampleVector (F : Type) [Field F] (n : ℕ) : OracleComp (fullSpec F n) (Fin n → F) :=
-  OracleUtil.sampleVector (sampleField (F := F) (n := n)) n
+private def sampleVector (F : Type) [Field F] (n : ℕ) : OracleComp (fullSpec F n) (Fin n → F) :=
+  OracleUtil.sampleVector (sampleScalar (F := F) (n := n)) n
 
 /-- The finite-field BLR verifier. -/
-def verifier {F : Type} [Field F] [DecidableEq F] {n : ℕ} :
+private def verifier {F : Type} [Field F] [DecidableEq F] {n : ℕ} :
     OracleComp (fullSpec F n) Bool := do
   let x : Fin n → F ← sampleVector F n
   let y : Fin n → F ← sampleVector F n
@@ -105,55 +113,46 @@ def verifier {F : Type} [Field F] [DecidableEq F] {n : ℕ} :
   let fxy : F ← query (spec := fullSpec F n) (.inr fun i => (a : F) * x i + (b : F) * y i)
   return decide ((a : F) * fx + (b : F) * fy = fxy)
 
-
-/-- Sample one field element using the standard randomness oracle. -/
-def basicSampleField {F : Type} {n : ℕ} : OracleComp (fullSpec_fin_vector F n) F :=
-  query (spec := fullSpec_fin_vector F n) (.inl ())
+/-! ### Additive BLR Verifier -/
 
 /-- Sample a vector in `F^n` using the standard randomness oracle. -/
-def basicSampleVector (F : Type) (n : ℕ) : OracleComp (fullSpec_fin_vector F n) (Fin n → F) :=
-  Fin.mOfFn n fun _ => basicSampleField (F := F)
+def basicSampleVector (F : Type) (n : ℕ) : OracleComp (LPCP.fullSpec F n) (Fin n → F) :=
+  OracleUtil.sampleRandomVector F n n
 
 /-- The additive BLR verifier, using only the standard field-valued randomness oracle. -/
 def basicVerifier {F : Type} [Add F] [DecidableEq F] {n : ℕ} :
-    OracleComp (fullSpec_fin_vector F n) Bool := do
+    OracleComp (LPCP.fullSpec F n) Bool := do
   let x : Fin n → F ← basicSampleVector F n
   let y : Fin n → F ← basicSampleVector F n
-  let fx : F ← query (spec := fullSpec_fin_vector F n) (.inr x)
-  let fy : F ← query (spec := fullSpec_fin_vector F n) (.inr y)
-  let fxy : F ← query (spec := fullSpec_fin_vector F n) (.inr fun i => x i + y i)
+  let fx : F ← query (spec := LPCP.fullSpec F n) (.inr x)
+  let fy : F ← query (spec := LPCP.fullSpec F n) (.inr y)
+  let fxy : F ← query (spec := LPCP.fullSpec F n) (.inr fun i => x i + y i)
   return decide (fx + fy = fxy)
 
-lemma sampleField_queryBound {F : Type} [Field F] {n : ℕ} :
-    QueryBound (sampleField (F := F) (n := n)) 1 0 := by
-  simp [sampleField, QueryBound]
+/-- Sampling one scalar makes one randomness query and no proof queries. -/
+private lemma sampleScalar_queryBound {F : Type} [Field F] {n : ℕ} :
+    QueryBound (sampleScalar (F := F) (n := n)) 1 0 := by
+  simp [sampleScalar, QueryBound]
 
-lemma sampleVector_queryBound (F : Type) [Field F] (n : ℕ) :
+/-- Sampling a finite-field BLR vector makes `n` randomness queries and no proof queries. -/
+private lemma sampleVector_queryBound (F : Type) [Field F] (n : ℕ) :
     QueryBound (sampleVector F n) n 0 :=
-  OracleUtil.sampleVector_queryBound' (sampleField_queryBound (F := F) (n := n)) n
+  OracleUtil.sampleVector_queryBound' (sampleScalar_queryBound (F := F) (n := n)) n
 
-lemma sampleUnit_queryBound {F : Type} [Field F] {n : ℕ} :
+/-- Sampling one nonzero scalar makes one randomness query and no proof queries. -/
+private lemma sampleUnit_queryBound {F : Type} [Field F] {n : ℕ} :
     QueryBound (sampleUnit (F := F) (n := n)) 1 0 := by
   simp [sampleUnit, QueryBound]
 
-lemma basicSampleVector_queryBoundAux (F : Type) (m n : ℕ) :
-    QueryBound (Fin.mOfFn m fun _ => basicSampleField (F := F) (n := n)) m 0 := by
-  induction m with
-  | zero =>
-      simp [Fin.mOfFn, QueryBound]
-  | succ m ih =>
-      simp only [Fin.mOfFn]
-      have hHead : QueryBound (basicSampleField (F := F) (n := n)) 1 0 := by
-        simp [basicSampleField, QueryBound]
-      simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using
-        queryBound_bind hHead fun _ => by
-          simpa [QueryBound] using ih
-
-lemma basicSampleVector_queryBound (F : Type) (n : ℕ) :
+/-- `BLR.basicSampleVector` uses `n` randomness queries and no proof queries. -/
+private lemma basicSampleVector_queryBound (F : Type) (n : ℕ) :
     QueryBound (basicSampleVector F n) n 0 := by
-  simpa [basicSampleVector] using basicSampleVector_queryBoundAux F n n
+  simpa [basicSampleVector] using
+    (OracleUtil.sampleRandomVector_queryBound (F := F) n n)
 
 end BLR
+
+/-! ## Query Complexity -/
 
 /-- `BLR.verifier` makes three queries to `f` and uses two random vectors and two scalars. -/
 theorem BLR_query_complexity {F : Type} [Field F] [DecidableEq F] {n : ℕ} :
@@ -195,14 +194,14 @@ theorem BLR_basic_query_complexity {F : Type} [Add F] [DecidableEq F] {n : ℕ} 
       QueryBound
         (do
           let fx : F ←
-            (liftM (query (spec := fullSpec_fin_vector F n) (.inr x)) :
-              OracleComp (fullSpec_fin_vector F n) F)
+            (liftM (query (spec := LPCP.fullSpec F n) (.inr x)) :
+              OracleComp (LPCP.fullSpec F n) F)
           let fy : F ←
-            (liftM (query (spec := fullSpec_fin_vector F n) (.inr y)) :
-              OracleComp (fullSpec_fin_vector F n) F)
+            (liftM (query (spec := LPCP.fullSpec F n) (.inr y)) :
+              OracleComp (LPCP.fullSpec F n) F)
           let fxy : F ←
-            (liftM (query (spec := fullSpec_fin_vector F n) (.inr fun i => x i + y i)) :
-              OracleComp (fullSpec_fin_vector F n) F)
+            (liftM (query (spec := LPCP.fullSpec F n) (.inr fun i => x i + y i)) :
+              OracleComp (LPCP.fullSpec F n) F)
           return decide (fx + fy = fxy)) 0 3 := by
     intro x y
     simp only [QueryBound]
@@ -218,42 +217,27 @@ theorem BLR_basic_query_complexity {F : Type} [Add F] [DecidableEq F] {n : ℕ} 
       queryBound_bind (BLR.basicSampleVector_queryBound F n) fun y =>
         hProof x y
 
-lemma probOutput_finCons_map_eq {m : Type _ → Type _} [Monad m] [LawfulMonad m]
-    [HasEvalSPMF m] {F : Type} [DecidableEq F] {n : ℕ}
-    (mx : m (Fin n → F)) (x : Fin (n + 1) → F) :
-    Pr[= x | (Fin.cons (x 0)) <$> mx] = Pr[= Fin.tail x | mx] := by
-  rw [show x = Fin.cons (x 0) (Fin.tail x) from (Fin.cons_self_tail x).symm]
-  exact probOutput_map_injective mx
-    (Fin.cons_right_injective (α := fun _ => F) (x 0)) (Fin.tail x)
+/-! ## Oracle Probability Expansions -/
 
-lemma probOutput_finCons_map_ne {m : Type _ → Type _} [Monad m] [LawfulMonad m]
-    [HasEvalSPMF m] {F : Type} [DecidableEq F] [Fintype F] {n : ℕ}
-    (mx : m (Fin n → F)) (x : Fin (n + 1) → F) {a : F}
-    (ha : a ≠ x 0) :
-    Pr[= x | (Fin.cons a) <$> mx] = 0 := by
-  rw [probOutput_map_eq_sum_fintype_ite]
-  have hfalse : ∀ y : Fin n → F, x ≠ Fin.cons a y := by
-    intro y hxy
-    apply ha
-    simpa using (congrFun hxy 0).symm
-  simp [hfalse]
-
-private lemma simulateQ_BLR_sampleField {F : Type} [Field F] [Fintype F] [SampleableType F]
+/-- Simulating one finite-field BLR scalar sample gives the uniform distribution on `F`. -/
+private lemma simulateQ_BLR_sampleScalar {F : Type} [Field F] [Fintype F] [SampleableType F]
     [SampleableType Fˣ] {n : ℕ}
     (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp) :
-    simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleField (F := F) (n := n)) =
+    simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleScalar (F := F) (n := n)) =
       $ᵗ F := by
-  simp [BLR.sampleField, BLR.normalRandOracle]
+  simp [BLR.sampleScalar, BLR.normalRandOracle]
 
+/-- Simulating a finite-field BLR vector sample gives the uniform distribution on `F^n`. -/
 private lemma simulateQ_BLR_sampleVector {F : Type} [Field F] [DecidableEq F] [Fintype F]
     [SampleableType F] [SampleableType Fˣ] {n : ℕ}
     (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp) :
     simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleVector F n) =
       $ᵗ (Fin n → F) :=
-  OracleUtil.simulateQ_sampleVector' _ (simulateQ_BLR_sampleField impl) n
+  OracleUtil.simulateQ_sampleVector' _ (simulateQ_BLR_sampleScalar impl) n
 
+/-- Point probability for a simulated finite-field BLR vector sample. -/
 @[simp]
-lemma probOutput_simulateQ_BLR_sampleVector {F : Type}
+private lemma probOutput_simulateQ_BLR_sampleVector {F : Type}
     [Field F] [DecidableEq F] [Fintype F] [SampleableType F] [SampleableType Fˣ]
     {n : ℕ}
     (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp) (x : Fin n → F) :
@@ -262,111 +246,35 @@ lemma probOutput_simulateQ_BLR_sampleVector {F : Type}
   rw [simulateQ_BLR_sampleVector impl]
   exact probOutput_uniformSample (α := Fin n → F) x
 
-lemma probOutput_true_map_simulateQ_BLR_sampleVector {F : Type}
-    [Field F] [DecidableEq F] [Fintype F] [SampleableType F] [SampleableType Fˣ]
-    {n : ℕ}
-    (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp)
-    (g : (Fin n → F) → Bool) :
-    Pr[= true | g <$> simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleVector F n)] =
-      ∑ y : Fin n → F,
-        (Fintype.card (Fin n → F) : ENNReal)⁻¹ * if g y = true then 1 else 0 := by
-  rw [probOutput_map_eq_sum_fintype_ite]
-  apply Finset.sum_congr rfl
-  intro y _
-  rw [probOutput_simulateQ_BLR_sampleVector (impl := impl) y]
-  by_cases hy : g y = true <;> simp [hy]
-
-lemma probOutput_simulateQ_BLR_basicSampleVectorAux {F : Type}
-    [Nonempty F] [DecidableEq F] [Fintype F] [SampleableType F]
-    (m n : ℕ) (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp)
-    (x : Fin m → F) :
-    Pr[= x |
-      simulateQ ((randOracle F).impl + impl)
-        (Fin.mOfFn m fun _ => BLR.basicSampleField (F := F) (n := n))] =
-      (Fintype.card (Fin m → F) : ENNReal)⁻¹ := by
-  induction m with
-  | zero =>
-      have hx : x = Fin.elim0 := by
-        funext i
-        exact Fin.elim0 i
-      subst hx
-      simp [Fin.mOfFn]
-  | succ m ih =>
-      simp only [Fin.mOfFn, BLR.basicSampleField, simulateQ_bind, simulateQ_query,
-        simulateQ_pure, OracleQuery.cont_query, id_map, OracleQuery.input_query, randOracle]
-      rw [probOutput_bind_eq_tsum, tsum_fintype]
-      rw [Finset.sum_eq_single (x 0)]
-      · change Pr[= x 0 | ($ᵗ F : ProbComp F)] *
-            Pr[= x |
-              (Fin.cons (x 0)) <$>
-                simulateQ ((randOracle F).impl + impl)
-                  (Fin.mOfFn m fun _ => BLR.basicSampleField (F := F) (n := n))] = _
-        rw [probOutput_uniformSample, probOutput_finCons_map_eq, ih]
-        rw [Fintype.card_fun, Fintype.card_fin, Fintype.card_fun, Fintype.card_fin]
-        rw [Nat.pow_succ]
-        simp only [Nat.cast_mul, Nat.cast_pow]
-        rw [ENNReal.mul_inv]
-        · rw [mul_comm]
-        · left
-          exact_mod_cast pow_ne_zero m (Fintype.card_ne_zero (α := F))
-        · left
-          simp
-      · intro a _ ha
-        change Pr[= a | ($ᵗ F : ProbComp F)] *
-            Pr[= x |
-              (Fin.cons a) <$>
-                simulateQ ((randOracle F).impl + impl)
-                  (Fin.mOfFn m fun _ => BLR.basicSampleField (F := F) (n := n))] = 0
-        rw [probOutput_finCons_map_ne _ x ha]
-        simp
-      · intro h
-        simp at h
-
+/-- Point probability for a simulated additive BLR vector sample. -/
 @[simp]
-lemma probOutput_simulateQ_BLR_basicSampleVector {F : Type}
+private lemma probOutput_simulateQ_BLR_basicSampleVector {F : Type}
     [Nonempty F] [DecidableEq F] [Fintype F] [SampleableType F] {n : ℕ}
     (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp) (x : Fin n → F) :
     Pr[= x | simulateQ ((randOracle F).impl + impl) (BLR.basicSampleVector F n)] =
       (Fintype.card (Fin n → F) : ENNReal)⁻¹ := by
-  simpa [BLR.basicSampleVector] using
-    probOutput_simulateQ_BLR_basicSampleVectorAux (F := F) n n impl x
+  rw [show
+      simulateQ ((randOracle F).impl + impl) (BLR.basicSampleVector F n) =
+        ($ᵗ (Fin n → F) : ProbComp (Fin n → F)) by
+    simpa [BLR.basicSampleVector] using
+      (OracleUtil.simulateQ_sampleRandomVector (F := F) n n impl)]
+  exact probOutput_uniformSample (α := Fin n → F) x
 
-lemma probOutput_true_map_simulateQ_BLR_basicSampleVector {F : Type}
-    [Nonempty F] [DecidableEq F] [Fintype F] [SampleableType F] {n : ℕ}
-    (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp)
-    (g : (Fin n → F) → Bool) :
-    Pr[= true | g <$> simulateQ ((randOracle F).impl + impl) (BLR.basicSampleVector F n)] =
-      ∑ y : Fin n → F,
-        (Fintype.card (Fin n → F) : ENNReal)⁻¹ * if g y = true then 1 else 0 := by
-  rw [probOutput_map_eq_sum_fintype_ite]
-  apply Finset.sum_congr rfl
-  intro y _
-  rw [probOutput_simulateQ_BLR_basicSampleVector (impl := impl) y]
-  by_cases hy : g y = true <;> simp [hy]
-
+/-- Point probability for a simulated nonzero scalar sample. -/
 @[simp]
-lemma probOutput_simulateQ_BLR_sampleUnit {F : Type}
+private lemma probOutput_simulateQ_BLR_sampleUnit {F : Type}
     [Field F] [Fintype Fˣ] [SampleableType F] [SampleableType Fˣ] {n : ℕ}
     (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp) (a : Fˣ) :
     Pr[= a | simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleUnit (F := F) (n := n))] =
       (Fintype.card Fˣ : ENNReal)⁻¹ := by
   simp [BLR.sampleUnit, BLR.normalRandOracle, probOutput_uniformSample]
 
-lemma probOutput_true_map_simulateQ_BLR_sampleUnit {F : Type}
-    [Field F] [Fintype Fˣ] [DecidableEq Fˣ] [SampleableType F] [SampleableType Fˣ] {n : ℕ}
-    (impl : QueryImpl (proofOracleSpec_fin_vector F n) ProbComp) (g : Fˣ → Bool) :
-    Pr[= true | g <$> simulateQ ((BLR.normalRandOracle F).impl + impl) (BLR.sampleUnit (F := F) (n := n))] =
-      ∑ a : Fˣ, (Fintype.card Fˣ : ENNReal)⁻¹ * if g a = true then 1 else 0 := by
-  rw [probOutput_map_eq_sum_fintype_ite]
-  apply Finset.sum_congr rfl
-  intro a _
-  rw [probOutput_simulateQ_BLR_sampleUnit (impl := impl) a]
-  by_cases ha : g a = true <;> simp [ha]
-
+/-- Replace the classical-decider `if` used by `ofReal` conversion with the ambient `if`. -/
 private lemma ite_classical_eq {α : Type} [Zero α] [One α] {p : Prop} [Decidable p] :
     @ite α p (Classical.propDecidable p) 1 0 = if p then 1 else 0 := by
   by_cases hp : p <;> simp [hp]
 
+/-- Rewrite a sum over units as a sum over the nonzero field elements. -/
 private lemma sum_units_eq_sum_nonzero {F : Type} [Field F] [Fintype F] [DecidableEq F]
     (G : F → ENNReal) :
     (∑ a : Fˣ, G a) = ∑ a ∈ BlrPcp.nonzeroF (F := F), G a := by
@@ -379,6 +287,7 @@ private lemma sum_units_eq_sum_nonzero {F : Type} [Field F] [Fintype F] [Decidab
             (Finset.sum_subtype_eq_sum_filter (s := Finset.univ)
               (f := G) (p := fun a : F => a ≠ 0))
 
+/-- The number of units equals the number of nonzero field elements. -/
 private lemma card_units_eq_card_nonzeroF {F : Type}
     [Field F] [Fintype F] [DecidableEq F] :
     (Fintype.card Fˣ : ENNReal) = ((BlrPcp.nonzeroF (F := F)).card : ENNReal) := by
@@ -390,6 +299,7 @@ private lemma card_units_eq_card_nonzeroF {F : Type}
         simp [BlrPcp.nonzeroF])
   exact_mod_cast h
 
+/-- Rewrite the nested unit sums in the BLR acceptance expansion over nonzero elements. -/
 private lemma sum_units_nested_eq_nonzero {F V : Type}
     [Field F] [Fintype F] [DecidableEq F] [Fintype V]
     (c : ENNReal) (I : F → F → V → V → ENNReal) :
@@ -423,6 +333,7 @@ private lemma sum_units_nested_eq_nonzero {F V : Type}
     (G := fun b =>
       ((BlrPcp.nonzeroF (F := F)).card : ENNReal)⁻¹ * I a b x y)]
 
+/-- Pull uniform normalization factors outside the expanded BLR acceptance sum. -/
 private lemma blrAcceptance_sum_normalize {F V : Type}
     [Fintype F] [Fintype V] [DecidableEq F]
     (s : Finset F) (c d : ENNReal) (I : F → F → V → V → ENNReal) :
@@ -475,6 +386,7 @@ private lemma blrAcceptance_sum_normalize {F V : Type}
           simp only [Finset.mul_sum]
           simp only [mul_comm, mul_left_comm]
 
+/-- Convert the real BLR acceptance count to an `ENNReal` sum. -/
 private lemma ofReal_BLR_acceptance_sum {F : Type} {n : ℕ}
     [Field F] [DecidableEq F] [Fintype F] [Nonempty (Fin n)]
     (f : (Fin n → F) → F)
@@ -512,6 +424,7 @@ private lemma ofReal_BLR_acceptance_sum {F : Type} {n : ℕ}
   · intro a _
     positivity
 
+/-- Expand analytical BLR acceptance probability as a normalized `ENNReal` sum. -/
 private lemma acceptanceProbabilityBLR_eq_sum {F : Type} {n : ℕ}
     [Field F] [DecidableEq F] [Fintype F] [Nonempty (Fin n)]
     (f : (Fin n → F) → F)
@@ -555,6 +468,7 @@ private lemma acceptanceProbabilityBLR_eq_sum {F : Type} {n : ℕ}
     · positivity
   · positivity
 
+/-- Expand the finite-field BLR oracle verifier acceptance probability over units. -/
 private lemma blrVerifier_acceptanceProbability_units {F : Type} {n : ℕ}
     [Field F] [DecidableEq F] [Fintype F]
     [SampleableType F] [SampleableType Fˣ]
@@ -583,19 +497,8 @@ private lemma blrVerifier_acceptanceProbability_units {F : Type} {n : ℕ}
   simp only [probOutput_pure, ite_mul, zero_mul, one_mul, tsum_ite_eq]
   simp
 
-private lemma zmod2_unit_coe (a : (ZMod 2)ˣ) : (a : ZMod 2) = 1 := by
-  have hne : (a : ZMod 2).val ≠ 0 := by
-    simp [Units.ne_zero a]
-  have hlt : (a : ZMod 2).val < 2 := ZMod.val_lt _
-  have hval : (a : ZMod 2).val = 1 := by omega
-  exact (ZMod.val_eq_one (by norm_num) _).mp hval
-
-private instance : Unique (ZMod 2)ˣ where
-  default := 1
-  uniq a := Units.ext (zmod2_unit_coe a)
-
 /-- The additive BLR verifier accepts with the uniform probability over `x,y ∈ F^n`. -/
-theorem blrBasicVerifier_acceptanceProbability_sum {F : Type} {n : ℕ}
+private theorem blrBasicVerifier_acceptanceProbability_sum {F : Type} {n : ℕ}
     [Add F] [DecidableEq F] [Fintype F] [Nonempty F] [SampleableType F]
     (f : (Fin n → F) → F) :
     Pr[= true | simulateQ ((randOracle F).impl + fun x => (return f x : ProbComp F))
@@ -614,38 +517,10 @@ theorem blrBasicVerifier_acceptanceProbability_sum {F : Type} {n : ℕ}
   simp only [probOutput_pure, ite_mul, zero_mul, one_mul]
   simp
 
-/-- Over `ZMod 2`, the additive BLR verifier has the same acceptance probability
-as the scalar-sampling finite-field BLR verifier. -/
-theorem blrBasicVerifier_acceptanceProbability_eq_verifier_ZMod2 {n : ℕ}
-    [SampleableType (ZMod 2)]
-    (f : (Fin n → ZMod 2) → ZMod 2) :
-    Pr[= true | simulateQ ((randOracle (ZMod 2)).impl +
-        fun x => (return f x : ProbComp (ZMod 2)))
-      (BLR.basicVerifier (F := ZMod 2) (n := n))] =
-    Pr[= true | simulateQ ((BLR.normalRandOracle (ZMod 2)).impl +
-        fun x => (return f x : ProbComp (ZMod 2)))
-      (BLR.verifier (F := ZMod 2) (n := n))] := by
-  rw [blrBasicVerifier_acceptanceProbability_sum (F := ZMod 2) (n := n) f]
-  rw [blrVerifier_acceptanceProbability_units (F := ZMod 2) (n := n) f]
-  simp [zmod2_unit_coe]
-
-/-- Over `ZMod 2`, the additive BLR verifier has the same rejection probability
-as the scalar-sampling finite-field BLR verifier. -/
-theorem blrBasicVerifier_rejectionProbability_eq_verifier_ZMod2 {n : ℕ}
-    [SampleableType (ZMod 2)]
-    (f : (Fin n → ZMod 2) → ZMod 2) :
-    Pr[= false | simulateQ ((randOracle (ZMod 2)).impl +
-        fun x => (return f x : ProbComp (ZMod 2)))
-      (BLR.basicVerifier (F := ZMod 2) (n := n))] =
-    Pr[= false | simulateQ ((BLR.normalRandOracle (ZMod 2)).impl +
-        fun x => (return f x : ProbComp (ZMod 2)))
-      (BLR.verifier (F := ZMod 2) (n := n))] := by
-  rw [probOutput_false_eq_sub, probOutput_false_eq_sub]
-  rw [blrBasicVerifier_acceptanceProbability_eq_verifier_ZMod2]
-  simp
+/-! ## Finite-Field BLR Guarantees -/
 
 /-- The oracle BLR verifier has the analytical finite-field BLR acceptance probability. -/
-theorem blrVerifier_acceptanceProbability {F : Type} {n : ℕ}
+private theorem blrVerifier_acceptanceProbability {F : Type} {n : ℕ}
     [Field F] [DecidableEq F] [Fintype F] [Nonempty (Fin n)]
     [SampleableType F] [SampleableType Fˣ]
     (f : (Fin n → F) → F) :
@@ -662,26 +537,14 @@ theorem blrVerifier_acceptanceProbability {F : Type} {n : ℕ}
       then (1 : ENNReal) else 0)]
   rw [blrAcceptance_sum_normalize]
 
-/-- The BLR test has the same rejection probability on `f` as the analytical test. -/
-theorem blrSoundnessCompEqAnalytical {F : Type} {n : ℕ}
-    [Field F] [DecidableEq F] [Fintype F] [Nonempty (Fin n)]
-    [SampleableType F] [SampleableType Fˣ]
-    (f : (Fin n → F) → F) :
-    Pr[= false | simulateQ ((BLR.normalRandOracle F).impl + fun x => (return f x : ProbComp F))
-      (BLR.verifier (F := F) (n := n))] =
-      rejectionProbabilityBLR f := by
-  rw [probOutput_false_eq_sub]
-  simp [blrVerifier_acceptanceProbability (F := F) (n := n) f, rejectionProbabilityBLR]
-
-/-- Soundness of `BLR.verifier` for finite fields. -/
+/-- Soundness of `BLR.verifier` for finite fields as an acceptance-probability upper bound. -/
 theorem BLR_soundness {F : Type} {n : ℕ}
     [Field F] [DecidableEq F] [Fintype F] [Nonempty (Fin n)]
     [SampleableType F] [SampleableType Fˣ]
     (f : (Fin n → F) → F) :
-    distanceToLin f ≤
-      Pr[= false | simulateQ ((BLR.normalRandOracle F).impl + fun x => (return f x : ProbComp F))
-        (BLR.verifier (F := F) (n := n))] := by
-  rw [blrSoundnessCompEqAnalytical f]
+    Pr[= true | simulateQ ((BLR.normalRandOracle F).impl + fun x => (return f x : ProbComp F))
+      (BLR.verifier (F := F) (n := n))] ≤ 1 - distanceToLin f := by
+  rw [blrVerifier_acceptanceProbability]
   exact blrSoundnessAnalytical f
 
 /-- Completeness of `BLR.verifier`: linear functions are accepted with probability one. -/
@@ -695,8 +558,38 @@ theorem BLR_completeness {F : Type} {n : ℕ}
   rw [blrVerifier_acceptanceProbability]
   simp [acceptanceProbabilityBLR, BlrPcp.blr_completeness (F := F) (Idx := Fin n) hf]
 
+/-! ## `ZMod 2` Transfer to the Additive Verifier -/
+
+/-- Every unit of `ZMod 2` coerces to `1`. -/
+private lemma zmod2_unit_coe (a : (ZMod 2)ˣ) : (a : ZMod 2) = 1 := by
+  have hne : (a : ZMod 2).val ≠ 0 := by
+    simp [Units.ne_zero a]
+  have hlt : (a : ZMod 2).val < 2 := ZMod.val_lt _
+  have hval : (a : ZMod 2).val = 1 := by omega
+  exact (ZMod.val_eq_one (by norm_num) _).mp hval
+
+/-- The unit group of `ZMod 2` is trivial. -/
+private instance : Unique (ZMod 2)ˣ where
+  default := 1
+  uniq a := Units.ext (zmod2_unit_coe a)
+
+/-- Over `ZMod 2`, the additive BLR verifier has the same acceptance probability
+as the scalar-sampling finite-field BLR verifier, because every nonzero scalar is `1`. -/
+private theorem blrBasicVerifier_acceptanceProbability_eq_verifier_ZMod2 {n : ℕ}
+    [SampleableType (ZMod 2)]
+    (f : (Fin n → ZMod 2) → ZMod 2) :
+    Pr[= true | simulateQ ((randOracle (ZMod 2)).impl +
+        fun x => (return f x : ProbComp (ZMod 2)))
+      (BLR.basicVerifier (F := ZMod 2) (n := n))] =
+    Pr[= true | simulateQ ((BLR.normalRandOracle (ZMod 2)).impl +
+        fun x => (return f x : ProbComp (ZMod 2)))
+      (BLR.verifier (F := ZMod 2) (n := n))] := by
+  rw [blrBasicVerifier_acceptanceProbability_sum (F := ZMod 2) (n := n) f]
+  rw [blrVerifier_acceptanceProbability_units (F := ZMod 2) (n := n) f]
+  simp [zmod2_unit_coe]
+
 /-- Over `ZMod 2`, completeness transfers from the scalar-sampling BLR verifier to
-the additive basic verifier. -/
+the additive basic verifier using the acceptance-probability equality above. -/
 theorem BLR_basic_completeness_ZMod2 {n : ℕ}
     [Nonempty (Fin n)] [SampleableType (ZMod 2)]
     {f : (Fin n → ZMod 2) → ZMod 2}
@@ -708,13 +601,14 @@ theorem BLR_basic_completeness_ZMod2 {n : ℕ}
   exact BLR_completeness (F := ZMod 2) (n := n) hf
 
 /-- Over `ZMod 2`, soundness transfers from the scalar-sampling BLR verifier to
-the additive basic verifier. -/
+the additive basic verifier as an acceptance-probability upper bound. The
+underlying soundness input is the finite-field theorem `BLR_soundness`. -/
 theorem BLR_basic_soundness_ZMod2 {n : ℕ}
     [Nonempty (Fin n)] [SampleableType (ZMod 2)]
     (f : (Fin n → ZMod 2) → ZMod 2) :
-    distanceToLin f ≤
-      Pr[= false | simulateQ ((randOracle (ZMod 2)).impl +
-          fun x => (return f x : ProbComp (ZMod 2)))
-        (BLR.basicVerifier (F := ZMod 2) (n := n))] := by
-  rw [blrBasicVerifier_rejectionProbability_eq_verifier_ZMod2]
+    Pr[= true | simulateQ ((randOracle (ZMod 2)).impl +
+        fun x => (return f x : ProbComp (ZMod 2)))
+      (BLR.basicVerifier (F := ZMod 2) (n := n))] ≤
+      1 - distanceToLin f := by
+  rw [blrBasicVerifier_acceptanceProbability_eq_verifier_ZMod2]
   exact BLR_soundness (F := ZMod 2) (n := n) f

@@ -1,5 +1,4 @@
-\section{BLR over General Finite Fields}
-\label{sec:blr-general-finite-fields}
+\section{Basic tools for the analysis of functions over finite fields}
 
 Throughout this section, let $q=p^s$ for a prime $p$ and $s\in\bbN$ with $s\ge 1$.
 All vectors are in $\bbF_q^n$, and all expectations are uniform over the indicated finite sets.
@@ -444,6 +443,8 @@ For $f,g:\bbF_q^n\to\bbF_q$, define
 \]
 \end{definition}
 
+\section{Linear functions over finite fields}
+
 \begin{definition}[Linear functions]
 \label{def:linear-functions}
 \lean{BlrPcp.linearFn, BlrPcp.IsLinear, BlrPcp.LinearSet}
@@ -607,6 +608,8 @@ For fixed $\alpha$, the same formula expresses $S_\alpha(f)$ as
 $q(1-\delta(f,\ell_\alpha))-1$. Hence $S_\alpha(f)$ is real, and since
 $0\le \delta(f,\ell_\alpha)\le 1$, we get $-1\le S_\alpha(f)\le q-1$.
 \end{proof}
+
+\section{BLR linearity test}
 
 \begin{definition}[Finite-field BLR test]
 \label{def:finite-field-blr-test}

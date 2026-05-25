@@ -26,7 +26,11 @@ noncomputable def acceptanceProbabilityBLR (f : ScalarFn F Idx) : Real := by
               ∑ x : Vec F Idx, ∑ y : Vec F Idx,
                 if BLRAcceptsAt f a b x y then (1 : Real) else 0
 
-section BLRCompleteness
+/-! ## BLR Completeness
+
+This group proves that linear functions satisfy the BLR acceptance predicate
+pointwise and therefore pass the finite-field BLR test with probability one.
+-/
 
 omit [Fintype F] [DecidableEq F] [DecidableEq Idx] [Nonempty Idx] in
 /-- A linear function passes the BLR check for every choice of randomness. -/
@@ -68,9 +72,11 @@ lemma blr_completeness {f : ScalarFn F Idx}
     mul_assoc]
   field_simp [hnz_card, hvec_card_pow]
 
-end BLRCompleteness
+/-! ## BLR Soundness
 
-section BLRSoundness
+This group develops the Fourier and counting estimates that upper-bound BLR
+acceptance probability by `1 - distanceToLinear f`.
+-/
 
 private def agreementCount (f : ScalarFn F Idx) (α : Vec F Idx) : ℕ :=
   (Finset.univ.filter fun x : Vec F Idx => f x = linearFn α x).card
@@ -1418,9 +1424,11 @@ theorem blr_soundness (f : ScalarFn F Idx) :
           rw [distanceToLinear_fourier (F := F) (Idx := Idx) f]
           simp [M, coeffs, score]
 
-end BLRSoundness
+/-! ## Final Statement
 
-section FinalStatement
+This group packages the finite-field BLR completeness and soundness estimates
+into the public theorem `blr`.
+-/
 
 omit [Nonempty Idx] in
 /-- The acceptance probability of the BLR test is non-negative. -/
@@ -1441,7 +1449,5 @@ theorem blr (f : ScalarFn F Idx) :
     · rw [if_neg hf]
       exact acceptanceProbabilityBLR_nonneg (F := F) (Idx := Idx) f
   · exact blr_soundness (F := F) (Idx := Idx) f
-
-end FinalStatement
 
 end BlrPcp
