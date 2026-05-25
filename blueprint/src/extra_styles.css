@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css?family=Droid+Sans:400,700&display=swap");
+@import url("https://fonts.googleapis.com/css?family=Open+Sans:400,700&display=swap");
 
 :root {
 	--text: #172033;
@@ -23,7 +23,7 @@ div.content-wrapper,
 .main-text,
 table,
 .tabular {
-	font-family: "Droid Sans", Arial, sans-serif;
+	font-family: "Open Sans", Arial, sans-serif;
 	color: var(--text);
 	background-color: #fff;
 }
@@ -54,7 +54,7 @@ h4,
 h5,
 h6,
 h1#doc_title {
-	font-family: "Droid Sans", Arial, sans-serif;
+	font-family: "Open Sans", Arial, sans-serif;
 	color: var(--text);
 }
 
