@@ -5,16 +5,16 @@ Assume $q = p^s$ be a prime with power $s\in \mathbb{Z}^+$, $n \ge 1$, and we se
 X := \F_q^n, \qquad A := \F_q^\times, \qquad \omega := e^{2\pi i/p}.
 \]
 
-\begin{definition}[BLR verifier and distance]\label{def:blr}\lean{BlrPcp.BLRAcceptsAt, BlrPcp.distanceToLinear, BlrPcp.acceptanceProbabilityBLR}\leanok
-Given $f : X \to \F_q$, the verifier $\BLR^f$ samples $a, b \in A$ and
-$x, y \in X$ uniformly and accepts iff $af(x) + bf(y) = f(ax + by)$. Let the test rejection probability be bounded by
-\[
-\Pr_{a,b,x,y}\!\bigl[af(x) + bf(y) \ne f(ax + by)\bigr] \leq \varepsilon.
-\]
-For $\alpha \in X$, write $\ell_\alpha(x) := \inner{\alpha}{x}$, $\delta_\alpha := \Pr_x[f(x) \ne \ell_\alpha(x)]$,
-and $\delta(f, \lin) := \min_{\alpha} \delta_\alpha$.
-\end{definition}
-At the end of the section, we prove the BLR soundness using Gowers-Hatami theorem.
+% \begin{definition}[BLR verifier and distance]\label{def:blr}\lean{BlrPcp.BLRAcceptsAt, BlrPcp.distanceToLinear, BlrPcp.acceptanceProbabilityBLR}\leanok
+% Given $f : X \to \F_q$, the verifier $\BLR^f$ samples $a, b \in A$ and
+% $x, y \in X$ uniformly and accepts iff $af(x) + bf(y) = f(ax + by)$. Let the test rejection probability be bounded by
+% \[
+% \Pr_{a,b,x,y}\!\bigl[af(x) + bf(y) \ne f(ax + by)\bigr] \leq \varepsilon.
+% \]
+% For $\alpha \in X$, write $\ell_\alpha(x) := \inner{\alpha}{x}$, $\delta_\alpha := \Pr_x[f(x) \ne \ell_\alpha(x)]$,
+% and $\delta(f, \lin) := \min_{\alpha} \delta_\alpha$.
+% \end{definition}
+% At the end of the section, we prove the BLR soundness using Gowers-Hatami theorem.
 
 First notice that linearity implies two properties: 
 \begin{enumerate}
