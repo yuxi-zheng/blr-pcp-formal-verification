@@ -1,11 +1,9 @@
-\begin{definition}\label{tensor-product}
-For a field \(\F\), vectors \(a \in \F^n\) and \(b \in \F^m\), the tensor product \(a \otimes b \in \F^{n \times m}\) 
+For a field \(\F\), vectors \(a \in \F^n\) and \(b \in \F^m\), the tensor product \(a \otimes b \in \F^{n \times m}\)
 is the matrix defined by
 \[
   (a \otimes b)_{i,j} := a_i b_j \quad \forall i \in [n],\, j \in [m].
 \]
 We write \(\mathrm{flat}(a \otimes b) \in \F^{nm}\) for the row-concatenation of \(a \otimes b\).
-\end{definition}
 
 For our purposes, we want a test that checks whether $\mathrm{flat}(a \otimes a) = b$
 
@@ -17,7 +15,7 @@ For a field \(\F\) and \(n \in \N\), define the tensor test language
 \]
 \end{definition}
 
-\begin{definition}\label{TENSORQ.verifier}\lean{TENSORQ.verifier}\uses{LPCPVerifier,tensor-product,TENSORQ}\leanok
+\begin{definition}\label{TENSORQ.verifier}\lean{TENSORQ.verifier}\uses{LPCPVerifier,TENSORQ}\leanok
 % Lecture 08 presents this as a subcheck inside the QESAT verifier, where the
 % queried proof oracles are already named \(a\) and \(b\). The standalone Lean
 % language has explicit input \((a,b)\), so its verifier also checks that the
@@ -46,7 +44,7 @@ queries before checking the tensor relation:
 \end{enumerate}
 \end{definition}
 
-\begin{definition}\label{TENSORQ.selfVerifier}\lean{TENSORQ.selfVerifier}\uses{tensor-product}\leanok
+\begin{definition}\label{TENSORQ.selfVerifier}\lean{TENSORQ.selfVerifier}\uses{OracleComp,randOracleSpec}\leanok
 In settings where \(a\) and \(b\) are supplied only by the proof oracle, the tensor self-check uses the same three
 queries but has no public input to compare against. Given oracle access to
 \(\pi=\alpha\parallel\beta\in\F^{n+n^2}\), sample \(s,t\leftarrow\F^n\), query
@@ -58,7 +56,7 @@ queries but has no public input to compare against. Given oracle access to
 and accept if and only if \(y_{s,t}=y_s y_t\). This is the tensor component used inside the QESAT verifier.
 \end{definition}
 
-\begin{lemma}\label{TENSORQ.tensor_check_complete}\lean{TENSORQ.tensor_check_complete}\uses{tensor-product}\leanok
+\begin{lemma}\label{TENSORQ.tensor_check_complete}\lean{TENSORQ.tensor_check_complete}\leanok
 For every \(a,s,t\in\F^n\),
 \[
   \langle \mathrm{flat}(a\otimes a),\mathrm{flat}(s\otimes t)\rangle
@@ -74,7 +72,7 @@ For every \(a,s,t\in\F^n\),
 \end{align*}
 \end{proof}
 
-\begin{lemma}\label{TENSORQ.verifier_soundness_after_sampling}\lean{TENSORQ.verifier_soundness_after_sampling}\uses{TENSORQ.verifier,LINEQ.linear_form_uniform_prob_mul_card_le_one}\leanok
+\begin{lemma}\label{TENSORQ.verifier_soundness_after_sampling}\lean{TENSORQ.verifier_soundness_after_sampling}\uses{TENSORQ.verifier}\leanok
 Let \(\F\) be a finite field. If \(b \neq \mathrm{flat}(a\otimes a)\), then for every proof
 \(\pi\in \F^{n+n^2}\),
 \[
@@ -84,7 +82,7 @@ Let \(\F\) be a finite field. If \(b \neq \mathrm{flat}(a\otimes a)\), then for 
   \leq \frac{2|\F|-1}{|\F|^2}.
 \]
 \end{lemma}
-\begin{proof}\leanok
+\begin{proof}\uses{TENSORQ.verifier,LINEQ.linear_form_uniform_prob_mul_card_le_one}\leanok
 Suppose \(b \neq \mathrm{flat}(a \otimes a)\), i.e., there exists \(i^*, j^* \in [n]\) such that
 \(b_{i^* j^*} \neq a_{i^*} \cdot a_{j^*}\).
 For each \(i \in [n]\) define the linear polynomial \(p_i(t) := \sum_{j \in [n]} (b_{ij} - a_i a_j)\, t_j\).
@@ -121,14 +119,14 @@ and therefore
 \]
 \end{proof}
 
-\begin{lemma}\label{TENSORQ.selfVerifier_soundness_after_sampling}\lean{TENSORQ.selfVerifier_soundness_after_sampling}\uses{TENSORQ.selfVerifier,TENSORQ.verifier_soundness_after_sampling}\leanok
+\begin{lemma}\label{TENSORQ.selfVerifier_soundness_after_sampling}\lean{TENSORQ.selfVerifier_soundness_after_sampling}\uses{TENSORQ.selfVerifier}\leanok
 Let \(\F\) be a finite field and let \(\pi=\alpha\parallel\beta\in\F^{n+n^2}\). If
 \((\alpha,\beta)\notin\mathrm{TENSORQ}(\F,n)\), then the tensor self-check accepts with probability at most
 \[
   \frac{2|\F|-1}{|\F|^2}.
 \]
 \end{lemma}
-\begin{proof}\leanok
+\begin{proof}\uses{TENSORQ.verifier_soundness_after_sampling}\leanok
 Apply \ref{TENSORQ.verifier_soundness_after_sampling} to the public pair \((\alpha,\beta)\). The self-check is
 exactly the multiplicativity part of that verifier, with \((\alpha,\beta)\) read from the proof oracle itself.
 \end{proof}
@@ -148,9 +146,7 @@ For every finite field \(\F\) and \(n \in \N\),
   \right].
 \]
 \end{theorem}
-\begin{proof}
-\leanok
-\uses{TENSORQ, TENSORQ.verifier, TENSORQ.tensor_check_complete, TENSORQ.verifier_soundness_after_sampling}
+\begin{proof}\uses{TENSORQ.verifier,TENSORQ.tensor_check_complete,TENSORQ.verifier_soundness_after_sampling}\leanok
 Use the verifier of \ref{TENSORQ.verifier}. If
 \((a,b)\in\mathrm{TENSORQ}(\F,n)\), the honest proof \(\pi=(a,b)\) passes the
 three input-consistency checks identically, and the multiplicativity check is

@@ -79,23 +79,19 @@ An \emph{oracle computation} is a monadic computation in the free monad generate
 i.e. a description (a ``script'') of a program consisting of a chain of oracle queries (compatible with any query implementation of the specification)
 and deterministic Lean computations.
 \end{definition}
-\begin{definition}[Generic verifier]
-\label{Verifier}
-\uses{OracleComp, randOracle}
+
 A \emph{verifier} is a function that takes an input \(x \in \{0,1\}^*\) and produces an oracle computation
 (with query access to a randomness oracle) that outputs a boolean. This definition can be extended to include
-other oracles (typically a proof oracle).
-\end{definition}
+other oracles (typically a proof oracle). In Lean this convention is represented directly by function types returning
+\texttt{OracleComp} computations, rather than by a standalone verifier declaration.
+
 We also need to define verifiers that do not take any inputs (for example the BLR verifier).
 Since they use the same randomness oracle specification as the normal verifiers, they can
 compose nicely with them.
-\begin{definition}[Unit verifier]
-\uses{OracleComp, randOracle}
-\label{UnitVerifier}
 A \emph{unit verifier} (or just \emph{verifier} when it is clear from the context) is an oracle computation with query access to a randomness oracle that outputs a boolean.
 This definition can be extended to include
 other oracles (typically a proof oracle).
-\end{definition}
+
 \begin{remark}[Time complexity]
 The price to pay for using these definitions for verifiers instead of Turing machines is that we have no simple way to enforce
 the time complexity of the verifier. For that, a possible approach would be to restrict the allowed operations to a strict set
@@ -106,7 +102,7 @@ of operations instead of general Lean computations, and track the time cost usin
 \begin{definition}
 \label{PCPVerifier}
 \lean{PCPVerifier}
-\uses{Verifier}
+\uses{OracleComp,randOracleSpec}
 \leanok
 A \emph{PCP verifier} is a verifier with query access to a function $\pi : [\ell (|x|)] \to \Sigma$.
 \end{definition}
@@ -135,7 +131,7 @@ at most $r(|x|)$ randomness queries, and the following holds:
 \begin{definition}
 \label{LPCPVerifier}
 \lean{LPCPVerifier}
-\uses{Verifier}
+\uses{OracleComp,randOracleSpec}
 \leanok
 A \emph{LPCP verifier} is a verifier with query access to a linear function
 $\langle \pi,\cdot \rangle : \Sigma^{\ell(|x|)} \to \Sigma$.

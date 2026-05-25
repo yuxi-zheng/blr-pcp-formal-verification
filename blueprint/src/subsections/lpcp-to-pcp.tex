@@ -1,5 +1,5 @@
 \begin{lemma}[Chernoff bound]
-\label{chernoff-bound}\leanok
+\label{LPCPToPCP.chernoff_bound}
 \lean{LPCPToPCP.chernoff_bound}
 \leanok
   Let $X_1,\dots, X_N$ be independent random variables over $\{0,1\}$, and let $\mu=\EE\left[\sum_{i = 1}^N X_i\right]$. For any $\Delta > 0$ one has
@@ -59,7 +59,7 @@
 \end{proof}
 
 \begin{definition}
-\label{num-shifts}
+\label{LPCPToPCP.numShifts}
 \uses{LPCPVerifier}
 \lean{LPCPToPCP.numShifts}
 \leanok
@@ -79,7 +79,6 @@ plurality.
 \label{LPCPToPCP.encodedProof}
 % TODO: define LPCP proofs and add it to \uses
 \lean{LPCPToPCP.encodedProof}
-\uses{PCPVerifier}
 \leanok
 For a linear LPCP proof \(\pi\in\F_2^\ell\), its PCP encoding \(\widehat{\pi}_{\mathrm{lin}} \in \F_2^{\F_2^\ell}\) is the truth
 table
@@ -93,7 +92,6 @@ table
 \label{LPCPToPCP.correctedAnswer}
 % TODO: define PCP proofs and add it to \uses
 \lean{LPCPToPCP.correctedAnswer,LPCPToPCP.decodedLinearQuery,LPCPToPCP.pluralityZMod2}
-\uses{num-shifts}
 \leanok
 Given a PCP proof \(\widehat{\pi}:\F_2^\ell\to\F_2\), shifts
 \(r_1,\dots,r_t\in\F_2^\ell\), and a linear query \(a\in\F_2^\ell\), define
@@ -109,7 +107,7 @@ the locally corrected answer
 \begin{definition}
 \label{LPCPToPCP.verifier}
 \lean{LPCPToPCP.verifier}
-\uses{PCPVerifier,LPCPVerifier,BLR.basicVerifier,LPCPToPCP.correctedAnswer}
+\uses{PCPVerifier,LPCPVerifier,BLR.basicVerifier,LPCPToPCP.numShifts,LPCPToPCP.correctedAnswer}
 \leanok
 Let \(V\) be an LPCP verifier over \(\F_2\). The converted PCP verifier
 \(\overline V\), with oracle access to
@@ -136,11 +134,11 @@ Let \(V\) be an LPCP verifier over \(\F_2\). The converted PCP verifier
 \begin{lemma}[Completeness]
 \label{LPCPToPCP.verifier_completeness}
 \lean{LPCPToPCP.verifier_completeness}
-\uses{LPCPToPCP.verifier,LPCPToPCP.encodedProof,BLR_basic_completeness_ZMod2,LPCP}
+\uses{LPCPToPCP.verifier,LPCPToPCP.encodedProof}
 \leanok
 If \(\Pr\!\left[V^{\langle \pi, \cdot \rangle}(x)=1\right]\ge 1-\varepsilon_c\), then \(\Pr\!\left[\overline{V}^{\widehat{\pi}_{\mathrm{lin}}}(x)=1\right]\ge 1-\varepsilon_c\).
 \end{lemma}
-\begin{proof}\leanok
+\begin{proof}\uses{LPCPToPCP.verifier,LPCPToPCP.encodedProof,BLR_basic_completeness_ZMod2}\leanok
 The encoded proof is linear, so the BLR test accepts with probability \(1\) by
 \ref{BLR_basic_completeness_ZMod2}. For every query \(a\) and every shift
 \(r_i\),
@@ -156,14 +154,14 @@ the simulation has exactly the same acceptance probability as \(V\).
 \begin{lemma}[Soundness, far case]
 \label{LPCPToPCP.verifier_soundness_far_case_of_isFar}
 \lean{LPCPToPCP.verifier_soundness_far_case_of_isFar}
-\uses{LPCPToPCP.verifier,BLR_basic_soundness_ZMod2}
+\uses{LPCPToPCP.verifier,def:distance-to-linearity}
 \leanok
 If \(\distanceToLin{\widehat{\pi}} \geq  1 / 8\), then
 \[
   \Pr[\overline V^{\widehat{\pi}}(x)=1]\leq 7/8 .
 \]
 \end{lemma}
-\begin{proof}\leanok
+\begin{proof}\uses{LPCPToPCP.verifier,BLR_basic_soundness_ZMod2}\leanok
 By \ref{BLR_basic_soundness_ZMod2}, the BLR precheck accepts with probability at most
 \(1-\distanceToLin{\widehat{\pi}}\leq 7/8\). Since \(\overline V\) accepts only when this test accepts, its
 acceptance probability is at most \(7/8\).
@@ -172,7 +170,7 @@ acceptance probability is at most \(7/8\).
 \begin{lemma}
 \label{LPCPToPCP.local_correction}
 \lean{LPCPToPCP.localCorrectionBad_single_le_quarter_of_not_far,LPCPToPCP.correctedAnswer_failure_le_exp_of_single,LPCPToPCP.chernoff_half_of_mean_le_quarter,LPCPToPCP.numShifts_eta_bound}
-\uses{LPCPToPCP.correctedAnswer,chernoff-bound}
+\uses{LPCPToPCP.correctedAnswer,def:relative-hamming-distance}
 \leanok
 If \(\distance{\widehat{\pi}}{f} < 1 / 8\) for some linear
 function \(f\) of the form \(u\mapsto\langle\pi,u\rangle\), then
@@ -183,7 +181,7 @@ function \(f\) of the form \(u\mapsto\langle\pi,u\rangle\), then
   \leq \exp(-t/8), \quad \forall a\in\F_2^\ell.
 \]
 \end{lemma}
-\begin{proof}\leanok
+\begin{proof}\uses{LPCPToPCP.correctedAnswer,LPCPToPCP.chernoff_bound}\leanok
 For one shift \(r\), the corrected sample can be wrong only if
 \(\widehat{\pi}(a+r)\) or \(\widehat{\pi}(r)\) disagrees \(f\). A union bound gives error probability at most
 \(2\cdot(1/8)=1/4\). If \(X_i\) is the indicator of failure for shift \(r_i\),
@@ -198,7 +196,7 @@ then \(\EE[\sum_i X_i]\le t/4\). The plurality answer is wrong only if
 \begin{lemma}
 \label{LPCPToPCP.corrected_simulation_hybrid}
 \lean{LPCPToPCP.corrected_run_accept_le_linear_add,LPCPToPCP.verifier_accept_le_linear_add_of_query_correction}
-\uses{LPCPToPCP.verifier,LPCPToPCP.local_correction,LPCP}
+\uses{LPCPToPCP.verifier}
 \leanok
 Assume every possible linear query \(a\) is locally corrected incorrectly with
 probability at most \(\eta\). If the simulated LPCP computation makes at most
@@ -222,7 +220,7 @@ Inducting over the query-bound derivation gives an additive loss of at most
 \begin{lemma}[Soundness, near case]
 \label{LPCPToPCP.verifier_soundness_near_case}
 \lean{LPCPToPCP.verifier_soundness_near_case_of_single_query_bound}
-\uses{LPCPToPCP.verifier,LPCPToPCP.local_correction,LPCPToPCP.corrected_simulation_hybrid,LPCP}
+\uses{LPCPToPCP.verifier,LPCP,def:relative-hamming-distance}
 \leanok
 If \(x\notin L\), \(V\) has LPCP soundness \(\varepsilon_s\), and
 \(\distance{\widehat{\pi}}{f} < 1/8\) for some linear function \(f\) of the form \(u\mapsto\langle\pi,u\rangle\), then
@@ -230,12 +228,12 @@ If \(x\notin L\), \(V\) has LPCP soundness \(\varepsilon_s\), and
   \Pr[\overline V^{\widehat{\pi}}(x)=1]\leq \varepsilon_s+\frac{1}{100}.
 \]
 \end{lemma}
-\begin{proof}\leanok
+\begin{proof}\uses{LPCPToPCP.local_correction,LPCPToPCP.corrected_simulation_hybrid,LPCPToPCP.numShifts,LPCP}\leanok
 By \ref{LPCPToPCP.local_correction}, every possible linear query has local
 correction error at most \(\eta=\exp(-t/8)\). The hybrid estimate
 \ref{LPCPToPCP.corrected_simulation_hybrid} compares the corrected simulation
 with the simulation using the nearby linear proof and loses at most
-\(q\eta\). The choice of \(t\) in \ref{num-shifts} gives
+\(q\eta\). The choice of \(t\) in \ref{LPCPToPCP.numShifts} gives
 \(q\eta\le 1/100\). The nearby linear proof is a valid LPCP proof, so its
 acceptance probability is at most \(\varepsilon_s\) because \(x\notin L\).
 
@@ -262,7 +260,7 @@ acceptance probability is at most \(\varepsilon_s\) because \(x\notin L\).
 \begin{lemma}[Soundness]
 \label{LPCPToPCP.verifier_soundness_of_cases}
 \lean{LPCPToPCP.verifier_soundness_of_cases}
-\uses{LPCPToPCP.verifier_soundness_far_case_of_isFar,LPCPToPCP.verifier_soundness_near_case}
+\uses{LPCPToPCP.verifier}
 \leanok
 For every \(x\notin L\) and every PCP proof \(\widehat{\pi}\),
 \[
@@ -270,13 +268,13 @@ For every \(x\notin L\) and every PCP proof \(\widehat{\pi}\),
   \leq \max\{7/8,\varepsilon_s+1/100\}.
 \]
 \end{lemma}
-\begin{proof}\leanok
+\begin{proof}\uses{LPCPToPCP.verifier_soundness_far_case_of_isFar,LPCPToPCP.verifier_soundness_near_case}\leanok
 If \(\distanceToLin{\widehat{\pi}} \geq 1 / 8\), apply \ref{LPCPToPCP.verifier_soundness_far_case_of_isFar}. Otherwise, apply
 \ref{LPCPToPCP.verifier_soundness_near_case}.
 \end{proof}
 
-\begin{lemma}
-\uses{LPCP,PCP,num-shifts}
+\begin{lemma}[LPCPs admit exponential-size PCPs]
+\uses{LPCP,PCP,LPCPToPCP.numShifts}
 \label{LPCP_to_PCP_ZMod2}
 \lean{LPCP_to_PCP_ZMod2}
 \leanok
@@ -292,8 +290,7 @@ r'=r+(2+t)\ell
 \right].
 \end{gather*}
 \end{lemma}
-\begin{proof}
-\uses{LPCPToPCP.verifier, LPCPToPCP.verifier_completeness, LPCPToPCP.verifier_soundness_of_cases}
+\begin{proof}\uses{LPCPToPCP.verifier,LPCPToPCP.verifier_completeness,LPCPToPCP.verifier_soundness_of_cases}\leanok
 Let $L \in \LPCP[\varepsilon_c,\varepsilon_s,\Sigma=\F_{2},\ell,q,r]$ and let $V$ be the LPCP verifier for $L$. Use the converted PCP verifier $\overline V$ defined in \ref{LPCPToPCP.verifier}.
 Completeness is
 \ref{LPCPToPCP.verifier_completeness}, and soundness is

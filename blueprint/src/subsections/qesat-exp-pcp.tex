@@ -60,10 +60,8 @@
 % \end{proof}
 
 
-\begin{definition}
-\label{QESAT.linearization}
-\uses{QESAT}
-Let \(x=(p_1,\dots,p_m)\) be a \(\QESAT(\F_2,n)\) instance. For each quadratic
+Let \(x=(p_1,\dots,p_m)\) be a \(\QESAT(\F_2,n)\) instance. We use the following
+linearization. For each quadratic
 polynomial \(p_i\), form a row \(M_i\in\F_2^{n+n^2}\) by replacing every
 linear monomial \(X_j\) by the variable \(a_j\) and every quadratic monomial
 \(X_jX_k\) by the tensor variable \(b_{jk}\). Let
@@ -75,18 +73,17 @@ linear monomial \(X_j\) by the variable \(a_j\) and every quadratic monomial
 where \(\operatorname{const}(p_i)\) is the constant term of \(p_i\).
 Then \(M_{x}(a\parallel b)=c_{x}\) expresses the original equations after
 replacing \(a_ja_k\) by \(b_{jk}\).
-\end{definition}
 
 \begin{definition}
 \label{QESAT.verifier}
 \lean{QESAT.verifier}
-\uses{LPCPVerifier,QESAT.linearization,LINEQ.verifier,TENSORQ.selfVerifier}
+\uses{LPCPVerifier,QESAT,LINEQ.verifier,TENSORQ.selfVerifier}
 \leanok
 Let \(x=(p_1,\dots,p_m) \in R_{2}^{m}\) be a QESAT instance as defined in \ref{QESAT}. Let \(V_{\QESAT(\F_2,n)}^{\pi}(x)\) be the LPCP verifier 
 with oracle access to \(\pi=a\parallel b\in\F_2^{n+n^2}\), defined as follows:
 \begin{enumerate}
   \item Sample $r \gets \F_{2}^m$ and $s, t \gets \F_{2}^n$.
-  \item Construct \((M_{x},c_{x}) \in \F_2^{m \times (n+n^2)} \times \F_2^m\) as in \ref{QESAT.linearization}.
+  \item Construct \((M_{x},c_{x}) \in \F_2^{m \times (n+n^2)} \times \F_2^m\) by the linearization above.
   \item Check that \(V_{\LINEQ(\F_2,m,n+n^2)}^{\langle \pi, \cdot \rangle } (M_{x},c_{x}) = 1\).
   \item Query \(\pi\) at
   \((s,0)\), \((t,0)\), and \((0,\mathrm{flat}(s\otimes t))\) and check that
@@ -101,15 +98,15 @@ with oracle access to \(\pi=a\parallel b\in\F_2^{n+n^2}\), defined as follows:
 \begin{lemma}[Completeness]
 \label{QESAT.verifier_completeness}
 \lean{QESAT.verifier_correct}
-\uses{QESAT.verifier,QESAT.linearization,LINEQ.verifier,TENSORQ.tensor_check_complete}
+\uses{QESAT,QESAT.verifier}
 \leanok
 If \(x\in \QESAT(\F_2,n)\), then exists a proof
 \(\pi\in\F_2^{n+n^2}\) such that \[\Pr\!\left[V_{\QESAT(\F_2,n)}^{\pi}(x)=1\right]=1.\]
 \end{lemma}
-\begin{proof}
+\begin{proof}\uses{QESAT.verifier,LINEQ.verifier,TENSORQ.tensor_check_complete}\leanok
 Let \(a\in\F_2^n\) satisfy all equations and set
-\(b=\mathrm{flat}(a\otimes a)\). By construction of
-\ref{QESAT.linearization}, \(M_x(a\parallel b)=c_x\), so the LINEQ check
+\(b=\mathrm{flat}(a\otimes a)\). By construction of the linearized system,
+\(M_x(a\parallel b)=c_x\), so the LINEQ check
 accepts for every \(r\). The tensor self-check accepts for every \(s,t\) by
 \ref{TENSORQ.tensor_check_complete}.
 \end{proof}
@@ -117,13 +114,13 @@ accepts for every \(r\). The tensor self-check accepts for every \(s,t\) by
 \begin{lemma}[Soundness]
 \label{QESAT.verifier_soundness}
 \lean{QESAT.verifier_correct}
-\uses{QESAT.verifier,QESAT.linearization,LINEQ.linear_form_uniform_prob_mul_card_le_one,TENSORQ.selfVerifier_soundness_after_sampling}
+\uses{QESAT,QESAT.verifier}
 \leanok
 If \(x\notin \QESAT(\F_2,n)\), then for every proof
 \(\tilde\pi\in\F_2^{n+n^2}\),
 \[\Pr\!\left[V_{\QESAT(\F_2,n)}^{\tilde\pi}(x)=1\right]\leq 3 / 4.\]
 \end{lemma}
-\begin{proof}
+\begin{proof}\uses{QESAT.verifier,LINEQ.linear_form_uniform_prob_mul_card_le_one,TENSORQ.selfVerifier_soundness_after_sampling}\leanok
 If some \(p_i\) has total degree \(>2\), the verifier rejects immediately, so
 the acceptance probability is \(0\). Assume now that every \(p_i\) is quadratic
 and write \(\pi=a\parallel b\). If \(b\neq\mathrm{flat}(a\otimes a)\), then
@@ -132,8 +129,8 @@ the tensor self-check accepts with probability at most \(3/4\) by
 the full verifier accepts only if that check accepts.
 
 Otherwise \(b=\mathrm{flat}(a\otimes a)\). Since \(x\notin\QESAT(\F_2,n)\),
-the assignment \(a\) does not satisfy all equations. By
-\ref{QESAT.linearization}, \(M_x(a\parallel b)\neq c_x\). The LINEQ check
+the assignment \(a\) does not satisfy all equations. By construction of the
+linearized system, \(M_x(a\parallel b)\neq c_x\). The LINEQ check
 therefore accepts with probability at most \(1/|\F_2|=1/2\) by
 \ref{LINEQ.linear_form_uniform_prob_mul_card_le_one}. Again the full verifier
 accepts only if this check accepts, so the acceptance probability is at most
@@ -143,7 +140,7 @@ accepts only if this check accepts, so the acceptance probability is at most
 \begin{theorem}
 \label{QESAT_poly_LPCP}
 \lean{QESAT_poly_LPCP}
-\uses{QESAT, LPCP, QESAT.verifier}
+\uses{QESAT,LPCP}
 \leanok
 \[
   \mathrm{QESAT}(\F_2,n) \in
@@ -157,7 +154,7 @@ accepts only if this check accepts, so the acceptance probability is at most
   ].
 \]
 \end{theorem}
-\begin{proof}\uses{QESAT.verifier_completeness,QESAT.verifier_soundness}\leanok
+\begin{proof}\uses{QESAT.verifier,QESAT.verifier_completeness,QESAT.verifier_soundness}\leanok
 % Lecture 08 gives the exact LINEQ randomness as \(m\log|\F|\). In Lean,
 % \(|x|\) is the encoded input size and bounds the number of equations \(m\);
 % after specializing to \(\F_2\), this yields the displayed \(|x|+2n\) bound.
@@ -202,16 +199,19 @@ length \(2^{n+n^2}\) to length \(2^{|x|}\).
 
 \begin{lemma}
 \label{QESAT.constant_repetition}
+\lean{QESAT_exp_PCP}
 \uses{PCP}
+\leanok
 \[\PCP[0,7/8,\F_2,2^{|x|},O(1),|x|^{O(1)}] \subseteq \PCP[0,1/2,\F_2,2^{|x|},O(1),|x|^{O(1)}].\]
 \end{lemma}
-\begin{proof}
+\begin{proof}\uses{QESAT_exp_PCP_before_repetition}\leanok
 % This repetition is folded into the Lean theorem `QESAT_exp_PCP` rather than
 % exposed as a standalone declaration.
-Run the \(7/8\)-sound verifier independently six times and accept only if all
-six runs accept. Completeness error remains \(0\). For \(x\notin L\), the
-acceptance probability is at most \((7/8)^6\leq 1/2\). Query and randomness
-bounds are multiplied by the constant \(6\).
+Invoke \ref{QESAT_exp_PCP_before_repetition} to obtain the \(7/8\)-sound
+verifier. Run it independently six times and accept only if all six runs
+accept. Completeness error remains \(0\). For \(x\notin L\), the acceptance
+probability is at most \((7/8)^6\leq 1/2\). Query and randomness bounds are
+multiplied by the constant \(6\).
 \end{proof}
 
 \begin{theorem}
