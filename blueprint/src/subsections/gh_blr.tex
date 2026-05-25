@@ -5,7 +5,7 @@ Assume $q = p^s$ be a prime with power $s\in \mathbb{Z}^+$, $n \ge 1$, and we se
 X := \F_q^n, \qquad A := \F_q^\times, \qquad \omega := e^{2\pi i/p}.
 \]
 
-\begin{definition}[BLR verifier and distance]\label{def:blr}
+\begin{definition}[BLR verifier and distance]\label{def:blr}\lean{BlrPcp.BLRAcceptsAt, BlrPcp.distanceToLinear, BlrPcp.acceptanceProbabilityBLR}\leanok
 Given $f : X \to \F_q$, the verifier $\BLR^f$ samples $a, b \in A$ and
 $x, y \in X$ uniformly and accepts iff $af(x) + bf(y) = f(ax + by)$. Let the test rejection probability be bounded by
 \[
@@ -14,11 +14,7 @@ $x, y \in X$ uniformly and accepts iff $af(x) + bf(y) = f(ax + by)$. Let the tes
 For $\alpha \in X$, write $\ell_\alpha(x) := \inner{\alpha}{x}$, $\delta_\alpha := \Pr_x[f(x) \ne \ell_\alpha(x)]$,
 and $\delta(f, \lin) := \min_{\alpha} \delta_\alpha$.
 \end{definition}
-
-In the rest of the section, we prove the BLR soundness using Gowers-Hatami theorem.
-\begin{theorem}[Soundness of the BLR test]\label{thm:main}
-For every $f : \F_q^n \to \F_q$, $\delta(f, \lin) \le \Pr_{a,b,x,y}\!\bigl[af(x) + bf(y) \ne f(ax + by)\bigr]$.
-\end{theorem}
+At the end of the section, we prove the BLR soundness using Gowers-Hatami theorem.
 
 First notice that linearity implies two properties: 
 \begin{enumerate}
@@ -32,9 +28,7 @@ First notice that linearity implies two properties:
     For $q > 2$, turns out testing homogeneity is crucial for a test to have a high soundness.
 \end{enumerate}
 
-
-
-In the rest of the section, we discuss an encoding of both properties through a group construction by ChatGPT.
+% In the rest of the section, we discuss an encoding of both properties through a group construction by ChatGPT.
 
 
 \subsection{The twisted group \texorpdfstring{$G$}{G}}\label{sec:group}
@@ -44,7 +38,7 @@ Define a group $G$ by the set $X \times A$ with the binary operation
 (x, a) \star (y, b) := \bigl(b^{-1}x + a^{-1}y,\; ab\bigr).
 \end{equation}
 
-\begin{lemma}[$G$ is an abelian group]\label{lem:group}
+\begin{lemma}[$G$ is an abelian group]\label{lem:group}\lean{BlrPcp.Twist.instCommGroup}\leanok
 The operation $\star$ in~\eqref{eq:star} makes $G$ into an abelian group with identity
 $e = (0, 1)$ and inverses $(x, a)^{-1} = (-a^2 x, a^{-1})$. 
 \end{lemma}
@@ -74,7 +68,7 @@ $(0, 1) \star (y, b) = (b^{-1}\cdot 0 + 1^{-1}\cdot y,\; 1\cdot b) = (y, b)$.
 \end{proof}
 
 It is at first surprising to come up with $\star$ operation, but $G$ is isomorphic to the direct product group. 
-\begin{proposition}[Group isomorphism to product group]\label{prop:group_iso}
+\begin{proposition}[Group isomorphism to product group]\label{prop:group_iso}\uses{lem:group}
     Let $(G, \star)$ be an abelian group defined by Equation~\ref{eq:star}. The map
 \be
 \Psi : G \to (X, +) \times (A, \cdot), \qquad
@@ -93,18 +87,20 @@ which equals $\Psi(x, a) \star_\Psi \Psi(y, b) = (ax + by,\; ab)$. The map $\Psi
 inverse $\Psi^{-1}(y, b) = (b^{-1}y, b)$.
 \end{proof}
 
+\emph{Remark (formalization).} The isomorphism $\Psi$ is used here only to motivate and compute the characters. The Lean development does \emph{not} formalize $\Psi$ as a group isomorphism: it equips $G$ with its group structure (\lemref{lem:group}) and defines the characters $\chi_{\alpha,k}$ (\propref{prop:group_characaters}) directly on the twisted group, proving the homomorphism property by a direct computation rather than by pulling back through $\Psi$. Hence \propref{prop:group_iso} carries no \texttt{\textbackslash lean} link.
+
 The isomorphism gives us a easy way to compute its irreducible representations which forms the Pontryagin dual group (the set of irrep characters for an abelian group).
 \begin{fact}[Pontryagin dual over direct product]\label{fact:pontryagin_dual}
     Let $G_1, G_2$ be finite abelian groups. Let $H = G_1 \times G_2$ be their direct product. Then the Pontryagin dual formed by all the irreps. is $\hat{H} = \hat{G_1} \times \hat{G_2}$.
 \end{fact}
-\begin{proposition}[Group characters]\label{prop:group_characaters}
+\begin{proposition}[Group characters]\label{prop:group_characaters}\lean{BlrPcp.gChar, BlrPcp.gChar_mul, BlrPcp.card_gChar_index, BlrPcp.gChar_injective}\leanok
 The group $(G, \star)$ has the Pontryagin dual character group 
 \be
 \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \quad \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a),
 \ee
 where $\psi_k(a) = e^{\frac{i 2 \pi m k}{q-1}}$ and $a=g_0^m$ for a fixed multiplicative generator $g_0\in A$.
 \end{proposition}
-\begin{proof}
+\begin{proof}\leanok
 By \propref{prop:group_iso}, $(G, \star) \cong (X, +) \times (A, \cdot)$ via $\Psi(x, a) = (ax, a)$. First we consider the characters of the product group. Using Fact.~\ref{fact:pontryagin_dual}, we have 
 \[
 \widehat{(X, +) \times (A, \cdot)} = \hat{X} \times \hat{A}.
@@ -125,15 +121,21 @@ Therefore, we have $\chi_{\alpha, k}(x, a) = \phi_\alpha(ax) \psi_k(a) =\omega^{
 \end{proof}
 \subsection{Approximate representation and matrix lift of $f$}\label{sec:rep}
 
+\begin{definition}[Matrix lift $F_f$]\label{def:Flift}\lean{BlrPcp.liftMatrix}\leanok
 Define a unitary matrix valued lift $F_f : G \to U(\cc^{q-1})$ by the diagonal matrix
 \begin{equation}\label{eq:Flift-def}
 F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
 \end{equation}
 where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\mathcal{H} \cong \cc^{q-1}$ and the inner product between operators defined by $\inner{A}{B}_\sigma=\Tr(A^* B \sigma)$ and choose $\sigma = \I/(q-1)$.
+\end{definition}
+
+% \begin{lemma}[$F_f$ is unitary-valued]\label{lem:Ff-unitary}\uses{def:Flift}\lean{BlrPcp.liftMatrix_mem_unitaryGroup}\leanok
+% For every $(x, a) \in G$, the lift $F_f(x, a)$ is a unitary matrix, i.e.\ $F_f : G \to U(\cc^{q-1})$.
+% \end{lemma}
 We first show that the BLR condition indeed gives an approximate represenatation.
 
-\begin{lemma}[Lift operation from BLR condition]\label{lem:rep-iff-blr}
-Let $f : X \to \F_q$ and $(x, a), (y, b) \in G$ be rejected by the BLR test with probability $\varepsilon$, 
+\begin{lemma}[Lift operation from BLR condition]\label{lem:rep-iff-blr}\uses{def:Flift}\lean{BlrPcp.liftFin_isApproxRepresentation}\leanok
+Let $f : X \to \F_q$ and $(x, a), (y, b) \in G$ be rejected by the BLR test with probability $\varepsilon$,
 then the unitary matrix lift $F_f$ in Equation~\ref{eq:Flift-def} is an $(\frac{q}{q-1}\varepsilon, \frac{\I}{q-1})$ approximate representation of $(G, \star)$.
 \end{lemma}
 
@@ -192,181 +194,183 @@ Hence $F_f$ is an approximate representation with  $\epsilon= \frac{q}{q-1}\vare
 
 \end{proof}
 The approximate representation ``appears'' slightly worse than what we would have hoped $\epsilon > \varepsilon$, but we will see this is not an issue for achieving a high soundness. Remarkably, the twisted group operation let us recover the linearity test condition exactly.
-\begin{fact}
-    $F_f$ is an exact representation of $(G, \star)$ if and only if
-$f \in \lin$.
-\end{fact}
-\begin{proof}
-    If $F_f$ is an exact representation of $G$, then~Equation~\ref{eq:rep-eq-blr} forces
-$\varepsilon = 0$. Setting $c = d = 1$ in the BLR condition gives $f(x + y) = f(x) + f(y)$
-for all $x, y$, so $f$ is additive. Set $y = 0$ and $c = 1 \in A$: $f(x) = f(x) + d\, f(0)$ for any
-$d \in A$. Set $y = 0$ and $d=1$, then $f(0)=0$ and $f(c x) = c f(x)$. Combined with additivity, $f$ is $\F_q$-linear, so $f \in \lin$.
 
-Conversely, if $f = \ell_\alpha$ for some $\alpha \in X$, then so $F_f$ is a group homomorphism and an exact representation of $G$.
-\end{proof}
+% \begin{fact}
+%     $F_f$ is an exact representation of $(G, \star)$ if and only if
+% $f \in \lin$.
+% \end{fact}
+% \begin{proof}
+%     If $F_f$ is an exact representation of $G$, then~Equation~\ref{eq:rep-eq-blr} forces
+% $\varepsilon = 0$. Setting $c = d = 1$ in the BLR condition gives $f(x + y) = f(x) + f(y)$
+% for all $x, y$, so $f$ is additive. Set $y = 0$ and $c = 1 \in A$: $f(x) = f(x) + d\, f(0)$ for any
+% $d \in A$. Set $y = 0$ and $d=1$, then $f(0)=0$ and $f(c x) = c f(x)$. Combined with additivity, $f$ is $\F_q$-linear, so $f \in \lin$.
+
+% Conversely, if $f = \ell_\alpha$ for some $\alpha \in X$, then so $F_f$ is a group homomorphism and an exact representation of $G$.
+% \end{proof}
 
 \subsection{Gowers-Hatami implies BLR high soundness}
-In this section, we first prove the key lemma relating the implication of GH theorem to the hamming distance. We provide two proofs:
-\begin{enumerate}
-    \item The first proof in \lemref{lem:gh_linearity_1} should only use the existence of an isometry $V$ and exact representation $R$. Unfortunately, we ended up with an extra constraint about the range of $\epsilon$. 
-    \item In the second proof in \lemref{lem:gh_linearity_3}, we use an explicit isometry $V$ constructed via $F_f$ in the proof of Gowers-Hatami theorem. This proof might require a extra care in formalization of lean. However, this hybrid Fourier-GH approach gives us an unconditional high soundness of the linear BLR test.   
-\end{enumerate}
+In this section, we first prove the key lemma relating the implication of GH theorem to the hamming distance. 
+The proof outlined here correspond to the formalized version in lean. The most convenient proof still uses properties of the Fourier transform of $F_f$. However, we remark that there are other alternative proofs, which we leave as comment in the current source file.
 
-Finally, we provide a proof of \thmref{thm:main}.
+% Finally, we provide a proof of \thmref{thm:main}.
 
-\begin{lemma}[Gowers-Hatami to linearity (Convex character proof)] \label{lem:gh_linearity_1}
-Suppose $F_f: G \to U(\cc^{q-1})$ defined in Equation~\ref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in Equation~\ref{eq:star}. 
-% Furthermore, suppose $1 - \epsilon > \frac{\sqrt{q}}{q-1}$.
-Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
-\be\label{eq:GH_linear_bound}
-    \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
-\ee
-\end{lemma}
+% We provide two alternative proofs of the key lemma:
+% \begin{enumerate}
+%     \item The first proof in \lemref{lem:gh_linearity_1} should only use the existence of an isometry $V$ and exact representation $R$. Unfortunately, we ended up with an extra constraint about the range of $\epsilon$. 
+%     \item In the second proof in \lemref{lem:gh_linearity_2}, we use an explicit isometry $V$ constructed via $F_f$ in the proof of Gowers-Hatami theorem. This proof might require a extra care in formalization of lean. However, this hybrid Fourier-GH approach gives us an unconditional high soundness of the linear BLR test.   
+% \end{enumerate}
 
-\begin{proof}
-% \yan{In this specific proof below without any Fourier analysis, we also need the condition $1 - \epsilon > \frac{\sqrt{q}}{q-1}$, hence the additional assumption.}
+% \begin{lemma}[Gowers-Hatami to linearity (Convex character proof)] \label{lem:gh_linearity_1}
+% Suppose $F_f: G \to U(\cc^{q-1})$ defined in Equation~\ref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in Equation~\ref{eq:star}. 
+% % Furthermore, suppose $1 - \epsilon > \frac{\sqrt{q}}{q-1}$.
+% Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
+% \be\label{eq:GH_linear_bound}
+%     \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
+% \ee
+% \end{lemma}
 
-    By Gowers-Hatami theorem, we have an isometry $V: \mathcal{H} \to \mathcal{H}^\prime$ and an exact representation $R: G \to \End(\mathcal{H}^\prime)$, where the Hilbert space $\mathcal{H}\cong \cc^{q-1}$ and the space $R$ acts on $\mathcal{H}^\prime = L(G, \mathcal{H})$ 
-    \begin{equation}
-    \EE_{g \in G} \Re \langle F_f(g), V^* R(g) V \rangle_\sigma \ge 1 - \epsilon. \label{eq:inner1}
-\end{equation}
-    Let $\{ |c\rangle \}_{c \in \FF_q^\times}$ be the orthonormal basis for $\mathcal{H}$, and the set of characters $\{\chi\}_{\chi\in\hat{G}}$ be an orthonormal basis for $L(G, \cc)$. 
+% \begin{proof}
+% % \yan{In this specific proof below without any Fourier analysis, we also need the condition $1 - \epsilon > \frac{\sqrt{q}}{q-1}$, hence the additional assumption.}
+
+%     By Gowers-Hatami theorem, we have an isometry $V: \mathcal{H} \to \mathcal{H}^\prime$ and an exact representation $R: G \to \End(\mathcal{H}^\prime)$, where the Hilbert space $\mathcal{H}\cong \cc^{q-1}$ and the space $R$ acts on $\mathcal{H}^\prime = L(G, \mathcal{H})$ 
+%     \begin{equation}
+%     \EE_{g \in G} \Re \langle F_f(g), V^* R(g) V \rangle_\sigma \ge 1 - \epsilon. \label{eq:inner1}
+% \end{equation}
+%     Let $\{ |c\rangle \}_{c \in \FF_q^\times}$ be the orthonormal basis for $\mathcal{H}$, and the set of characters $\{\chi\}_{\chi\in\hat{G}}$ be an orthonormal basis for $L(G, \cc)$. 
     
-    % Since $V$ is an isometry, the vectors $\{v_c := V|c\rangle\}$ form an orthonormal set of $q-1$ basis in $L(G, \mathcal{H})$. 
+%     Because $F_f(g)$ is diagonal in $\{\ket{c}\}$ with entries $\omega^{\Tr\, caf(x)}$, we can rewrite the inner product trace:
+%     \[
+%         \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-\Tr\, caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
+%     \]
+%     where $\ket{v_c} = V\ket{c} \in \mathcal{H}^\prime$.
+%     Taking the expectation over $g = (x, a)$ and taking the real part, condition Equation~\ref{eq:inner1} becomes:
+%     \begin{equation}
+%         \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
+%     \end{equation}
+
+%     A basis for $L(G, \mathcal{H})$ is given by $\{\chi \ket{c}\}_{\chi\in\hat{G}, c\in \FF_q^\times}$. By \propref{prop:group_characaters}, the characters are given by
+%     \[
+%     \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a).
+%     \]
+%     The regular representation $R(g)$ acts on $L(G, \mathcal{H})$ so it can be decomposed as 
+%     \be\label{eq:reg_repr_decomp}
+%     R(g) = \sum_{\alpha, k} \chi_{\alpha, k}(g) P_{\alpha, k},
+%     \ee
+%     where $P_{\alpha, k} = \ket{\chi_{\alpha, k}}\bra{\chi_{\alpha, k}} \otimes \I_{\mathcal{H}}$ projects onto the character function subspace (this leaves $\mathcal{H}$ invariant). 
     
-    Because $F_f(g)$ is diagonal in $\{\ket{c}\}$ with entries $\omega^{\Tr\, caf(x)}$, we can rewrite the inner product trace:
-    \[
-        \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-\Tr\, caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
-    \]
-    where $\ket{v_c} = V\ket{c} \in \mathcal{H}^\prime$.
-    Taking the expectation over $g = (x, a)$ and taking the real part, condition Equation~\ref{eq:inner1} becomes:
-    \begin{equation}
-        \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
-    \end{equation}
-
-    A basis for $L(G, \mathcal{H})$ is given by $\{\chi \ket{c}\}_{\chi\in\hat{G}, c\in \FF_q^\times}$. By \propref{prop:group_characaters}, the characters are given by
-    \[
-    \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a).
-    \]
-    The regular representation $R(g)$ acts on $L(G, \mathcal{H})$ so it can be decomposed as 
-    \be\label{eq:reg_repr_decomp}
-    R(g) = \sum_{\alpha, k} \chi_{\alpha, k}(g) P_{\alpha, k},
-    \ee
-    where $P_{\alpha, k} = \ket{\chi_{\alpha, k}}\bra{\chi_{\alpha, k}} \otimes \I_{\mathcal{H}}$ projects onto the character function subspace (this leaves $\mathcal{H}$ invariant). 
+%     Substituting this into the matrix element for $v_c$, we obtain:
+%     \[
+%         \langle v_c, R(g) v_c \rangle = \sum_{\alpha, k} \chi_{\alpha, k}(g) \langle v_c, P_{\alpha, k} v_c \rangle.
+%     \]
+%     Let $p_{c, \alpha, k} := \langle v_c, P_{\alpha, k} v_c \rangle$. As $P_{\alpha, k}$ is a projector, then 
+%     \be
+%     p_{c, \alpha, k} = \langle v_c \ket{\chi_{\alpha, k}}\bra{\chi_{\alpha, k}} \otimes \I_{\mathcal{H}}\ket{v_c} \geq 0.
+%     \ee
     
-    Substituting this into the matrix element for $v_c$, we obtain:
-    \[
-        \langle v_c, R(g) v_c \rangle = \sum_{\alpha, k} \chi_{\alpha, k}(g) \langle v_c, P_{\alpha, k} v_c \rangle.
-    \]
-    Let $p_{c, \alpha, k} := \langle v_c, P_{\alpha, k} v_c \rangle$. As $P_{\alpha, k}$ is a projector, then 
-    \be
-    p_{c, \alpha, k} = \langle v_c \ket{\chi_{\alpha, k}}\bra{\chi_{\alpha, k}} \otimes \I_{\mathcal{H}}\ket{v_c} \geq 0.
-    \ee
+%     Since $V$ is an isometry $V^* V = \I_{\mathcal{H}}$, we have $\bra{c} V^* V \ket{c} = \inner{c}{c}_{\mathcal{H}} = 1$. 
+%     Equivalently, we have $\inner{v_c}{v_c}_{L(G, \mathcal{H})} = 1$. 
+%     Since $\sum P_{\alpha, k} = I_{L(G,H)}$, it follows that $p_{c, \alpha, k}$ is a valid probability distribution over the characters,
+%     \be
+%     \sum_{\alpha, k} p_{c, \alpha, k} = 1, \quad \forall c \in \FF_q^\times.
+%     \ee
+
+%     Substituting the spectral decomposition Equation~\ref{eq:reg_repr_decomp} back into Equation~\ref{eq:expanded}, we get:
+%     \[
+%         \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \chi_{\alpha, k}(x, a) \right] \right) \ge 1 - \epsilon.
+%     \]
+%     This is a convex combination (a weighted average) of real values less than $1$. Because the average is at least $1 - \epsilon$, there must exist at least one specific configuration $(c^*, \alpha^*, k^*)$ with $c^* \neq 0$ such that its individual value satisfies:
+%     \begin{equation}
+%         \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, c^*af(x)} \omega^{\Tr \langle \alpha^*, ax \rangle} \psi_{k^*}(a) \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
+%     \end{equation}
+
+%     Because $c^* \in \FF_q^\times$ is invertible, we define a specific linear function $\ell(x) := \langle (c^*)^{-1} \alpha^*, x \rangle$. Notice that $\langle \alpha^*, ax \rangle = c^* a \ell(x)$. We can rewrite the argument of the expectation in Equation~\ref{eq:dominant} as:
+%     \[
+%         E^* := \EE_{x} \left[ \EE_{a} \left[ \omega^{\Tr\, c^* a (\ell(x) - f(x))} \psi_{k^*}(a) \right] \right].
+%     \]
+
+%     For the rest of this proof, without using specific form of $p_{c, \alpha, k}$, we consider two cases: $k^*=0$ and $k^* \neq 0$. Define $z(x) = c^*(\ell(x) - f(x))$.
+
+%     \begin{enumerate}
+%         \item Consider $k^*=0$ so that $\psi_0(a) = 1$, the inner expectation over $a \in \FF_q^\times$ for a fixed $x$:
+%     \be
+%     \EE_{a \in \in \FF_q^\times}\omega^{\Tr\, c^* a (\ell(x) - f(x))} = 
+%     \begin{cases}
+%         1, \quad z(x) = 0, \\
+%         - \frac{1}{q-1}, \quad z(x) \neq 0,
+%     \end{cases}
+%     \ee
+%     where in the second case we have again used average of roots of unity is $\sum_{b \in \in \FF_q^\times} \omega^{\Tr b} +1 = 0$.
+
+%     Evaluating the outer expectation over $x$ and recall the definition of hamming distance 
+%     \be
+%     \delta_\alpha := \Pr_x[f(x) \ne \ell_\alpha(x)],
+%     \ee
+%     we find:
+%     \[
+%         \Re E^* = E^* = 1 \cdot (1 - \delta(f, \ell)) + \left( \frac{-1}{q-1} \right) \cdot \delta(f, \ell) = 1 - \delta(f, \ell) \left( 1 + \frac{1}{q-1} \right) = 1 - \delta(f, \ell) \left( \frac{q}{q-1} \right).
+%     \]
+%     Applying our bound from Equation~\ref{eq:dominant}, we have:
+%     \[
+%         1 - \delta(f, \ell) \left( \frac{q}{q-1} \right) \ge 1 - \epsilon.
+%     \]
+%     Rearranging yields the final result:
+%     \[
+%         \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
+%     \]
+
+%     \item Consider $k^* \neq 0$, then by \propref{prop:group_characaters} we have $\psi_k(a) = e^{\frac{i 2 \pi m k}{q-1}}$ and $a=g_0^m$ for a fixed multiplicative generator $g_0\in \FF_q^\times$. Note that averaging over $\psi_k(a)$ we have
+%     \be\label{eq: averaging_psi}
+%     \EE_{a \in \FF_q^\times} \psi_k(a) = \frac{1}{q-1} \sum_{m=0}^{q-2} e^{\frac{i 2 \pi m k}{q-1}} = 0.
+%     \ee
+%     The average expectation over $a \in \FF_q^\times$ for a fixed $x$ gives:
+%     \be
+%     \EE_{a \in \in \FF_q^\times}\omega^{\Tr \, c^* a (\ell(x) - f(x))}  \psi_{k^*}(a) = 
+%     \begin{cases}
+%         0, \quad z(x) = 0, \\
+%         \frac{1}{q-1} \sum_{a \in \in \FF_q^\times} \omega^{\Tr a z(x)}\psi_{k^*}(a), \quad z(x) \neq 0.
+%     \end{cases}
+%     \ee
+%     In the second case, let $b = a z(x)$ so that
+%     \begin{align}
+%         \frac{1}{q-1} \sum_{a \in \in \FF_q^\times} \omega^{\Tr\, a z(x)}\psi_{k^*}(a) &= \frac{1}{q-1} \sum_{b \in \in \FF_q^\times} \omega^{\Tr b}\psi_{k^*}(z^{-1}b), \nonumber \\
+%         & =  \frac{\psi_{k^*}(z^{-1})}{q-1} \sum_{b \in \in \FF_q^\times} \omega^{\Tr b}\psi_{k^*}(b).
+%     \end{align}
+%     It turns out the summation is a known quantitiy called \textit{the Gauss sum}
+%     \be
+%     \mathcal{G}(\psi_{k^*}) = \sum_{b \in \in \FF_q^\times} \omega^{\Tr b}\psi_{k^*}(b).
+%     \ee
+%     Is it believed that there is no analytic expression for $\mathcal{G}$ but it is known that
+%     \be\label{eq:gauss_sum_mag}
+%     \abs{\mathcal{G}(\psi_{k^*})} = \sqrt{q}
+%     \ee
+
+%     Evaluating the outer expectation over $x$ and recall the definition of hamming distance gives
+%     \[
+%     \Re E^* = 0 \cdot (1 - \delta(f, \ell)) + \Re \left( \frac{\psi_{k^*}(z^{-1})}{q-1} \mathcal{G}(\psi_{k^*})\right) \cdot \delta(f, \ell) .
+%     \]
+%     Therefore we have
+%     \[
+%     \Re E^* = \Re \left( \frac{\psi_{k^*}(z^{-1})}{q-1} \mathcal{G}(\psi_{k^*})\right) \delta(f, \ell) \leq \frac{\abs{\mathcal{G}(\psi_{k^*})}}{q-1} = \frac{\sqrt{q}}{q-1}.
+%     \]
+%     On the other hand, from Equation~\ref{eq:dominant} we have
+%     \[
+%     \Re E^* \geq 1- \epsilon.
+%     \]
+
+%     This is a contradiction to the existence of $k^*$ if 
+%     \be\label{eq:epsilon_bound}
+%     \frac{\sqrt{q}}{q-1} < 1- \epsilon.
+%     \ee
+%     Then if we have a good test outcome such that Equation~\ref{eq:epsilon_bound} is satisfied, then we only have a contribution from $k^*=0$, where we have already achieved the bound.
+%     \end{enumerate}
     
-    Since $V$ is an isometry $V^* V = \I_{\mathcal{H}}$, we have $\bra{c} V^* V \ket{c} = \inner{c}{c}_{\mathcal{H}} = 1$. 
-    Equivalently, we have $\inner{v_c}{v_c}_{L(G, \mathcal{H})} = 1$. 
-    Since $\sum P_{\alpha, k} = I_{L(G,H)}$, it follows that $p_{c, \alpha, k}$ is a valid probability distribution over the characters,
-    \be
-    \sum_{\alpha, k} p_{c, \alpha, k} = 1, \quad \forall c \in \FF_q^\times.
-    \ee
+% \end{proof}
 
-    Substituting the spectral decomposition Equation~\ref{eq:reg_repr_decomp} back into Equation~\ref{eq:expanded}, we get:
-    \[
-        \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \chi_{\alpha, k}(x, a) \right] \right) \ge 1 - \epsilon.
-    \]
-    This is a convex combination (a weighted average) of real values less than $1$. Because the average is at least $1 - \epsilon$, there must exist at least one specific configuration $(c^*, \alpha^*, k^*)$ with $c^* \neq 0$ such that its individual value satisfies:
-    \begin{equation}
-        \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, c^*af(x)} \omega^{\Tr \langle \alpha^*, ax \rangle} \psi_{k^*}(a) \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
-    \end{equation}
-
-    Because $c^* \in \FF_q^\times$ is invertible, we define a specific linear function $\ell(x) := \langle (c^*)^{-1} \alpha^*, x \rangle$. Notice that $\langle \alpha^*, ax \rangle = c^* a \ell(x)$. We can rewrite the argument of the expectation in Equation~\ref{eq:dominant} as:
-    \[
-        E^* := \EE_{x} \left[ \EE_{a} \left[ \omega^{\Tr\, c^* a (\ell(x) - f(x))} \psi_{k^*}(a) \right] \right].
-    \]
-
-    For the rest of this proof, without using specific form of $p_{c, \alpha, k}$, we consider two cases: $k^*=0$ and $k^* \neq 0$. Define $z(x) = c^*(\ell(x) - f(x))$.
-
-    \begin{enumerate}
-        \item Consider $k^*=0$ so that $\psi_0(a) = 1$, the inner expectation over $a \in \FF_q^\times$ for a fixed $x$:
-    \be
-    \EE_{a \in \in \FF_q^\times}\omega^{\Tr\, c^* a (\ell(x) - f(x))} = 
-    \begin{cases}
-        1, \quad z(x) = 0, \\
-        - \frac{1}{q-1}, \quad z(x) \neq 0,
-    \end{cases}
-    \ee
-    where in the second case we have again used average of roots of unity is $\sum_{b \in \in \FF_q^\times} \omega^{\Tr b} +1 = 0$.
-
-    Evaluating the outer expectation over $x$ and recall the definition of hamming distance 
-    \be
-    \delta_\alpha := \Pr_x[f(x) \ne \ell_\alpha(x)],
-    \ee
-    we find:
-    \[
-        \Re E^* = E^* = 1 \cdot (1 - \delta(f, \ell)) + \left( \frac{-1}{q-1} \right) \cdot \delta(f, \ell) = 1 - \delta(f, \ell) \left( 1 + \frac{1}{q-1} \right) = 1 - \delta(f, \ell) \left( \frac{q}{q-1} \right).
-    \]
-    Applying our bound from Equation~\ref{eq:dominant}, we have:
-    \[
-        1 - \delta(f, \ell) \left( \frac{q}{q-1} \right) \ge 1 - \epsilon.
-    \]
-    Rearranging yields the final result:
-    \[
-        \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
-    \]
-
-    \item Consider $k^* \neq 0$, then by \propref{prop:group_characaters} we have $\psi_k(a) = e^{\frac{i 2 \pi m k}{q-1}}$ and $a=g_0^m$ for a fixed multiplicative generator $g_0\in \FF_q^\times$. Note that averaging over $\psi_k(a)$ we have
-    \be\label{eq: averaging_psi}
-    \EE_{a \in \FF_q^\times} \psi_k(a) = \frac{1}{q-1} \sum_{m=0}^{q-2} e^{\frac{i 2 \pi m k}{q-1}} = 0.
-    \ee
-    The average expectation over $a \in \FF_q^\times$ for a fixed $x$ gives:
-    \be
-    \EE_{a \in \in \FF_q^\times}\omega^{\Tr \, c^* a (\ell(x) - f(x))}  \psi_{k^*}(a) = 
-    \begin{cases}
-        0, \quad z(x) = 0, \\
-        \frac{1}{q-1} \sum_{a \in \in \FF_q^\times} \omega^{\Tr a z(x)}\psi_{k^*}(a), \quad z(x) \neq 0.
-    \end{cases}
-    \ee
-    In the second case, let $b = a z(x)$ so that
-    \begin{align}
-        \frac{1}{q-1} \sum_{a \in \in \FF_q^\times} \omega^{\Tr\, a z(x)}\psi_{k^*}(a) &= \frac{1}{q-1} \sum_{b \in \in \FF_q^\times} \omega^{\Tr b}\psi_{k^*}(z^{-1}b), \nonumber \\
-        & =  \frac{\psi_{k^*}(z^{-1})}{q-1} \sum_{b \in \in \FF_q^\times} \omega^{\Tr b}\psi_{k^*}(b).
-    \end{align}
-    It turns out the summation is a known quantitiy called \textit{the Gauss sum}
-    \be
-    \mathcal{G}(\psi_{k^*}) = \sum_{b \in \in \FF_q^\times} \omega^{\Tr b}\psi_{k^*}(b).
-    \ee
-    Is it believed that there is no analytic expression for $\mathcal{G}$ but it is known that
-    \be\label{eq:gauss_sum_mag}
-    \abs{\mathcal{G}(\psi_{k^*})} = \sqrt{q}
-    \ee
-
-    Evaluating the outer expectation over $x$ and recall the definition of hamming distance gives
-    \[
-    \Re E^* = 0 \cdot (1 - \delta(f, \ell)) + \Re \left( \frac{\psi_{k^*}(z^{-1})}{q-1} \mathcal{G}(\psi_{k^*})\right) \cdot \delta(f, \ell) .
-    \]
-    Therefore we have
-    \[
-    \Re E^* = \Re \left( \frac{\psi_{k^*}(z^{-1})}{q-1} \mathcal{G}(\psi_{k^*})\right) \delta(f, \ell) \leq \frac{\abs{\mathcal{G}(\psi_{k^*})}}{q-1} = \frac{\sqrt{q}}{q-1}.
-    \]
-    On the other hand, from Equation~\ref{eq:dominant} we have
-    \[
-    \Re E^* \geq 1- \epsilon.
-    \]
-
-    This is a contradiction to the existence of $k^*$ if 
-    \be\label{eq:epsilon_bound}
-    \frac{\sqrt{q}}{q-1} < 1- \epsilon.
-    \ee
-    Then if we have a good test outcome such that Equation~\ref{eq:epsilon_bound} is satisfied, then we only have a contribution from $k^*=0$, where we have already achieved the bound.
-    \end{enumerate}
-    
-\end{proof}
-
-The above bound is tight assuming we pass the test with high probability such that $\epsilon < 1 - \frac{\sqrt{q}}{q-1} $. Next, we try to give a proof that is unconditional, using Fourier coefficients. 
+% The above bound is tight assuming we pass the test with high probability such that $\epsilon < 1 - \frac{\sqrt{q}}{q-1} $. Next, we try to give a proof that is unconditional, using Fourier coefficients. 
 
 First let us write down statements about Fourier coefficients of $F_f$, which we will use in the proof.
 
-\begin{proposition}[Fourier coefficient of $F_f$]\label{prop:Ff_fourier}
+\begin{proposition}[Fourier coefficient of $F_f$]\label{prop:Ff_fourier}\uses{def:Flift, prop:group_characaters}\lean{BlrPcp.gFourierCoeff_factor}\leanok
     Let the matrix lift $F_f : G \to U(\cc^{q-1})$ be defined by the diagonal matrix
 \begin{equation*}
 F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
@@ -408,180 +412,268 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 \end{proof}
 
 
-\begin{lemma}[Gowers-Hatami to linearity (Convex character Fourier hybrid)] \label{lem:gh_linearity_3}
+% \begin{lemma}[Gowers-Hatami to linearity (Convex character Fourier hybrid)] \label{lem:gh_linearity_2}
+% Suppose $F_f: G \to U(\cc^{q-1})$ defined in Equation~\ref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in Equation~\ref{eq:star}. 
+% Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
+% \be\label{eq:GH_linear_bound}
+%     \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
+% \ee
+% \end{lemma}
+
+% \begin{proof}
+
+%     By Gowers-Hatami theorem, we have an isometry $V: \mathcal{H} \to \mathcal{H}^\prime$ and an exact representation $R: G \to \End(\mathcal{H}^\prime)$, where the Hilbert space $\mathcal{H}\cong \cc^{q-1}$ and the space $R$ acts on $\mathcal{H}^\prime = L(G, \mathcal{H})$
+%     \begin{equation}
+%     \EE_{g \in G} \Re \langle F_f(g), V^* R(g) V \rangle_\sigma \ge 1 - \epsilon. \label{eq:inner1}
+% \end{equation}
+%     Let $\{ |c\rangle \}_{c \in \FF_q^\times}$ be the orthonormal basis for $\mathcal{H}$, and the set of characters $\{\chi\}_{\chi\in\hat{G}}$ be an orthonormal basis for $L(G, \cc)$. 
+    
+%     % Since $V$ is an isometry, the vectors $\{v_c := V|c\rangle\}$ form an orthonormal set of $q-1$ basis in $L(G, \mathcal{H})$. 
+    
+%     Because $F_f(g)$ is diagonal in $\{\ket{c}\}$ with entries $\omega^{\Tr\, caf(x)}$, we can rewrite the inner product trace:
+%     \[
+%         \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-\Tr\, caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
+%     \]
+%     where $\ket{v_c} = V\ket{c} \in \mathcal{H}^\prime$.
+%     Taking the expectation over $g = (x, a)$ and taking the real part, condition Equation~\ref{eq:inner1} becomes:
+%     \begin{equation}
+%         \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
+%     \end{equation}
+
+%     A basis for $L(G, \mathcal{H})$ is given by $\{\chi \ket{c}\}_{\chi\in\hat{G}, c\in \FF_q^\times}$. By \propref{prop:group_characaters}, the characters are given by
+%     \[
+%     \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a).
+%     \]
+
+%     Moreover, the Fourier coefficients of $F_f$ are
+%     \begin{align}
+%         \hat{F}_f(\chi_{\alpha, k}) 
+%         & = \sum_{c \in \FF_q^\times } \EE_{x, a} \omega^{\Tr\, caf(x)} \bar{\chi}_{\alpha, k}(x, a) , \nonumber \\
+%         & = \sum_{c \in \FF_q^\times }\EE_{x,a} \left[ \omega^{\Tr\, a(cf(x) - \langle \alpha, x \rangle)} \overline{\psi_k(a)} \right] \ket{c}\bra{c}.
+%     \end{align}
+    
+%     The regular representation $R(g)$ acts on $L(G, \mathcal{H})$ so it can be decomposed as 
+%     \be\label{eq:reg_repr_decomp}
+%     R(g) = \sum_{\alpha, k} \chi_{\alpha, k}(g) P_{\alpha, k},
+%     \ee
+%     where $P_{\alpha, k} = \ket{\chi_{\alpha, k}}\bra{\chi_{\alpha, k}} \otimes \I_{\mathcal{H}}$ projects onto the character function subspace (this leaves $\mathcal{H}$ invariant). 
+    
+%     Substituting this into the matrix element for $v_c$, we obtain:
+%     \[
+%         \langle v_c, R(g) v_c \rangle = \sum_{\alpha, k} \chi_{\alpha, k}(g) \langle v_c, P_{\alpha, k} v_c \rangle.
+%     \]
+%     Let $p_{c, \alpha, k} := \langle v_c, P_{\alpha, k} v_c \rangle$. As $P_{\alpha, k}$ is a projector, then 
+%     \be
+%     p_{c, \alpha, k} = \langle v_c \ket{\chi_{\alpha, k}}\bra{\chi_{\alpha, k}} \otimes \I_{\mathcal{H}}\ket{v_c} \geq 0.
+%     \ee
+%     Let the isometry be given by $V\ket{c} = [F_f(g)]_{c}$, then the matrix element is given by the Fourier coefficients
+%     \be
+%     p_{c, \alpha,k} = \abs{[\hat{F}_f(\chi_{\alpha, k})]_{cc}}^2.
+%     \ee
+%     By \propref{prop:Ff_fourier}, let $\alpha = c \beta$, we can show
+%     \be
+%     p_{c, c\beta,k} = \abs{\psi_k(c) \nu_k(\beta)}^2 = \abs{\nu_k(\beta)}^2,
+%     \ee
+%     where 
+%     \[
+%     \nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr\, b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
+%     \]
+%     is defined in Equation~\ref{def:nu_k}.   
+    
+%     Since $V$ is an isometry $V^* V = \I_{\mathcal{H}}$, we have $\bra{c} V^* V \ket{c} = \inner{c}{c}_{\mathcal{H}} = 1$. 
+%     Equivalently, we have $\inner{v_c}{v_c}_{L(G, \mathcal{H})} = 1$. 
+%     Since $\sum P_{\alpha, k} = I_{L(G,H)}$, it follows that $p_{c, \alpha, k}$ is a valid probability distribution over the characters,
+%     \be
+%     \sum_{\alpha, k} p_{c, \alpha, k} = 1, \quad \forall c \in \FF_q^\times.
+%     \ee
+
+%     Equivalently, we have the relabeled probability
+%     \be
+%     \sum_{\beta, k} p_{c, c \beta, k} = 1, \quad \forall c \in \FF_q^\times.
+%     \ee
+%     Therefore $|\nu_k(\beta)|^2$ is a probability distribution indexed by $(k, \beta)$. Because the $k=0$ probability is a subset, we have
+%     \be\label{eq:nu_less_1}
+%     \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \leq \sum_{\beta \in \FF_q^n} \sum_k |\nu_k(\beta)|^2 = 1.
+%     \ee
+    
+%     Substituting the spectral decomposition Equation~\ref{eq:reg_repr_decomp} back into Equation~\ref{eq:expanded}, we define:
+%     \begin{align*}
+%             E &:= \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right], \\
+%             % & = \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \chi_{\alpha, k}(x, a) \right] \right), \\
+%             & = \frac{1}{q-1} \sum_{c \in \FF_q^\times}\sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \omega^{\Tr\, \inner{\alpha}{ax}} \psi_k(a) \right] \right).
+%     \end{align*}
+
+%     Relabel the sum by $\alpha = c \beta$ and $b=ca$, we have
+%     \[
+%     E =  \frac{1}{q-1} \sum_{c \in \FF_q^\times}\sum_{\beta, k} \abs{\nu_k(\beta)}^2 \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta}{x} - f(x))} \psi_k(c^{-1})\psi_k(b) \right] \right).
+%     \]
+%     Use the indicator function of $\FF_q^\times$:
+%     \[
+%         \sum_{c \in \FF_q^\times} {\psi_k(c^{-1})} = (q-1) \I(k=0)
+%     \] 
+%     we have     
+%     \[
+%     E = \sum_{\beta} \abs{\nu_0(\beta)}^2 \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta}{x} - f(x))} \right] \right).
+%     \]
+    
+%     This is a convex combination (a weighted average) of real values less than $1$ with the weight sum to less than 1 by Equation~\ref{eq:nu_less_1}. Because the average is at least $E \geq 1 - \epsilon$, there must exist at least one specific configuration $\beta^*$ such that its individual value satisfies:
+%     \begin{equation}
+%         E^* := \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta^*}{x} - f(x))} \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
+%     \end{equation}
+    
+%     Let $\ell_\beta(x):=\inner{\beta^*}{x}$, the inner expectation over $b \in \FF_q^\times$ for a fixed $x$:
+%         \be
+%         \EE_{b \in \in \FF_q^\times}\omega^{\Tr\, b z(x)} = 
+%         \begin{cases}
+%             1, \quad z(x) = 0, \\
+%             - \frac{1}{q-1}, \quad z(x) \neq 0,
+%         \end{cases}
+%         \ee
+%         where in the second case we have again used average of roots of unity is $\sum_{b \in \in \FF_q^\times} \omega^{\Tr\, b} +1 = 0$.
+    
+%         Evaluating the outer expectation over $x$ and recall the definition of hamming distance 
+%         \be
+%         \delta(f, \ell_\alpha) := \Pr_x[f(x) \ne \ell_\alpha(x)],
+%         \ee
+%         we find:
+%         \[
+%             E^* = 1 \cdot (1 - \delta(f, \ell_\beta)) + \left( \frac{-1}{q-1} \right) \cdot \delta(f, \ell_\beta) = 1 - \delta(f, \ell_\beta) \left( 1 + \frac{1}{q-1} \right) = 1 - \delta(f, \ell_\beta) \left( \frac{q}{q-1} \right).
+%         \]
+%         Applying our bound from Equation~\ref{eq:dominant}, we have:
+%         \[
+%             1 - \delta(f, \ell_\beta) \left( \frac{q}{q-1} \right) \ge 1 - \epsilon.
+%         \]
+%         Rearranging yields the final result: $\exists \ell_\beta = \inner{\beta^*}{x}$ such that 
+%         \[
+%             \delta(f, \ell_\beta) \le \frac{q-1}{q} \epsilon.
+%         \]
+    
+% \end{proof}
+
+
+\begin{lemma}[Gowers-Hatami to linearity (formalized proof)] \label{lem:gh_linearity_formalized}\uses{prop:group_characaters, prop:Ff_fourier, gowers-hatami-correlation}\lean{BlrPcp.gh_linearity}\leanok
 Suppose $F_f: G \to U(\cc^{q-1})$ defined in Equation~\ref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in Equation~\ref{eq:star}. 
+Implicitly, $\epsilon \leq 1$.
+
 Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
+
 \be\label{eq:GH_linear_bound}
-    \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
+\delta(f, \ell) \le \frac{q-1}{q} \epsilon.
 \ee
 \end{lemma}
 
 \begin{proof}
+Write the diagonal lift as $F_f(g) = \operatorname{diag}_{c \in \FF_q^\times}(\varphi_c(g))$, where the scalar functions are $\varphi_c(x,a) = \omega^{\Tr(caf(x))}$. 
 
-    By Gowers-Hatami theorem, we have an isometry $V: \mathcal{H} \to \mathcal{H}^\prime$ and an exact representation $R: G \to \End(\mathcal{H}^\prime)$, where the Hilbert space $\mathcal{H}\cong \cc^{q-1}$ and the space $R$ acts on $\mathcal{H}^\prime = L(G, \mathcal{H})$
-    \begin{equation}
-    \EE_{g \in G} \Re \langle F_f(g), V^* R(g) V \rangle_\sigma \ge 1 - \epsilon. \label{eq:inner1}
+Because $F_f$ is diagonal and $\sigma = \I/(q-1)$, the trace equates to the average over the diagonal elements. 
+By an intermediate statement in the proof of Gowers-Hatami theorem using Lemma.~\ref{gowers-hatami-correlation}, the compression from an exact representation can be rewritten as a pair-correlation:
+\begin{equation}
+    \mathcal{C}(f) := \EE_{g,h} \Re \inner{F_f(g) F_f(h)}{F_f(gh)}_\sigma \ge 1 - \epsilon. \label{eq:gh_pair_correlation}
 \end{equation}
-    Let $\{ |c\rangle \}_{c \in \FF_q^\times}$ be the orthonormal basis for $\mathcal{H}$, and the set of characters $\{\chi\}_{\chi\in\hat{G}}$ be an orthonormal basis for $L(G, \cc)$. 
-    
-    % Since $V$ is an isometry, the vectors $\{v_c := V|c\rangle\}$ form an orthonormal set of $q-1$ basis in $L(G, \mathcal{H})$. 
-    
-    Because $F_f(g)$ is diagonal in $\{\ket{c}\}$ with entries $\omega^{\Tr\, caf(x)}$, we can rewrite the inner product trace:
-    \[
-        \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-\Tr\, caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
-    \]
-    where $\ket{v_c} = V\ket{c} \in \mathcal{H}^\prime$.
-    Taking the expectation over $g = (x, a)$ and taking the real part, condition Equation~\ref{eq:inner1} becomes:
-    \begin{equation}
-        \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
-    \end{equation}
 
-    A basis for $L(G, \mathcal{H})$ is given by $\{\chi \ket{c}\}_{\chi\in\hat{G}, c\in \FF_q^\times}$. By \propref{prop:group_characaters}, the characters are given by
+
+To connect the operator pair-correlation directly to the cubic trace of the Fourier coefficients, we express the lift matrices using the inverse Fourier transform, $F_f(x) = \sum_{\chi \in \widehat{G}} \hat{F}_f(\chi) \chi(x)$. Substituting this into the inner product definition of the pair-correlation and using the character homomorphism $\chi(gh) = \chi(g)\chi(h)$, we expand the trace:
+\begin{align}
+    \mathcal{C}(f) &= \EE_{g,h \in G} \Re \Tr\left( F_f(g)^* F_f(h)^* F_f(gh) \sigma \right) \nonumber \\
+    &= \Re \Tr \left( \sum_{\chi_1, \chi_2, \chi_3} \hat{F}_f^*(\chi_1) \hat{F}_f^*(\chi_2) \hat{F}_f(\chi_3) \sigma \cdot \EE_g\left[\overline{\chi_1(g)}\chi_3(g)\right] \EE_h\left[\overline{\chi_2(h)}\chi_3(h)\right] \right).
+\end{align}
+By the orthogonality of characters, the expectations over $g$ and $h$ independently vanish unless $\chi_1 = \chi_3$ and $\chi_2 = \chi_3$. This completely collapses the triple sum to a single sum over $\chi$. Because the Fourier coefficients of the diagonal lift $F_f$ are themselves diagonal matrices (and thus commute), we can rearrange the surviving terms to recover the exact cubic trace expression:
+\begin{equation}
+    \mathcal{C}(f) = \Re \sum_{\chi \in \widehat{G}} \Tr\left( \hat{F}_f^*(\chi) \hat{F}_f(\chi) \hat{F}_f^*(\chi) \sigma \right).
+\end{equation}
+
+    Because the Fourier coefficients are all fully diagonal since $F_f$ is diagonal, we expand the product
     \[
-    \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a).
+    \sum_{\chi_{\alpha, k} \in \widehat{G}} \Tr(\hat{F}_f^*(\chi)\hat{F}_f(\chi)\hat{F}_f^*(\chi) \sigma) = \frac{1}{q-1}\sum_{\alpha \in \FF_q^n} \sum_{k=0}^{q-2} \sum_{c \in \FF_q^\times} \left| [\hat{F}_f(\chi_{\alpha, k})]_{cc} \right|^2 \overline{[\hat{F}_f(\chi_{\alpha, k})]_{cc}}.
     \]
 
-    Moreover, the Fourier coefficients of $F_f$ are
-    \begin{align}
-        \hat{F}_f(\chi_{\alpha, k}) 
-        & = \sum_{c \in \FF_q^\times } \EE_{x, a} \omega^{\Tr\, caf(x)} \bar{\chi}_{\alpha, k}(x, a) , \nonumber \\
-        & = \sum_{c \in \FF_q^\times }\EE_{x,a} \left[ \omega^{\Tr\, a(cf(x) - \langle \alpha, x \rangle)} \overline{\psi_k(a)} \right] \ket{c}\bra{c}.
-    \end{align}
-    
-    The regular representation $R(g)$ acts on $L(G, \mathcal{H})$ so it can be decomposed as 
-    \be\label{eq:reg_repr_decomp}
-    R(g) = \sum_{\alpha, k} \chi_{\alpha, k}(g) P_{\alpha, k},
-    \ee
-    where $P_{\alpha, k} = \ket{\chi_{\alpha, k}}\bra{\chi_{\alpha, k}} \otimes \I_{\mathcal{H}}$ projects onto the character function subspace (this leaves $\mathcal{H}$ invariant). 
-    
-    Substituting this into the matrix element for $v_c$, we obtain:
-    \[
-        \langle v_c, R(g) v_c \rangle = \sum_{\alpha, k} \chi_{\alpha, k}(g) \langle v_c, P_{\alpha, k} v_c \rangle.
-    \]
-    Let $p_{c, \alpha, k} := \langle v_c, P_{\alpha, k} v_c \rangle$. As $P_{\alpha, k}$ is a projector, then 
-    \be
-    p_{c, \alpha, k} = \langle v_c \ket{\chi_{\alpha, k}}\bra{\chi_{\alpha, k}} \otimes \I_{\mathcal{H}}\ket{v_c} \geq 0.
-    \ee
-    Let the isometry be given by $V\ket{c} = [F_f(g)]_{c}$, then the matrix element is given by the Fourier coefficients
-    \be
-    p_{c, \alpha,k} = \abs{[\hat{F}_f(\chi_{\alpha, k})]_{cc}}^2.
-    \ee
-    By \propref{prop:Ff_fourier}, let $\alpha = c \beta$, we can show
-    \be
-    p_{c, c\beta,k} = \abs{\psi_k(c) \nu_k(\beta)}^2 = \abs{\nu_k(\beta)}^2,
-    \ee
+    Using the substitution $\alpha = c\beta$, summing over all $\alpha$ is equivalent to summing over all $\beta$. 
+Substituting our factored coefficient from Eq. \eqref{eq:factored_coeff} in \propref{prop:Ff_fourier}: 
+    \begin{align*}
+        \sum_{\chi \in \widehat{G}} \Tr(\hat{F}_f^*(\chi)\hat{F}_f(\chi)\hat{F}_f^*(\chi) \sigma) &= \frac{1}{q-1}\sum_{c \in \FF_q^\times} \sum_{\beta \in \FF_q^n} \sum_{k=0}^{q-2} |\psi_k(c)\nu_k(\beta)|^2 \overline{\psi_k(c)\nu_k(\beta)} \\
+        &= \frac{1}{q-1}\sum_{\beta, k} |\nu_k(\beta)|^2 \overline{\nu_k(\beta)} \sum_{c \in \FF_q^\times} \overline{\psi_k(c)},
+    \end{align*}
     where 
     \[
-    \nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr\, b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
+    \nu_k(\beta) := \EE_{x,b} \left[ \omega^{b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
     \]
-    is defined in Equation~\ref{def:nu_k}.   
-    
-    Since $V$ is an isometry $V^* V = \I_{\mathcal{H}}$, we have $\bra{c} V^* V \ket{c} = \inner{c}{c}_{\mathcal{H}} = 1$. 
-    Equivalently, we have $\inner{v_c}{v_c}_{L(G, \mathcal{H})} = 1$. 
-    Since $\sum P_{\alpha, k} = I_{L(G,H)}$, it follows that $p_{c, \alpha, k}$ is a valid probability distribution over the characters,
-    \be
-    \sum_{\alpha, k} p_{c, \alpha, k} = 1, \quad \forall c \in \FF_q^\times.
-    \ee
+    is defined in \equref{def:nu_k}.
 
-    Equivalently, we have the relabeled probability
-    \be
-    \sum_{\beta, k} p_{c, c \beta, k} = 1, \quad \forall c \in \FF_q^\times.
-    \ee
-    Therefore $|\nu_k(\beta)|^2$ is a probability distribution indexed by $(k, \beta)$. Because the $k=0$ probability is a subset, we have
-    \be\label{eq:nu_less_1}
-    \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \leq \sum_{\beta \in \FF_q^n} \sum_k |\nu_k(\beta)|^2 = 1.
-    \ee
-    
-    Substituting the spectral decomposition Equation~\ref{eq:reg_repr_decomp} back into Equation~\ref{eq:expanded}, we define:
-    \begin{align*}
-            E &:= \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right], \\
-            % & = \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \chi_{\alpha, k}(x, a) \right] \right), \\
-            & = \frac{1}{q-1} \sum_{c \in \FF_q^\times}\sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \omega^{\Tr\, \inner{\alpha}{ax}} \psi_k(a) \right] \right).
-    \end{align*}
-
-    Relabel the sum by $\alpha = c \beta$ and $b=ca$, we have
-    \[
-    E =  \frac{1}{q-1} \sum_{c \in \FF_q^\times}\sum_{\beta, k} \abs{\nu_k(\beta)}^2 \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta}{x} - f(x))} \psi_k(c^{-1})\psi_k(b) \right] \right).
-    \]
     Use the indicator function of $\FF_q^\times$:
     \[
-        \sum_{c \in \FF_q^\times} {\psi_k(c^{-1})} = (q-1) \I(k=0)
+        \sum_{c \in \FF_q^\times} \overline{\psi_k(c)} = (q-1) \I(k=0)
     \] 
-    we have     
-    \[
-    E = \sum_{\beta} \abs{\nu_0(\beta)}^2 \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta}{x} - f(x))} \right] \right).
-    \]
-    
-    This is a convex combination (a weighted average) of real values less than $1$ with the weight sum to less than 1 by Equation~\ref{eq:nu_less_1}. Because the average is at least $E \geq 1 - \epsilon$, there must exist at least one specific configuration $\beta^*$ such that its individual value satisfies:
-    \begin{equation}
-        E^* := \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta^*}{x} - f(x))} \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
-    \end{equation}
-    
-    Let $\ell_\beta(x):=\inner{\beta^*}{x}$, the inner expectation over $b \in \FF_q^\times$ for a fixed $x$:
-        \be
-        \EE_{b \in \in \FF_q^\times}\omega^{\Tr\, b z(x)} = 
-        \begin{cases}
-            1, \quad z(x) = 0, \\
-            - \frac{1}{q-1}, \quad z(x) \neq 0,
-        \end{cases}
-        \ee
-        where in the second case we have again used average of roots of unity is $\sum_{b \in \in \FF_q^\times} \omega^{\Tr\, b} +1 = 0$.
-    
-        Evaluating the outer expectation over $x$ and recall the definition of hamming distance 
-        \be
-        \delta(f, \ell_\alpha) := \Pr_x[f(x) \ne \ell_\alpha(x)],
-        \ee
-        we find:
-        \[
-            E^* = 1 \cdot (1 - \delta(f, \ell_\beta)) + \left( \frac{-1}{q-1} \right) \cdot \delta(f, \ell_\beta) = 1 - \delta(f, \ell_\beta) \left( 1 + \frac{1}{q-1} \right) = 1 - \delta(f, \ell_\beta) \left( \frac{q}{q-1} \right).
-        \]
-        Applying our bound from Equation~\ref{eq:dominant}, we have:
-        \[
-            1 - \delta(f, \ell_\beta) \left( \frac{q}{q-1} \right) \ge 1 - \epsilon.
-        \]
-        Rearranging yields the final result: $\exists \ell_\beta = \inner{\beta^*}{x}$ such that 
-        \[
-            \delta(f, \ell_\beta) \le \frac{q-1}{q} \epsilon.
-        \]
-    
-\end{proof}
-\newpage
-Finally, we are ready to prove the main theorem of BLR linearity test soundness. 
+we have
+    \be\label{eq:triple_F_nu0}
+        \sum_{\chi \in \widehat{G}} \Tr(\hat{F}_f^*(\chi)\hat{F}_f(\chi)\hat{F}_f^*(\chi) \sigma) = \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \overline{\nu_0(\beta)}.
+    \ee
+    Note that $\nu_0(\beta) \in \mathbb{R}$ is related to the hamming distance $\delta(f, \ell_\beta)$ for liner function $\ell_\beta = \inner{f}{\ell_\beta}$ via
+    \be\label{eq:nu0_hamming}
+    \nu_0(\beta) = (1 - \delta(f, \ell_\beta)) - \frac{1}{q-1}\delta(f, \ell_\beta) = 1 - \frac{q}{q-1}\delta(f, \ell_\beta).
+    \ee
+    Moreover, because the Fourier coefficients sum to identity by \equref{eq:F_parseval}, we have
+    \begin{align}
+        1& = \frac{1}{q-1}\sum_{\chi\in\hat{G}}\Tr\left[\hat{F}^*_f(\chi)\hat{F}_f(\chi)\right] , \nonumber \\
+        &= \frac{1}{q-1}\sum_{c \in \FF_q^\times} \sum_{\beta \in \FF_q^n} \sum_k |\psi_k(c)\nu_k(\beta)|^2, \nonumber \\
+        &= \sum_{\beta \in \FF_q^n} \sum_k |\nu_k(\beta)|^2.
+    \end{align}
 
-\setcounter{theorem}{0}
-\begin{theorem}[Soundness of the BLR test]\label{thm:main}
-Let $q$ be prime.
-For every $f : \F_q^n \to \F_q$, $\delta(f, \lin) \le \Pr_{a,b,x,y}\!\bigl[af(x) + bf(y) \ne f(ax + by)\bigr]$.
-\end{theorem}    
+    Therefore $|\nu_k(\beta)|^2$ is a probability distribution indexed by $(k, \beta)$. Because the $k=0$ probability is a subset, we have
+    \be
+    \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \leq \sum_{\beta \in \FF_q^n} \sum_k |\nu_k(\beta)|^2 = 1.
+    \ee
 
-\begin{proof}
-First denote 
-\[
-X := \F_q^n, \qquad A := \F_q^\times, \qquad \omega := e^{2\pi i/p}.
-\]
-Define a group $G$ by the set $X \times A$ with the binary operation
-\begin{equation}
-(x, a) \star (y, b) := \bigl(b^{-1}x + a^{-1}y,\; ab\bigr).
-\end{equation}
+    Let $\beta^*$ be the closest linear function such that
+    \be
+    \nu_0(\beta^*) := \max_{\beta \in \FF_q^n} \nu_0(\beta).
+    \ee
+    Therefore from Gowers-Hatami implication in \equref{eq:gh_pair_correlation} and the simplification of Fourier coefficeints in \equref{eq:triple_F_nu0}, we have the bound
+    \begin{align}
+        1 - \epsilon \leq \Re \sum_{\chi\in\widehat G} \Tr(\hat{F}_f^*(\chi)\hat{F}_f(\chi)\hat{F}_f^*(\chi) \sigma) = \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \overline{\nu_0(\beta)} \leq  \nu_0(\beta^*) \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \leq  \nu_0(\beta^*).
+    \end{align}
 
-    Let $F_f$ be a unitary matrix valued lift $F_f : G \to U(\cc^{q-1})$ by the diagonal matrix
-\begin{equation}
-F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
-\end{equation}
-where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\mathcal{H} \cong \cc^{q-1}$ and the inner product between operators defined by $\inner{A}{B}_\sigma=\Tr(A^* B \sigma)$ and choose $\sigma = \I/(q-1)$. By \lemref{lem:rep-iff-blr}, since $f$ is rejected with probability $\varepsilon$, then $F_f$ is an $(\frac{q}{q-1}\varepsilon,\frac{\I}{q-1})$ approximate representation of $(G, \star)$.
+    Unpack the relation to the hamming distance, we have
+    \be
+    1 - \frac{q}{q-1} \delta(f, \ell_{\beta^*}) \ge 1 - \epsilon \implies \delta(f, \ell_{\beta^*}) \le \frac{q-1}{q}\epsilon.
+    \ee
 
-Then by \lemref{lem:gh_linearity_3}, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
-\be\label{eq:GH_linear_bound}
-    \delta(f, \ell) \le \frac{q-1}{q} \frac{q}{q-1}\varepsilon = \varepsilon.
-\ee
-
-This proves the claim
-\[
-\delta(f, \lin) := \min_{\alpha} \delta(f, \ell_\alpha) \leq \delta(f, \ell) \leq \varepsilon.
-\]
 \end{proof}
 
-Miraculously, the loose factor in $(\epsilon^\prime =\frac{q}{q-1}\varepsilon,\frac{\I}{q-1})$ approximate representation $F_f$ cancels with the tighter factor in 
-\[
-\delta(f, \ell) \le \frac{q-1}{q} \epsilon^\prime.
-\]
+% Finally, we are ready to prove the main theorem of BLR linearity test soundness. 
+
+% \setcounter{theorem}{0}
+% \begin{theorem}[Soundness of the BLR test]\label{thm:main}\uses{lem:rep-iff-blr, lem:gh_linearity_formalized}\lean{BlrPcp.blr_soundness}\leanok
+% Let $q$ be prime. For every $f : \F_q^n \to \F_q$, $\delta(f, \lin) \le \Pr_{a,b,x,y}\!\bigl[af(x) + bf(y) \ne f(ax + by)\bigr]$.
+% \end{theorem}    
+
+% \begin{proof}
+% First denote 
+% \[
+% X := \F_q^n, \qquad A := \F_q^\times, \qquad \omega := e^{2\pi i/p}.
+% \]
+% Define a group $G$ by the set $X \times A$ with the binary operation
+% \begin{equation}
+% (x, a) \star (y, b) := \bigl(b^{-1}x + a^{-1}y,\; ab\bigr).
+% \end{equation}
+
+%     Let $F_f$ be a unitary matrix valued lift $F_f : G \to U(\cc^{q-1})$ by the diagonal matrix
+% \begin{equation}
+% F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
+% \end{equation}
+% where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\mathcal{H} \cong \cc^{q-1}$ and the inner product between operators defined by $\inner{A}{B}_\sigma=\Tr(A^* B \sigma)$ and choose $\sigma = \I/(q-1)$. By \lemref{lem:rep-iff-blr}, since $f$ is rejected with probability $\varepsilon$, then $F_f$ is an $(\frac{q}{q-1}\varepsilon,\frac{\I}{q-1})$ approximate representation of $(G, \star)$.
+
+% Then by \lemref{lem:gh_linearity_formalized}, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
+% \be\label{eq:GH_linear_bound}
+%     \delta(f, \ell) \le \frac{q-1}{q} \frac{q}{q-1}\varepsilon = \varepsilon.
+% \ee
+
+% This proves the claim
+% \[
+% \delta(f, \lin) := \min_{\alpha} \delta(f, \ell_\alpha) \leq \delta(f, \ell) \leq \varepsilon.
+% \]
+% \end{proof}
+
+% Miraculously, the loose factor in $(\epsilon^\prime =\frac{q}{q-1}\varepsilon,\frac{\I}{q-1})$ approximate representation $F_f$ cancels with the tighter factor in 
+% \[
+% \delta(f, \ell) \le \frac{q-1}{q} \epsilon^\prime.
+% \]
