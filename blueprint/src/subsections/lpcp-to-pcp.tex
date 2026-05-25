@@ -1,5 +1,5 @@
 \begin{lemma}[Chernoff bound]
-\label{chernoff-bound}
+\label{chernoff-bound}\leanok
 \lean{LPCPToPCP.chernoff_bound}
 \leanok
   Let $X_1,\dots, X_N$ be independent random variables over $\{0,1\}$, and let $\mu=\EE\left[\sum_{i = 1}^N X_i\right]$. For any $\Delta > 0$ one has
@@ -7,7 +7,7 @@
     \Pr\left[\sum_{i = 1}^N X_i \ge \mu+\Delta\right] \le \exp(-2\Delta^2/N)
   \end{equation*}
 \end{lemma}
-\begin{proof}
+\begin{proof}\leanok
   Write $p_i=\EE[X_i]$, so that $\mu=\sum_{i=1}^N p_i$. We first prove the elementary exponential-moment estimate
   \[
     \EE[\exp(\lambda(X_i-p_i))]\le \exp(\lambda^2/8)
@@ -164,8 +164,9 @@ If \(\distanceToLin{\widehat{\pi}} \geq  1 / 8\), then
 \]
 \end{lemma}
 \begin{proof}\leanok
-By \ref{BLR_basic_soundness_ZMod2}, we know that \(\Pr [V_{\text{BLR}}^{\bar{\pi }}=0]\ge 1/8\). Since \(\overline V\) accepts only when this test
-accepts, its acceptance probability is at most \(7/8\).
+By \ref{BLR_basic_soundness_ZMod2}, the BLR precheck accepts with probability at most
+\(1-\distanceToLin{\widehat{\pi}}\leq 7/8\). Since \(\overline V\) accepts only when this test accepts, its
+acceptance probability is at most \(7/8\).
 \end{proof}
 
 \begin{lemma}

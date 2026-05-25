@@ -116,7 +116,11 @@ of `f` with the character `χ_α`. -/
 noncomputable def fourierCoeff (f : ComplexFn F Idx) (α : Vec F Idx) : Complex :=
   ⟪f, charFn α⟫
 
-section CharacterBasis
+/-! ## Character Basis
+
+This group identifies the additive characters of `F^Idx` with the dot-product
+characters `χ_α` and proves that they form an orthonormal basis.
+-/
 
 omit [Fintype F] [DecidableEq F] [Nonempty Idx] in
 /-- Dot product against a vector supported only at coordinate `i`.
@@ -220,9 +224,11 @@ lemma characters_orthonormal :
       (AddChar.complexBasis (α := Vec F Idx)).span_eq
   exact ⟨horth, hrange ▸ hspan⟩
 
-end CharacterBasis
+/-! ## Hilbert Space Translation
 
-section HilbertSpaceTranslation
+This group transports the character basis into the normalized `PiLp` Hilbert
+space used for finite Fourier analysis.
+-/
 
 omit [DecidableEq F] [Nonempty Idx] in
 /-- The finite vector space `F^Idx` has positive cardinality. -/
@@ -347,9 +353,10 @@ noncomputable def normalizedCharOrthonormalBasis :
   OrthonormalBasis.mk (normalizedCharLp_orthonormal (F := F) (Idx := Idx))
     (normalizedCharLp_span_top (F := F) (Idx := Idx)).ge
 
-end HilbertSpaceTranslation
+/-! ## Fourier Inversion
 
-section FourierInversion
+This group reconstructs a finite-field function from its Fourier coefficients.
+-/
 
 /-- Pointwise Fourier inversion in the character basis `χ_α`. -/
 lemma fourier_inversion (g : ComplexFn F Idx) (x : Vec F Idx) :
@@ -379,9 +386,11 @@ lemma fourier_inversion (g : ComplexFn F Idx) (x : Vec F Idx) :
         exact_mod_cast (Real.sqrt_ne_zero'.2 (Nat.cast_pos.2 card_vec_pos))
       field_simp [hsqrt0]
 
-end FourierInversion
+/-! ## Plancherel And Parseval
 
-section PlancherelParseval
+This group proves the finite-field Plancherel and Parseval identities for the
+Fourier transform.
+-/
 
 omit [Field F] [DecidableEq F] [Nonempty Idx] in
 /-- The inner product is linear in its left argument over finite sums of functions. -/
@@ -441,9 +450,11 @@ lemma parseval_identity (g : ComplexFn F Idx) :
     _ = fnInner g g := fourier_plancherel g g
     _ = (fnNormSq g : ℂ) := fnInner_self_eq_fnNormSq g
 
-end PlancherelParseval
+/-! ## Distance Via Phase Coefficients
 
-section DistanceViaPhaseCoeff
+This group rewrites Hamming distance between scalar functions using Fourier
+coefficients of their additive phase lifts.
+-/
 
 /-- Split a sum over all field elements into the zero term and the sum over nonzero elements. -/
 lemma sum_univ_eq_zero_add_sum_nonzero (h : F → ℂ) :
@@ -629,7 +640,5 @@ lemma distance_formula_via_phase_fourier_coefficients (f g : ScalarFn F Idx) :
         apply Finset.sum_congr rfl
         intro c _
         rw [← fourier_plancherel (phaseLift f c) (phaseLift g c)]
-
-end DistanceViaPhaseCoeff
 
 end BlrPcp

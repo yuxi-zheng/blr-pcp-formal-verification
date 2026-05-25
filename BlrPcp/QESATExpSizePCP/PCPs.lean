@@ -213,10 +213,22 @@ def LPCP {α : Type} (size : α → ℕ) (ε_c ε_s : ENNReal) (F : Type)
 
 namespace OracleUtil
 
+/-- Sample one scalar from the standard (Unit-indexed) randomness oracle.
+This is how the verifier uses the random oracle. -/
+def sampleScalar {ι F : Type} {spec : OracleSpec ι} :
+    OracleComp (randOracleSpec F + spec) F :=
+  liftM (query (spec := randOracleSpec F + spec) (.inl ()))
+
+/-- `sampleScalar` satisfies the query bound `(1, 0)`: it makes one query to the
+randomness oracle and no queries to the proof/auxiliary oracle `spec`. -/
+lemma sampleScalar_queryBound {ι F : Type} {spec : OracleSpec ι} :
+    QueryBound (sampleScalar (F := F) (spec := spec)) 1 0 := by
+  simp [sampleScalar, QueryBound]
+
 /-- Auxiliary recursive sampler for fixed-length vectors.
 Given a computation `query1` that samples one value of type `F`, `sampleVectorAux query1 m`
 runs it `m` times and returns the results as a `Vector F m`. -/
-def sampleVectorAux {ι F : Type} {spec : OracleSpec ι} (query1 : OracleComp spec F) :
+private def sampleVectorAux {ι F : Type} {spec : OracleSpec ι} (query1 : OracleComp spec F) :
     (m : ℕ) → OracleComp spec (Vector F m)
   | 0     => pure #v[]
   | m + 1 => Vector.push <$> sampleVectorAux query1 m <*> query1
@@ -226,21 +238,9 @@ def sampleVector {ι F : Type} {spec : OracleSpec ι} (query1 : OracleComp spec 
     OracleComp spec (Vec F (Fin m)) :=
   (·.get) <$> sampleVectorAux query1 m
 
-/-- Sample one field element from the standard (Unit-indexed) randomness oracle.
-This is how the verifier uses the random oracle. -/
-def sampleField {ι F : Type} {spec : OracleSpec ι} :
-    OracleComp (randOracleSpec F + spec) F :=
-  liftM (query (spec := randOracleSpec F + spec) (.inl ()))
-
-/-- `sampleField` satisfies the query bound `(1, 0)`: it makes one query to the
-randomness oracle and no queries to the proof/auxiliary oracle `spec`. -/
-lemma sampleField_queryBound {ι F : Type} {spec : OracleSpec ι} :
-    QueryBound (sampleField (F := F) (spec := spec)) 1 0 := by
-  simp [sampleField, QueryBound]
-
 /-- Sample `m` independent random field elements using the randomness oracle of `LPCP.fullSpec F N`.
 This is how the verifier uses the random oracle. -/
-def sampleRandomVector (F : Type) [SampleableType F] (m N : ℕ) :
+def sampleRandomVector (F : Type) (m N : ℕ) :
     OracleComp (LPCP.fullSpec F N) (Fin m → F) :=
   sampleVector ((liftM (query (spec := LPCP.fullSpec F N) (.inl ())) :
     OracleComp (LPCP.fullSpec F N) F)) m
@@ -252,7 +252,7 @@ If one execution of `query1` uses at most one randomness query and no proof quer
 running it `m` times through `sampleVectorAux` uses at most `m` randomness queries and no
 proof queries. -/
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma sampleVectorAux_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
+private lemma sampleVectorAux_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι}
     {query1 : OracleComp (randSpec + proofSpec) F}
     (hq : QueryBound query1 1 0) : ∀ m,
@@ -269,7 +269,7 @@ lemma sampleVectorAux_queryBound' {ρ ι F : Type} {randSpec : OracleSpec ρ}
 `LPCP.fullSpec F n`. Sampling an auxiliary vector of length `m` makes at most `m`
 randomness queries and no proof queries. -/
 omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
-lemma sampleVectorAux_queryBound (m n : ℕ) :
+private lemma sampleVectorAux_queryBound (m n : ℕ) :
     QueryBound (sampleVectorAux ((liftM (query (spec := LPCP.fullSpec F n) (.inl ())) :
       OracleComp (LPCP.fullSpec F n) F)) m) m 0 :=
   sampleVectorAux_queryBound' (by simp [QueryBound]) m
@@ -363,7 +363,7 @@ lemma simulateQ_sampleRandomVector (m N : ℕ)
 /- Query-bound lemma for `sampleRandomVector`.
 Sampling a random vector of length `m` from `LPCP.fullSpec F N` uses at most `m`
 randomness queries and no proof queries. -/
-omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] in
+omit [Field F] [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
 lemma sampleRandomVector_queryBound (m N : ℕ) :
     QueryBound (sampleRandomVector F m N) m 0 := by
   simp [sampleRandomVector, sampleVector_queryBound (F := F) m N]
