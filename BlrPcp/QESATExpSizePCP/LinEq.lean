@@ -22,16 +22,19 @@ open scoped Matrix
 variable {F : Type} [Field F] [Fintype F] [DecidableEq F] [Inhabited F]
     [SampleableType F]
 
+/-- The language of satisfiable linear systems `M *ᵥ b = c` over `F`. -/
 abbrev LINEQ (F : Type) (m n : ℕ) [Field F] :
     Set (Matrix (Fin m) (Fin n) F × (Fin m → F)) :=
   { (M, c) | ∃ b, M *ᵥ b = c }
 
 namespace LINEQ
 
+/-- Size proxy for a LINEQ instance: the number of matrix and vector entries times field-bit size. -/
 def size {m n : ℕ} (_ : Matrix (Fin m) (Fin n) F × (Fin m → F)) : ℕ :=
   (m * n + m) * Nat.clog 2 (Fintype.card F)
 
 omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- If `M *ᵥ b = c`, then pairing with a random row-combination vector agrees after transposition. -/
 lemma dotProduct_transpose_mulVec_eq {m n : ℕ}
     (M : Matrix (Fin m) (Fin n) F) (b : Fin n → F) (c r : Fin m → F)
     (h : M *ᵥ b = c) :
@@ -40,15 +43,18 @@ lemma dotProduct_transpose_mulVec_eq {m n : ℕ}
     ← Matrix.dotProduct_mulVec r M b, dotProduct_comm r (M *ᵥ b)]
 
 omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- Split a dot product into the `k`th summand plus the sum over all remaining indices. -/
 lemma dotProduct_eq_add_sum_erase {m : ℕ} (a b : Fin m → F) (k : Fin m) :
     a ⬝ᵥ b = a k * b k + ∑ i ∈ (Finset.univ.erase k), a i * b i := by
   rw [dotProduct]
   exact (Finset.add_sum_erase Finset.univ (fun i => a i * b i) (Finset.mem_univ k)).symm
 
+/-- Replace coordinate `k` by the normalized value of the linear form `a ⬝ᵥ r`. -/
 noncomputable def normalizeLinearForm {m : ℕ} (a : Fin m → F) (k : Fin m) :
     (Fin m → F) → (Fin m → F) :=
   fun r i => if i = k then (a ⬝ᵥ r) / a k else r i
 
+/-- Inverse map for `normalizeLinearForm` when `a k` is nonzero. -/
 noncomputable def normalizeLinearFormInv {m : ℕ} (a : Fin m → F) (k : Fin m) :
     (Fin m → F) → (Fin m → F) :=
   fun r i =>
@@ -58,6 +64,7 @@ noncomputable def normalizeLinearFormInv {m : ℕ} (a : Fin m → F) (k : Fin m)
       r i
 
 omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- `normalizeLinearFormInv` is a left inverse of `normalizeLinearForm` when `a k ≠ 0`. -/
 lemma normalizeLinearForm_left_inv {m : ℕ} {a : Fin m → F} {k : Fin m}
     (hk : a k ≠ 0) :
     Function.LeftInverse (normalizeLinearFormInv (F := F) a k)
@@ -83,6 +90,7 @@ lemma normalizeLinearForm_left_inv {m : ℕ} {a : Fin m → F} {k : Fin m}
   · simp [normalizeLinearForm, normalizeLinearFormInv, hi]
 
 omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- `normalizeLinearFormInv` is a right inverse of `normalizeLinearForm` when `a k ≠ 0`. -/
 lemma normalizeLinearForm_right_inv {m : ℕ} {a : Fin m → F} {k : Fin m}
     (hk : a k ≠ 0) :
     Function.RightInverse (normalizeLinearFormInv (F := F) a k)
@@ -109,6 +117,7 @@ lemma normalizeLinearForm_right_inv {m : ℕ} {a : Fin m → F} {k : Fin m}
   · simp [normalizeLinearForm, normalizeLinearFormInv, hi]
 
 omit [Fintype F] [DecidableEq F] [Inhabited F] [SampleableType F] in
+/-- The normalization map is a bijection whenever the selected coefficient is nonzero. -/
 lemma normalizeLinearForm_bijective {m : ℕ} {a : Fin m → F} {k : Fin m}
     (hk : a k ≠ 0) :
     Function.Bijective (normalizeLinearForm (F := F) a k) :=
@@ -118,6 +127,7 @@ lemma normalizeLinearForm_bijective {m : ℕ} {a : Fin m → F} {k : Fin m}
       normalizeLinearForm_right_inv (F := F) hk⟩
 
 omit [Inhabited F] [SampleableType F] in
+/-- Schwartz-Zippel bound for the probability that a fixed coordinate is zero. -/
 lemma coordinate_zero_card_div_le {m : ℕ} (k : Fin m) :
     (((Finset.univ.filter fun r : Fin m → F => r k = 0).card : NNReal) /
         (Fintype.card F : NNReal) ^ m) ≤
@@ -143,6 +153,7 @@ lemma coordinate_zero_card_div_le {m : ℕ} (k : Fin m) :
         simp
   simpa using (NNRat.cast_mono (K := NNReal) hsz')
 
+/-- A uniform vector has zero `k`th coordinate with probability at most `1 / |F|`. -/
 lemma uniform_coordinate_zero_prob_mul_card_le_one {m : ℕ} (k : Fin m) :
     Pr[fun r : Fin m → F => r k = 0 |
         ($ᵗ (Fin m → F) : ProbComp (Fin m → F))] *
@@ -174,6 +185,7 @@ lemma uniform_coordinate_zero_prob_mul_card_le_one {m : ℕ} (k : Fin m) :
       exact ENNReal.div_mul_cancel hF0 hFtop
     _ ≤ 1 := le_rfl
 
+/-- A nonzero linear form vanishes on a uniform vector with probability at most `1 / |F|`. -/
 lemma linear_form_uniform_prob_mul_card_le_one {m : ℕ} {a : Fin m → F}
     (ha : a ≠ 0) :
     Pr[fun r : Fin m → F => a ⬝ᵥ r = 0 |
@@ -208,6 +220,7 @@ lemma linear_form_uniform_prob_mul_card_le_one {m : ℕ} {a : Fin m → F}
   rw [hprob]
   exact uniform_coordinate_zero_prob_mul_card_le_one (F := F) k
 
+/-- Equivalence between length-`m` vectors and functions from `Fin m`. -/
 def vectorEquiv (F : Type) (m : ℕ) : Vector F m ≃ (Fin m → F) where
   toFun := fun v i => v.get i
   invFun := Vector.ofFn
@@ -219,6 +232,7 @@ def vectorEquiv (F : Type) (m : ℕ) : Vector F m ≃ (Fin m → F) where
     funext i
     simp only [Vector.get, Vector.ofFn, Fin.val_cast, Array.getElem_ofFn, Fin.eta]
 
+/-- The LINEQ LPCP verifier samples `r`, queries the proof at `Mᵀ *ᵥ r`, and checks `π = c ⬝ᵥ r`. -/
 def verifier {m n : ℕ} :
     LPCPVerifier (Matrix (Fin m) (Fin n) F × (Fin m → F)) size F (fun _ => n) :=
   fun x => do
@@ -228,6 +242,7 @@ def verifier {m n : ℕ} :
     pure (y = x.2 ⬝ᵥ r)
 
 omit [Inhabited F] [SampleableType F] in
+/-- The LINEQ verifier uses `m` randomness queries and one proof query. -/
 lemma verifier_queryBound {m n : ℕ}
     (x : Matrix (Fin m) (Fin n) F × (Fin m → F)) :
     QueryBound (verifier (F := F) x) m 1 := by
@@ -247,6 +262,7 @@ lemma verifier_queryBound {m n : ℕ}
 
 end LINEQ
 
+/-- LINEQ has a one-query LPCP with soundness error `1 / |F|`. -/
 theorem LINEQ_LPCP {m n : ℕ} :
     LINEQ m n (F := F) ∈ LPCP (LINEQ.size) 0 (1 / (Fintype.card F)) F
       (fun _ => n) (fun _ => 1) (fun _ => m) := by

@@ -31,6 +31,7 @@ noncomputable def tableFunction {n : ℕ} (πhat : Fin (2 ^ n) → ZMod 2) :
 def truthTableVector (n : ℕ) : Fin (2 ^ n) → (Fin n → ZMod 2) :=
   (finFunctionFinEquiv (m := 2) (n := n)).symm
 
+/-- Decoding the truth-table index of a vector recovers the original vector. -/
 lemma truthTableVector_truthTableIndex (n : ℕ) (v : Fin n → ZMod 2) :
     truthTableVector n (truthTableIndex n v) = v := by
   simp [truthTableVector, truthTableIndex]
@@ -39,6 +40,7 @@ lemma truthTableVector_truthTableIndex (n : ℕ) (v : Fin n → ZMod 2) :
 def encodedProof {n : ℕ} (π : Fin n → ZMod 2) : Fin (2 ^ n) → ZMod 2 :=
   fun i => π ⬝ᵥ truthTableVector n i
 
+/-- The encoded proof answers the truth-table index of `v` with the linear query value. -/
 lemma encodedProof_truthTableIndex {n : ℕ} (π : Fin n → ZMod 2)
     (v : Fin n → ZMod 2) :
     encodedProof π (truthTableIndex n v) = π ⬝ᵥ v := by
@@ -52,6 +54,7 @@ def logFactor (q : ℕ → ℕ) (n : ℕ) : ℕ :=
 def numShifts (q : ℕ → ℕ) (n : ℕ) : ℕ :=
   8 * logFactor q n
 
+/-- The number of sampled shifts is always positive. -/
 lemma numShifts_pos (q : ℕ → ℕ) (n : ℕ) : 0 < numShifts q n := by
   simp [numShifts, logFactor]
 
@@ -59,23 +62,28 @@ lemma numShifts_pos (q : ℕ → ℕ) (n : ℕ) : 0 < numShifts q n := by
 def pluralityZMod2 {t : ℕ} (ys : Fin t → ZMod 2) : ZMod 2 :=
   if Fintype.card { i : Fin t // ys i = 1 } * 2 > t then 1 else 0
 
+/-- The plurality of a nonempty constant `ZMod 2` family is that constant. -/
 lemma pluralityZMod2_const {t : ℕ} (ht : 0 < t) (b : ZMod 2) :
     pluralityZMod2 (fun _ : Fin t => b) = b := by
   fin_cases b
   · simp [pluralityZMod2]
   · simp [pluralityZMod2, ht]
 
-abbrev sampleField {F : Type} {N : ℕ} : OracleComp (PCP.fullSpec F N) F :=
-  OracleUtil.sampleField (spec := proofOracleSpec_fin F N)
+/-- Sample one scalar from the random oracle in the PCP oracle specification. -/
+abbrev sampleScalar {F : Type} {N : ℕ} : OracleComp (PCP.fullSpec F N) F :=
+  OracleUtil.sampleScalar (spec := proofOracleSpec_fin F N)
 
+/-- Sample a vector by sampling each coordinate independently. -/
 def sampleVector (F : Type) (m : ℕ) {N : ℕ} :
     OracleComp (PCP.fullSpec F N) (Fin m → F) :=
-  OracleUtil.sampleVector (sampleField (F := F) (N := N)) m
+  OracleUtil.sampleVector (sampleScalar (F := F) (N := N)) m
 
+/-- Sample `t` independent shifts in `F₂^n`. -/
 def sampleShifts (n t : ℕ) :
     OracleComp (PCP.fullSpec (ZMod 2) (2 ^ n)) (Fin t → Fin n → ZMod 2) :=
   Fin.mOfFn t fun _ => sampleVector (ZMod 2) n
 
+/-- Mapping a computation does not increase its random or proof query bounds. -/
 private lemma queryBound_map {ρ ι α β : Type} {randSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι} {oa : OracleComp (randSpec + proofSpec) α}
     {q r : ℕ} (f : α → β) (hoa : QueryBound oa r q) :
@@ -89,6 +97,7 @@ private lemma queryBound_map {ρ ι α β : Type} {randSpec : OracleSpec ρ}
         | .inl _, (r, q) => (r - 1, q)
         | .inr _, (r, q) => (r, q - 1))).2 hoa
 
+/-- Query bounds add over `Fin.mOfFn` when every coordinate has the same bound. -/
 private lemma queryBound_mOfFn {ρ ι α : Type} {randSpec : OracleSpec ρ}
     {proofSpec : OracleSpec ι} {m r q : ℕ}
     (oa : Fin m → OracleComp (randSpec + proofSpec) α)
@@ -104,10 +113,12 @@ private lemma queryBound_mOfFn {ρ ι α : Type} {randSpec : OracleSpec ρ}
           by
             simpa [QueryBound] using ih (fun i => oa i.succ) fun i => hoa i.succ
 
+/-- Sampling an `m`-vector uses exactly `m` random queries and no proof queries. -/
 lemma sampleVector_queryBound (F : Type) (m : ℕ) {N : ℕ} :
     QueryBound (sampleVector F m (N := N)) m 0 :=
-  OracleUtil.sampleVector_queryBound' OracleUtil.sampleField_queryBound m
+  OracleUtil.sampleVector_queryBound' OracleUtil.sampleScalar_queryBound m
 
+/-- Sampling `t` shifts in `F₂^n` uses `t * n` random queries and no proof queries. -/
 lemma sampleShifts_queryBound (n t : ℕ) :
     QueryBound (sampleShifts n t) (t * n) 0 := by
   simpa [sampleShifts] using
@@ -115,12 +126,14 @@ lemma sampleShifts_queryBound (n t : ℕ) :
       (fun _ : Fin t => sampleVector (ZMod 2) n (N := 2 ^ n))
       (fun _ => sampleVector_queryBound (ZMod 2) n (N := 2 ^ n))
 
-private lemma simulateQ_sampleField {F : Type}
+/-- Simulating the scalar sampler gives the uniform distribution on the field. -/
+private lemma simulateQ_sampleScalar {F : Type}
     [Nonempty F] [Fintype F] [SampleableType F]
     {N : ℕ} (impl : QueryImpl (proofOracleSpec_fin F N) ProbComp) :
-    simulateQ ((randOracle F).impl + impl) (sampleField (F := F) (N := N)) = $ᵗ F := by
-  simp [OracleUtil.sampleField, randOracle]
+    simulateQ ((randOracle F).impl + impl) (sampleScalar (F := F) (N := N)) = $ᵗ F := by
+  simp [OracleUtil.sampleScalar, randOracle]
 
+/-- Simulated coordinatewise vector sampling is uniform over all vectors. -/
 @[simp]
 lemma probOutput_simulateQ_sampleVector {F : Type}
     [Nonempty F] [DecidableEq F] [Fintype F] [SampleableType F]
@@ -130,10 +143,11 @@ lemma probOutput_simulateQ_sampleVector {F : Type}
       (Fintype.card (Fin m → F) : ℝ≥0∞)⁻¹ := by
   haveI : Inhabited F := Classical.inhabited_of_nonempty ‹_›
   rw [show sampleVector F m (N := N) =
-        OracleUtil.sampleVector (sampleField (F := F) (N := N)) m from rfl]
-  rw [OracleUtil.simulateQ_sampleVector' _ (simulateQ_sampleField impl) m]
+        OracleUtil.sampleVector (sampleScalar (F := F) (N := N)) m from rfl]
+  rw [OracleUtil.simulateQ_sampleVector' _ (simulateQ_sampleScalar impl) m]
   exact probOutput_uniformSample (α := Fin m → F) x
 
+/-- Event probabilities under the vector sampler expand as a finite uniform sum. -/
 lemma probEvent_simulateQ_sampleVector_eq_sum {F : Type}
     [Nonempty F] [DecidableEq F] [Fintype F] [SampleableType F]
     {m N : ℕ} (impl : QueryImpl (proofOracleSpec_fin F N) ProbComp)
@@ -151,9 +165,11 @@ lemma probEvent_simulateQ_sampleVector_eq_sum {F : Type}
 noncomputable def bernoulliSumMean {N : ℕ} (X : Fin N → ProbComp Bool) : ℝ :=
   ∑ i : Fin N, (Pr[= true | X i]).toReal
 
+/-- The two masses of a Boolean PMF sum to one. -/
 private lemma pmf_bool_sum (p : PMF Bool) : p true + p false = 1 := by
   simpa [Fintype.sum_bool] using (PMF.tsum_coe p)
 
+/-- The product PMF for independent Boolean coordinates. -/
 private noncomputable def piBoolPMF {N : ℕ} (p : Fin N → PMF Bool) :
     PMF (Fin N → Bool) :=
   PMF.ofFintype (fun xs => ∏ i : Fin N, p i (xs i)) (by
@@ -166,6 +182,7 @@ private noncomputable def piBoolPMF {N : ℕ} (p : Fin N → PMF Bool) :
                 (g := fun i b => p i b))
       _ = 1 := by simp [pmf_bool_sum])
 
+/-- Mapping a PMF through `some` assigns `some x` the original mass of `x`. -/
 private lemma pmf_map_some_apply_some {α : Type} (p : PMF α) (x : α) :
     (some <$> p) (some x) = p x := by
   rw [PMF.monad_map_eq_map, PMF.map_apply]
@@ -175,12 +192,14 @@ private lemma pmf_map_some_apply_some {α : Type} (p : PMF α) (x : α) :
     have hxb : x ≠ b := fun h => hb h.symm
     simp [hxb]
 
+/-- `probOutput` agrees with the underlying PMF evaluation. -/
 private lemma probOutput_eq_toPMF {α : Type} (mx : ProbComp α) (x : α) :
     Pr[= x | mx] = (HasEvalPMF.toPMF mx) x := by
   rw [probOutput_def, HasEvalPMF.evalDist_of_hasEvalPMF_def]
   rw [SPMF.apply_eq_toPMF_some, SPMF.toPMF_liftM]
   exact pmf_map_some_apply_some (HasEvalPMF.toPMF mx) x
 
+/-- `probEvent` agrees with the PMF measure of the event. -/
 private lemma probEvent_eq_toPMF_toMeasure {α : Type} [MeasurableSpace α]
     [MeasurableSingletonClass α] (mx : ProbComp α) (p : α → Prop)
     (hp : MeasurableSet {x | p x}) :
@@ -191,6 +210,7 @@ private lemma probEvent_eq_toPMF_toMeasure {α : Type} [MeasurableSpace α]
   intro x
   exact congrArg ({x | p x}.indicator · x) (funext fun y => probOutput_eq_toPMF mx y)
 
+/-- The PMF of a `Fin.cons` map is the tail mass when the head matches. -/
 private lemma pmf_map_fin_cons_apply {n : ℕ} (p : PMF (Fin n → Bool)) (b : Bool)
     (xs : Fin (n + 1) → Bool) :
     (PMF.map (fun y : Fin n → Bool => Fin.cons b y) p) xs =
@@ -218,6 +238,7 @@ private lemma pmf_map_fin_cons_apply {n : ℕ} (p : PMF (Fin n → Bool)) (b : B
     intro hxy
     exact h0 (by simp [hxy])
 
+/-- The PMF of independent Boolean monadic sampling is the explicit product PMF. -/
 private lemma toPMF_mOfFn_bool {N : ℕ} (X : Fin N → ProbComp Bool) :
     HasEvalPMF.toPMF (Fin.mOfFn N X) = piBoolPMF (fun i => HasEvalPMF.toPMF (X i)) := by
   induction N with
@@ -235,6 +256,7 @@ private lemma toPMF_mOfFn_bool {N : ℕ} (X : Fin N → ProbComp Bool) :
       rw [Fin.prod_univ_succ]
       cases hxs0 : xs 0 <;> simp [piBoolPMF]
 
+/-- The explicit Boolean product PMF induces the product measure. -/
 private lemma piBoolPMF_toMeasure {N : ℕ} (p : Fin N → PMF Bool) :
     (piBoolPMF p).toMeasure = Measure.pi (fun i => (p i).toMeasure) := by
   classical
@@ -244,6 +266,7 @@ private lemma piBoolPMF_toMeasure {N : ℕ} (p : Fin N → PMF Bool) :
   rw [Measure.pi_singleton]
   simp [piBoolPMF]
 
+/-- The expectation of a Boolean coordinate is its probability of being true. -/
 private lemma coordinate_mean {N : ℕ} (X : Fin N → ProbComp Bool) (i : Fin N) :
     ∫ xs : Fin N → Bool, (if xs i then (1 : ℝ) else 0)
       ∂(Measure.pi fun i => (HasEvalPMF.toPMF (X i)).toMeasure) =
@@ -327,6 +350,7 @@ theorem chernoff_bound {N : ℕ} (hN : 0 < N) (X : Fin N → ProbComp Bool)
     exact hHoeff.trans_eq hden
   exact (ENNReal.le_ofReal_iff_toReal_le probEvent_ne_top (Real.exp_pos _).le).2 hreal
 
+/-- If the Boolean mean is at most `t / 4`, the upper tail past `t / 2` is small. -/
 lemma chernoff_half_of_mean_le_quarter {t : ℕ} (ht : 0 < t)
     (X : Fin t → ProbComp Bool)
     (hmean : bernoulliSumMean X ≤ (t : ℝ) / 4) :
@@ -346,9 +370,11 @@ lemma chernoff_half_of_mean_le_quarter {t : ℕ} (ht : 0 < t)
     field_simp [htne]
     ring
 
+/-- The constant `1 / 4` is finite in `ℝ≥0∞`. -/
 private lemma one_quarter_ne_top : (1 / 4 : ℝ≥0∞) ≠ ∞ := by
   exact ENNReal.div_ne_top (by simp) (by norm_num)
 
+/-- Coordinatewise probability at most `1/4` bounds the Bernoulli sum mean by `t/4`. -/
 lemma bernoulliSumMean_le_quarter {t : ℕ} (X : Fin t → ProbComp Bool)
     (hX : ∀ i : Fin t, Pr[= true | X i] ≤ (1 / 4 : ℝ≥0∞)) :
     bernoulliSumMean X ≤ (t : ℝ) / 4 := by
@@ -367,6 +393,7 @@ def truthTableImpl (n : ℕ) :
   | .inl () => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inl ())
   | .inr a => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inr (truthTableIndex n a))
 
+/-- Truth-table simulation preserves the LPCP verifier's query bounds. -/
 lemma queryBound_simulateQ_truthTableImpl {n : ℕ} {α : Type}
     {oa : OracleComp (LPCP.fullSpec (ZMod 2) n) α} {r q : ℕ}
     (hoa : QueryBound oa r q) :
@@ -392,6 +419,7 @@ lemma queryBound_simulateQ_truthTableImpl {n : ℕ} {α : Type}
           rw [QueryBound, OracleComp.isQueryBound_query_bind_iff]
           exact ⟨hoa.1, fun y => ih y (hoa.2 y)⟩
 
+/-- Truth-table simulation against an encoded linear proof matches the original LPCP proof. -/
 lemma simulateQ_truthTableImpl_encodedProof_eq {n : ℕ}
     (π : Fin n → ZMod 2) {α : Type}
     (oa : OracleComp (LPCP.fullSpec (ZMod 2) n) α) :
@@ -416,6 +444,7 @@ lemma simulateQ_truthTableImpl_encodedProof_eq {n : ℕ}
           let ans : ZMod 2 := π ⬝ᵥ a
           exact ih ans
 
+/-- Truth-table simulation against an arbitrary PCP table exposes the induced table function. -/
 lemma simulateQ_truthTableImpl_table_eq {n : ℕ}
     (πhat : Fin (2 ^ n) → ZMod 2) {α : Type}
     (oa : OracleComp (LPCP.fullSpec (ZMod 2) n) α) :
@@ -441,6 +470,7 @@ lemma simulateQ_truthTableImpl_table_eq {n : ℕ}
           let ans : ZMod 2 := tableFunction πhat a
           exact ih ans
 
+/-- The BLR precheck accepts every encoded linear proof with probability one. -/
 lemma blrPrecheck_encodedProof_accepts {n : ℕ} (π : Fin n → ZMod 2) :
     Pr[= true |
       simulateQ ((randOracle (ZMod 2)).impl + (PCP.proofOracle (encodedProof π)).impl)
@@ -449,7 +479,7 @@ lemma blrPrecheck_encodedProof_accepts {n : ℕ} (π : Fin n → ZMod 2) :
     (BLR.basicVerifier (F := ZMod 2) (n := n))]
   by_cases hn : n = 0
   · subst n
-    simp [BLR.basicVerifier, BLR.basicSampleVector, Fin.mOfFn, LPCP.proofOracle]
+    simp [BLR.basicVerifier, BLR.basicSampleVector, LPCP.proofOracle]
   · haveI : Nonempty (Fin n) := ⟨⟨0, Nat.pos_of_ne_zero hn⟩⟩
     have hlin :
         (fun u : Fin n → ZMod 2 => π ⬝ᵥ u) ∈
@@ -471,18 +501,21 @@ def decodedLinearQuery {n t : ℕ}
     pure (y₁ - y₀)
   pure (pluralityZMod2 ys)
 
+/-- The deterministic value returned by plurality correction from a PCP truth table. -/
 def correctedAnswer {n t : ℕ} (πhat : Fin (2 ^ n) → ZMod 2)
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) : ZMod 2 :=
   pluralityZMod2 fun i : Fin t =>
     πhat (truthTableIndex n fun j => a j + shifts i j) -
       πhat (truthTableIndex n (shifts i))
 
+/-- Whether one random shift gives the wrong corrected answer for query `a`. -/
 def localCorrectionBad {n : ℕ} (πhat : Fin (2 ^ n) → ZMod 2)
     (π : Fin n → ZMod 2) (a r : Fin n → ZMod 2) : Bool :=
   decide
     (πhat (truthTableIndex n fun j => a j + r j) -
       πhat (truthTableIndex n r) ≠ π ⬝ᵥ a)
 
+/-- One correction sample for a linear query makes two proof queries. -/
 private lemma decodedLinearQuery_step_queryBound {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) (i : Fin t) :
     QueryBound
@@ -499,6 +532,7 @@ private lemma decodedLinearQuery_step_queryBound {n t : ℕ}
   rw [OracleComp.isQueryBound_query_bind_iff]
   exact ⟨by simp, fun _ => trivial⟩
 
+/-- Decoding a linear query with `t` shifts makes `2 * t` proof queries. -/
 lemma decodedLinearQuery_queryBound {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
     QueryBound (decodedLinearQuery shifts a) 0 (2 * t) := by
@@ -522,6 +556,7 @@ lemma decodedLinearQuery_queryBound {n t : ℕ}
         (fun i => decodedLinearQuery_step_queryBound shifts a i))
   simpa [decodedLinearQuery] using hys
 
+/-- Sequencing a constant pure computation yields the constant function. -/
 private lemma mOfFn_pure_const {M : Type → Type} [Monad M] [LawfulMonad M]
     {α : Type} (k : ℕ) (a : α) :
     (Fin.mOfFn k fun _ => (pure a : M α)) =
@@ -538,6 +573,7 @@ private lemma mOfFn_pure_const {M : Type → Type} [Monad M] [LawfulMonad M]
         cases i using Fin.cases <;> simp
       simp [Fin.mOfFn, ih, hfun]
 
+/-- Sequencing pure coordinate computations yields the original function. -/
 private lemma mOfFn_pure {M : Type → Type} [Monad M] [LawfulMonad M]
     {α : Type} {k : ℕ} (f : Fin k → α) :
     (Fin.mOfFn k fun i => (pure (f i) : M α)) = pure f := by
@@ -556,6 +592,7 @@ private lemma mOfFn_pure {M : Type → Type} [Monad M] [LawfulMonad M]
         cases i using Fin.cases <;> simp
       simp [Fin.mOfFn, htail, hfun]
 
+/-- Simulation commutes with `Fin.mOfFn` for probabilistic oracle implementations. -/
 private lemma simulateQ_mOfFn_prob {ι α : Type} {spec : OracleSpec ι}
     (impl : QueryImpl spec ProbComp) (m : ℕ)
     (oa : Fin m → OracleComp spec α) :
@@ -567,6 +604,7 @@ private lemma simulateQ_mOfFn_prob {ι α : Type} {spec : OracleSpec ι}
   | succ m ih =>
       simp [Fin.mOfFn, simulateQ_bind, ih]
 
+/-- Mapping a function over identical independent samples commutes with `Fin.mOfFn`. -/
 private lemma map_mOfFn_const {α β : Type} (m : ℕ) (oa : ProbComp α) (f : α → β) :
     (fun xs : Fin m → α => fun i => f (xs i)) <$> (Fin.mOfFn m fun _ => oa) =
       Fin.mOfFn m fun _ => f <$> oa := by
@@ -595,6 +633,7 @@ private lemma map_mOfFn_const {α β : Type} (m : ℕ) (oa : ProbComp α) (f : �
       funext i
       cases i using Fin.cases <;> simp
 
+/-- For linear dot products over `ZMod 2`, the shifted difference recovers the query value. -/
 private lemma dotProduct_add_sub_shift {n : ℕ}
     (π a r : Fin n → ZMod 2) :
     π ⬝ᵥ (fun j => a j + r j) - π ⬝ᵥ r = π ⬝ᵥ a := by
@@ -602,6 +641,7 @@ private lemma dotProduct_add_sub_shift {n : ℕ}
   rw [dotProduct_add]
   ring
 
+/-- Decoding against an encoded proof returns the exact LPCP linear query answer. -/
 lemma simulateQ_decodedLinearQuery_encodedProof_eq {n t : ℕ}
     (ht : 0 < t) (π : Fin n → ZMod 2)
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
@@ -614,6 +654,7 @@ lemma simulateQ_decodedLinearQuery_encodedProof_eq {n t : ℕ}
     encodedProof_truthTableIndex, dotProduct_add_sub_shift, mOfFn_pure_const,
     pluralityZMod2_const ht]
 
+/-- Decoding against an arbitrary table returns the deterministic corrected answer. -/
 lemma simulateQ_decodedLinearQuery_table_eq {n t : ℕ}
     (πhat : Fin (2 ^ n) → ZMod 2)
     (shifts : Fin t → Fin n → ZMod 2) (a : Fin n → ZMod 2) :
@@ -631,12 +672,14 @@ def decodedImpl {n t : ℕ}
   | .inl () => query (spec := PCP.fullSpec (ZMod 2) (2 ^ n)) (.inl ())
   | .inr a => decodedLinearQuery shifts a
 
+/-- Probabilistic LPCP oracle implementation induced by a fixed PCP table and shifts. -/
 def correctedImpl {n t : ℕ} (πhat : Fin (2 ^ n) → ZMod 2)
     (shifts : Fin t → Fin n → ZMod 2) :
     QueryImpl (LPCP.fullSpec (ZMod 2) n) ProbComp
   | .inl () => (randOracle (ZMod 2)).impl ()
   | .inr a => pure (correctedAnswer πhat shifts a)
 
+/-- Simulating decoded queries against an encoded proof matches the original LPCP execution. -/
 lemma simulateQ_decodedImpl_encodedProof_eq {n t : ℕ} (ht : 0 < t)
     (π : Fin n → ZMod 2) (shifts : Fin t → Fin n → ZMod 2)
     {α : Type} {oa : OracleComp (LPCP.fullSpec (ZMod 2) n) α} {r q : ℕ}
@@ -666,6 +709,7 @@ lemma simulateQ_decodedImpl_encodedProof_eq {n t : ℕ} (ht : 0 < t)
           let ans : ZMod 2 := π ⬝ᵥ a
           exact ih ans (hoa.2 ans)
 
+/-- Simulating decoded queries against an arbitrary table equals the corrected implementation. -/
 lemma simulateQ_decodedImpl_table_eq {n t : ℕ}
     (πhat : Fin (2 ^ n) → ZMod 2) (shifts : Fin t → Fin n → ZMod 2)
     {α : Type} (oa : OracleComp (LPCP.fullSpec (ZMod 2) n) α) :
@@ -690,6 +734,7 @@ lemma simulateQ_decodedImpl_table_eq {n t : ℕ}
           let ans : ZMod 2 := correctedAnswer πhat shifts a
           exact ih ans
 
+/-- Decoded simulation multiplies the LPCP proof-query bound by `2 * t`. -/
 lemma queryBound_simulateQ_decodedImpl {n t : ℕ}
     (shifts : Fin t → Fin n → ZMod 2) {α : Type}
     {oa : OracleComp (LPCP.fullSpec (ZMod 2) n) α} {r q : ℕ}
@@ -744,6 +789,7 @@ def verifier {α : Type} (size : α → ℕ) (ℓ q : ℕ → ℕ)
     else
       pure false
 
+/-- If a Boolean guard accepts almost surely, binding through it preserves acceptance. -/
 private lemma probOutput_bind_if_true_eq (oa ob : ProbComp Bool)
     (hoa : Pr[= true | oa] = 1) :
     Pr[= true | do
@@ -752,6 +798,7 @@ private lemma probOutput_bind_if_true_eq (oa ob : ProbComp Bool)
   rw [probOutput_bind_eq_tsum, tsum_bool]
   simp [hoa]
 
+/-- Acceptance after a guarded branch is bounded by the guard's acceptance probability. -/
 private lemma probOutput_bind_if_true_le (oa ob : ProbComp Bool) :
     Pr[= true | do
       let ok ← oa
@@ -759,6 +806,7 @@ private lemma probOutput_bind_if_true_le (oa ob : ProbComp Bool) :
   rw [probOutput_bind_eq_tsum, tsum_bool]
   simp
 
+/-- Acceptance after a guarded branch is bounded by the branch's acceptance probability. -/
 private lemma probOutput_bind_if_true_le_right (oa ob : ProbComp Bool) :
     Pr[= true | do
       let ok ← oa
@@ -766,6 +814,7 @@ private lemma probOutput_bind_if_true_le_right (oa ob : ProbComp Bool) :
   rw [probOutput_bind_eq_tsum, tsum_bool]
   simp
 
+/-- Split a bound on a bind into bad-sample probability plus the good-case comparison. -/
 private lemma probOutput_bind_le_bad_add {σ : Type} (ms : ProbComp σ) (bad : σ → Prop)
     (A B : σ → ProbComp Bool)
     (hgood : ∀ s ∈ support ms, ¬ bad s → Pr[= true | A s] ≤ Pr[= true | B s]) :
@@ -798,6 +847,7 @@ private lemma probOutput_bind_le_bad_add {σ : Type} (ms : ProbComp σ) (bad : �
           intro s
           by_cases hb : bad s <;> simp [hb]
 
+/-- The PCP verifier on an encoded proof has the same acceptance probability as the LPCP verifier. -/
 lemma verifier_encodedProof_probOutput_true_eq {α : Type}
     (size : α → ℕ) (ℓ q : ℕ → ℕ)
     (V : LPCPVerifier α size (ZMod 2) ℓ) (x : α)
@@ -825,6 +875,7 @@ lemma verifier_encodedProof_probOutput_true_eq {α : Type}
   rw [probOutput_bind_const]
   simp
 
+/-- Completeness of the LPCP verifier transfers to the constructed PCP verifier. -/
 lemma verifier_completeness {α : Type} (size : α → ℕ) (ε_c : ℝ≥0∞)
     (ℓ q r : ℕ → ℕ) (V : LPCPVerifier α size (ZMod 2) ℓ) (x : α)
     (hQuery : QueryBound (V x) (r (size x)) (q (size x)))
@@ -842,6 +893,7 @@ lemma verifier_completeness {α : Type} (size : α → ℕ) (ε_c : ℝ≥0∞)
   rw [verifier_encodedProof_probOutput_true_eq size ℓ q V x π hQuery]
   exact hπ
 
+/-- The constructed verifier can only accept when the BLR precheck branch accepts. -/
 lemma verifier_accept_le_blrPrecheck_accept {α : Type}
     (size : α → ℕ) (ℓ q : ℕ → ℕ)
     (V : LPCPVerifier α size (ZMod 2) ℓ) (x : α)
@@ -857,12 +909,15 @@ lemma verifier_accept_le_blrPrecheck_accept {α : Type}
   simp only [simulateQ_bind, simulateQ_ite, simulateQ_pure]
   exact probOutput_bind_if_true_le _ _
 
+/-- The constant `7 / 8` is finite in `ℝ≥0∞`. -/
 private lemma seven_eighths_ne_top : (7 / 8 : ℝ≥0∞) ≠ ∞ := by
   exact ENNReal.div_ne_top (by simp) (by norm_num)
 
+/-- The constant `1 / 8` is finite in `ℝ≥0∞`. -/
 private lemma one_eighth_ne_top : (1 / 8 : ℝ≥0∞) ≠ ∞ := by
   exact ENNReal.div_ne_top (by simp) (by norm_num)
 
+/-- Two copies of `1 / 8` add to `1 / 4` in `ℝ≥0∞`. -/
 private lemma one_eighth_add_one_eighth_eq_one_quarter :
     (1 / 8 : ℝ≥0∞) + 1 / 8 = 1 / 4 := by
   refine (ENNReal.toReal_eq_toReal_iff' ?_ one_quarter_ne_top).1 ?_
@@ -870,6 +925,7 @@ private lemma one_eighth_add_one_eighth_eq_one_quarter :
   · rw [ENNReal.toReal_add one_eighth_ne_top one_eighth_ne_top]
     norm_num [ENNReal.toReal_div]
 
+/-- Decompose `1` as `7 / 8 + 1 / 8` in `ℝ≥0∞`. -/
 private lemma one_eq_seven_eighths_add_one_eighth :
     (1 : ℝ≥0∞) = 7 / 8 + 1 / 8 := by
   refine (ENNReal.toReal_eq_toReal_iff' (by simp) ?_).1 ?_
@@ -877,6 +933,7 @@ private lemma one_eq_seven_eighths_add_one_eighth :
   · rw [ENNReal.toReal_add seven_eighths_ne_top one_eighth_ne_top]
     norm_num
 
+/-- A lower bound by `1 / 8` makes `7 / 8 + p` at least one. -/
 private lemma one_le_seven_eighths_add_of_one_eighth_le {p : ℝ≥0∞}
     (hp : (1 / 8 : ℝ≥0∞) ≤ p) :
     (1 : ℝ≥0∞) ≤ 7 / 8 + p := by
@@ -886,6 +943,13 @@ private lemma one_le_seven_eighths_add_of_one_eighth_le {p : ℝ≥0∞}
       simpa [add_comm, add_left_comm, add_assoc] using
         add_le_add_right hp (7 / 8 : ℝ≥0∞)
 
+/-- Subtracting a value at least `1 / 8` from one gives at most `7 / 8`. -/
+private lemma one_sub_le_seven_eighths_of_one_eighth_le {p : ℝ≥0∞}
+    (hp : (1 / 8 : ℝ≥0∞) ≤ p) :
+    (1 : ℝ≥0∞) - p ≤ 7 / 8 := by
+  exact tsub_le_iff_right.2 (one_le_seven_eighths_add_of_one_eighth_le hp)
+
+/-- Fold one more query-correction error term into the accumulated `q * η` bound. -/
 private lemma eta_add_pred_mul_le {q : ℕ} (hq : 0 < q) (η P : ℝ≥0∞) :
     η + (P + ((q - 1 : ℕ) : ℝ≥0∞) * η) ≤ P + (q : ℝ≥0∞) * η := by
   have hnat : q = (q - 1) + 1 := by omega
@@ -901,6 +965,7 @@ private lemma eta_add_pred_mul_le {q : ℕ} (hq : 0 < q) (η P : ℝ≥0∞) :
           rw [add_mul, one_mul]
     _ ≤ P + (q : ℝ≥0∞) * η := by rw [← hqeq]
 
+/-- Running the LPCP with corrected table answers costs at most `q` local-correction errors. -/
 lemma corrected_run_accept_le_linear_add {n t : ℕ}
     (πhat : Fin (2 ^ n) → ZMod 2) (π : Fin n → ZMod 2)
     (η : ℝ≥0∞) {oa : OracleComp (LPCP.fullSpec (ZMod 2) n) Bool} {r q : ℕ}
@@ -983,6 +1048,7 @@ lemma corrected_run_accept_le_linear_add {n t : ℕ}
                       (mx ans)] +
                   (q : ℝ≥0∞) * η := eta_add_pred_mul_le hqpos η _
 
+/-- If plurality is not `b`, at least half the sampled answers disagree with `b`. -/
 lemma pluralityZMod2_bad_count_ge_half {t : ℕ} (ys : Fin t → ZMod 2) (b : ZMod 2)
     (hbad : pluralityZMod2 ys ≠ b) :
     (t : ℝ) / 2 ≤ ∑ i : Fin t, if ys i ≠ b then (1 : ℝ) else 0 := by
@@ -1032,6 +1098,7 @@ lemma pluralityZMod2_bad_count_ge_half {t : ℕ} (ys : Fin t → ZMod 2) (b : ZM
         exact_mod_cast hle
       nlinarith
 
+/-- A Chernoff bound for plurality failure from a mean bound on single-shift failures. -/
 lemma correctedAnswer_failure_le_exp_of_mean {n t : ℕ} (ht : 0 < t)
     (πhat : Fin (2 ^ n) → ZMod 2) (π : Fin n → ZMod 2) (a : Fin n → ZMod 2)
     (hmean :
@@ -1089,6 +1156,7 @@ lemma correctedAnswer_failure_le_exp_of_mean {n t : ℕ} (ht : 0 < t)
   rw [hmap]
   exact hchern
 
+/-- A single-shift failure probability at most `1/4` gives exponential plurality failure. -/
 lemma correctedAnswer_failure_le_exp_of_single {n t : ℕ} (ht : 0 < t)
     (πhat : Fin (2 ^ n) → ZMod 2) (π : Fin n → ZMod 2) (a : Fin n → ZMod 2)
     (hsingle :
@@ -1104,6 +1172,7 @@ lemma correctedAnswer_failure_le_exp_of_single {n t : ℕ} (ht : 0 < t)
   intro _i
   simpa using hsingle
 
+/-- Translation by a fixed vector is an equivalence on `F₂^n`. -/
 private def vectorShiftEquiv {n : ℕ} (a : Fin n → ZMod 2) :
     (Fin n → ZMod 2) ≃ (Fin n → ZMod 2) where
   toFun r := fun j => a j + r j
@@ -1115,6 +1184,7 @@ private def vectorShiftEquiv {n : ℕ} (a : Fin n → ZMod 2) :
     funext j
     ring
 
+/-- Uniform sample disagreement probability equals BLR distance to a fixed linear function. -/
 lemma probEvent_sampleVector_disagree_eq_distance {n : ℕ} [Nonempty (Fin n)]
     (πhat : Fin (2 ^ n) → ZMod 2) (π : Fin n → ZMod 2) :
     Pr[fun r : Fin n → ZMod 2 =>
@@ -1160,6 +1230,7 @@ lemma probEvent_sampleVector_disagree_eq_distance {n : ℕ} [Nonempty (Fin n)]
         simp [hr]
   · positivity
 
+/-- Shifting a uniform sample does not change the disagreement probability. -/
 lemma probEvent_sampleVector_shift_disagree_eq_distance {n : ℕ} [Nonempty (Fin n)]
     (πhat : Fin (2 ^ n) → ZMod 2) (π a : Fin n → ZMod 2) :
     Pr[fun r : Fin n → ZMod 2 =>
@@ -1217,6 +1288,7 @@ lemma probEvent_sampleVector_shift_disagree_eq_distance {n : ℕ} [Nonempty (Fin
   rw [← hunshift]
   simpa [p] using probEvent_sampleVector_disagree_eq_distance (n := n) πhat π
 
+/-- One local-correction trial fails with probability at most twice the distance to `π`. -/
 lemma localCorrectionBad_single_le_two_distance {n : ℕ} [Nonempty (Fin n)]
     (πhat : Fin (2 ^ n) → ZMod 2) (π a : Fin n → ZMod 2) :
     Pr[= true |
@@ -1295,6 +1367,7 @@ lemma localCorrectionBad_single_le_two_distance {n : ℕ} [Nonempty (Fin n)]
         rw [probEvent_sampleVector_shift_disagree_eq_distance (n := n) πhat π a]
         rw [probEvent_sampleVector_disagree_eq_distance (n := n) πhat π]
 
+/-- Distance at most `1 / 8` gives single-query correction error at most `1 / 4`. -/
 lemma localCorrectionBad_single_le_quarter_of_distance_le {n : ℕ} [Nonempty (Fin n)]
     (πhat : Fin (2 ^ n) → ZMod 2) (π : Fin n → ZMod 2)
     (hdist :
@@ -1330,6 +1403,7 @@ def IsFarFromLinear {n : ℕ} (πhat : Fin (2 ^ n) → ZMod 2) : Prop :=
     letI : Nonempty (Fin n) := hne
     (1 / 8 : ℝ≥0∞) ≤ distanceToLin (tableFunction πhat)
 
+/-- If a table is not far from linear, extract a nearby linear function. -/
 lemma exists_close_linear_of_not_far {n : ℕ} [Nonempty (Fin n)]
     (πhat : Fin (2 ^ n) → ZMod 2)
     (hnear : ¬ IsFarFromLinear πhat) :
@@ -1355,6 +1429,7 @@ lemma exists_close_linear_of_not_far {n : ℕ} [Nonempty (Fin n)]
   rw [BlrPcp.distanceToLinear_eq_inf_linearFn] at hdist_lt
   simpa [hπ] using hdist_lt
 
+/-- The near case supplies a linear proof whose single-query correction error is at most `1/4`. -/
 lemma localCorrectionBad_single_le_quarter_of_not_far {n : ℕ} [Nonempty (Fin n)]
     (πhat : Fin (2 ^ n) → ZMod 2)
     (hnear : ¬ IsFarFromLinear πhat) :
@@ -1368,6 +1443,7 @@ lemma localCorrectionBad_single_le_quarter_of_not_far {n : ℕ} [Nonempty (Fin n
   rcases exists_close_linear_of_not_far (n := n) πhat hnear with ⟨π, hπ⟩
   exact ⟨π, localCorrectionBad_single_le_quarter_of_distance_le πhat π (le_of_lt hπ)⟩
 
+/-- In dimension zero, local correction is exact for a suitable trivial linear proof. -/
 lemma localCorrectionBad_single_le_quarter_zero
     (πhat : Fin (2 ^ 0) → ZMod 2) :
     ∃ π : Fin 0 → ZMod 2,
@@ -1416,6 +1492,7 @@ lemma localCorrectionBad_single_le_quarter_zero
           simp at h
     _ ≤ (1 / 4 : ℝ≥0∞) := by simp
 
+/-- Rewrite the dimension-zero correction bound under an equality `n = 0`. -/
 lemma localCorrectionBad_single_le_quarter_of_length_zero {n : ℕ}
     (hn : n = 0) (πhat : Fin (2 ^ n) → ZMod 2) :
     ∃ π : Fin n → ZMod 2,
@@ -1428,6 +1505,7 @@ lemma localCorrectionBad_single_le_quarter_of_length_zero {n : ℕ}
   subst n
   simpa using localCorrectionBad_single_le_quarter_zero (πhat := πhat)
 
+/-- The natural base-2 logarithm upper-bounds the real logarithm up to `+1`. -/
 private lemma real_log_nat_le_nat_log_two_succ (m : ℕ) :
     Real.log (m : ℝ) ≤ (Nat.log 2 m + 1 : ℝ) := by
   by_cases hm : m = 0
@@ -1457,6 +1535,7 @@ private lemma real_log_nat_le_nat_log_two_succ (m : ℕ) :
         _ = (lf : ℝ) := by ring
     exact hloglt.le.trans (by simpa [lf] using hlogpow_le)
 
+/-- The chosen number of shifts makes the Chernoff tail at most `1 / (100 q n)`. -/
 private lemma exp_neg_numShifts_le_inv (q : ℕ → ℕ) (n : ℕ) (hq : q n ≠ 0) :
     Real.exp (-(numShifts q n : ℝ) / 8) ≤ ((100 * q n : ℕ) : ℝ)⁻¹ := by
   have hmposNat : 0 < 100 * q n := Nat.mul_pos (by norm_num) (Nat.pos_of_ne_zero hq)
@@ -1476,6 +1555,7 @@ private lemma exp_neg_numShifts_le_inv (q : ℕ → ℕ) (n : ℕ) (hq : q n ≠
     _ = (((100 * q n : ℕ) : ℝ))⁻¹ := by
         rw [Real.exp_neg, Real.exp_log hmpos]
 
+/-- The accumulated query-correction error is at most `1 / 100`. -/
 lemma numShifts_eta_bound (q : ℕ → ℕ) (n : ℕ) :
     (q n : ℝ≥0∞) *
       ENNReal.ofReal (Real.exp (-(numShifts q n : ℝ) / 8)) ≤ 1 / 100 := by
@@ -1511,6 +1591,7 @@ lemma numShifts_eta_bound (q : ℕ → ℕ) (n : ℕ) :
                   rw [ENNReal.mul_inv_cancel hq0 hqtop]
             _ = 1 / 100 := by simp [div_eq_mul_inv]
 
+/-- Bound PCP acceptance by LPCP acceptance plus the accumulated correction error. -/
 lemma verifier_accept_le_linear_add_of_query_correction {α : Type}
     (size : α → ℕ) (ℓ q : ℕ → ℕ)
     (V : LPCPVerifier α size (ZMod 2) ℓ) (x : α)
@@ -1554,6 +1635,7 @@ lemma verifier_accept_le_linear_add_of_query_correction {α : Type}
         (by simpa [n, t] using hQuery)
   simpa [verifier, n, t, ctx, blr, branch] using hdrop.trans hbranch
 
+/-- Soundness in the near-linear case, using the single-query correction bound. -/
 lemma verifier_soundness_near_case_of_single_query_bound {α : Type} (size : α → ℕ)
     (ε_s : ℝ≥0∞) (ℓ q : ℕ → ℕ)
     (V : LPCPVerifier α size (ZMod 2) ℓ) (x : α)
@@ -1602,6 +1684,7 @@ lemma verifier_soundness_near_case_of_single_query_bound {α : Type} (size : α 
     _ ≤ ε_s + 1 / 100 := by
       exact add_le_add (hSound π) (by simpa [t, η] using hEta)
 
+/-- In the far case, BLR soundness bounds precheck acceptance by `7 / 8`. -/
 lemma blrPrecheck_accept_le_seven_eighths_of_far {n : ℕ} [Nonempty (Fin n)]
     (πhat : Fin (2 ^ n) → ZMod 2)
     (hfar : (1 / 8 : ℝ≥0∞) ≤ distanceToLin (tableFunction πhat)) :
@@ -1611,12 +1694,6 @@ lemma blrPrecheck_accept_le_seven_eighths_of_far {n : ℕ} [Nonempty (Fin n)]
       7 / 8 := by
   let f : (Fin n → ZMod 2) → ZMod 2 := tableFunction πhat
   have hsound := BLR_basic_soundness_ZMod2 (n := n) f
-  have hfalse : (1 / 8 : ℝ≥0∞) ≤
-      Pr[= false |
-        simulateQ ((randOracle (ZMod 2)).impl +
-          fun x => (return f x : ProbComp (ZMod 2)))
-          (BLR.basicVerifier (F := ZMod 2) (n := n))] := by
-    exact hfar.trans (by simpa [f] using hsound)
   have hpre :
       simulateQ ((randOracle (ZMod 2)).impl + (PCP.proofOracle πhat).impl)
         (simulateQ (truthTableImpl n) (BLR.basicVerifier (F := ZMod 2) (n := n))) =
@@ -1626,10 +1703,10 @@ lemma blrPrecheck_accept_le_seven_eighths_of_far {n : ℕ} [Nonempty (Fin n)]
     simpa [f] using
       (simulateQ_truthTableImpl_table_eq (n := n) πhat
         (BLR.basicVerifier (F := ZMod 2) (n := n)))
-  rw [hpre, probOutput_true_eq_sub]
-  simp
-  exact one_le_seven_eighths_add_of_one_eighth_le hfalse
+  rw [hpre]
+  exact hsound.trans (one_sub_le_seven_eighths_of_one_eighth_le (by simpa [f] using hfar))
 
+/-- Soundness in the far-from-linear case, stated directly with the distance hypothesis. -/
 lemma verifier_soundness_far_case {α : Type} (size : α → ℕ)
     (ℓ q : ℕ → ℕ) (V : LPCPVerifier α size (ZMod 2) ℓ) (x : α)
     [Nonempty (Fin (ℓ (size x)))]
@@ -1641,6 +1718,7 @@ lemma verifier_soundness_far_case {α : Type} (size : α → ℕ)
   exact (verifier_accept_le_blrPrecheck_accept size ℓ q V x πhat).trans
     (blrPrecheck_accept_le_seven_eighths_of_far (n := ℓ (size x)) πhat hfar)
 
+/-- Soundness in the far-from-linear case, unpacking `IsFarFromLinear`. -/
 lemma verifier_soundness_far_case_of_isFar {α : Type} (size : α → ℕ)
     (ℓ q : ℕ → ℕ) (V : LPCPVerifier α size (ZMod 2) ℓ) (x : α)
     (πhat : Fin (2 ^ ℓ (size x)) → ZMod 2)
@@ -1757,6 +1835,7 @@ lemma verifier_has_claimed_parameters {α : Type} (size : α → ℕ) (ℓ q r :
 
 end LPCPToPCP
 
+/-- Convert a `ZMod 2` LPCP with linear proof length into an exponential-size PCP. -/
 theorem LPCP_to_PCP_ZMod2 {α : Type} (size : α → ℕ)
     (ε_c ε_s : ℝ≥0∞) (ℓ q r : ℕ → ℕ) :
     LPCP size ε_c ε_s (ZMod 2) ℓ q r

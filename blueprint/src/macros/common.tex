@@ -12,13 +12,16 @@
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{corollary}[theorem]{Corollary}
 \newtheorem{proposition}[theorem]{Proposition}
-\newtheorem{definition}[theorem]{Definition}
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{claim}[theorem]{Claim}
-\newtheorem{observation}[theorem]{Observation}
 \newtheorem{fact}[theorem]{Fact}
 \newtheorem{question}[theorem]{Question}
 \newtheorem{example}[theorem]{Example}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{observation}[theorem]{Observation}
 
 \newcommand{\N}{\mathbb{N}}
 \newcommand{\Z}{\mathbb{Z}}
@@ -246,6 +249,8 @@
 \newcommand{\fexp}[2]{#1_{#2}}
 \def\g{{g}}
 \newcommand{\lin}{\ensuremath{\mathcal{LIN}}}
+\newcommand{\distance}[2]{\delta({#1}, {#2})}
+\newcommand{\distanceToLin}[1]{\distance{#1}{\lin}}
 \newcommand{\affine}{\ensuremath{\mathcal{AFFINE}}}
 \newcommand{\characters}{\ensuremath{\hat{G}}}
 \newcommand{\BLRVerifier}{\ensuremath{\mathsf{V}_{\mathsf{BLR}}^f}}

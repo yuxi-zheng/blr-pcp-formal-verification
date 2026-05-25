@@ -24,11 +24,10 @@ variable (G : Type u) [Group G] [Fintype G]
 
 namespace GowersHatami
 
-noncomputable section
 /-! ## Reindexing an abstract witness to a numeric dimension -/
 
 /-- Reindexing a unitary matrix along an equivalence gives a unitary matrix. -/
-def reindexUnitary
+noncomputable def reindexUnitary
     {ι κ : Type*} [Fintype ι] [Fintype κ] [DecidableEq ι] [DecidableEq κ]
     (e : ι ≃ κ) (U : Matrix.unitaryGroup ι Complex) :
     Matrix.unitaryGroup κ Complex where
@@ -56,7 +55,7 @@ theorem reindexUnitary_coe
   rfl
 
 /-- Reindexing is a multiplicative equivalence on unitary groups. -/
-def reindexUnitaryEquiv
+noncomputable def reindexUnitaryEquiv
     {ι κ : Type*} [Fintype ι] [Fintype κ] [DecidableEq ι] [DecidableEq κ]
     (e : ι ≃ κ) :
     Matrix.unitaryGroup ι Complex ≃* Matrix.unitaryGroup κ Complex where
@@ -80,7 +79,7 @@ def reindexUnitaryEquiv
       (U : Matrix ι ι Complex) (V : Matrix ι ι Complex)).symm
 
 /-- Reindex a unitary representation along an equivalence of index types. -/
-def reindexUnitaryRep
+noncomputable def reindexUnitaryRep
     {ι κ : Type*} [Fintype ι] [Fintype κ] [DecidableEq ι] [DecidableEq κ]
     (e : ι ≃ κ)
     (rho0 : G →* Matrix.unitaryGroup ι Complex) :
@@ -243,8 +242,5 @@ theorem gowers_hatami [DecidableEq G]
   letI : Fintype ι := hι
   letI : DecidableEq ι := hιdec
   exact witness_reindex G (Fintype.equivFin ι) sigma hσ rho eps V hV rho0 hprox
-
-
-end
 
 end GowersHatami

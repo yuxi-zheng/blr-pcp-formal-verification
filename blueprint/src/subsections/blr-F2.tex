@@ -1,6 +1,6 @@
 \section{Simpler BLR verifier for \(\F_{2}\)}
 \begin{definition}\label{BLR.basicVerifier}
-\uses{UnitVerifier}
+\uses{OracleComp,randOracleSpec}
 \lean{BLR.basicVerifier}\leanok 
 Let \(V_{\mathrm{BLR}(\F_{2}, n)}^{f}\) be the verifier with oracle access to \(f: \F_{2}^n \to \F_{2}\) defined as follows:
 \begin{enumerate}
@@ -18,16 +18,16 @@ Let \(n > 0\). For every linear function \(f: \F_{2}^n \to \F_{2}\), we have
 \[\Pr \left[V_{\mathrm{BLR}(\F_{2}, n)}^{f} = 1\right] = 1.\]
 \end{theorem}
 \begin{proof}\leanok
-% TODO: uses `blrBasicVerifier_acceptanceProbability_eq_verifier_ZMod2' and `BLR_completeness`''
+% TODO: uses the ZMod 2 acceptance-probability transfer and `BLR_completeness`
 \end{proof}
 
 \begin{theorem}\label{BLR_basic_soundness_ZMod2}\lean{BLR_basic_soundness_ZMod2}
   \uses{BLR.basicVerifier, def:distance-to-linearity}\leanok
 % TODO: The statement actually uses `distanceToLin`. Unify `distanceToLin` and `BlrPcp.distanceToLinear`
 Let \(n > 0\) and \(f: \F_{2}^n \to \F_{2}\).
-\[\Pr \left[V_{\mathrm{BLR}(\F_{2}, n)}^{f} = 0\right] \geq \Delta(f, \mathcal{LIN}).\]
+\[\Pr \left[V_{\mathrm{BLR}(\F_{2}, n)}^{f} = 1\right] \leq 1 - \distanceToLin{f}.\]
 \end{theorem}
 \begin{proof}\leanok
-% TODO: uses `blrBasicVerifier_rejectionProbability_eq_verifier_ZMod2' and `BLR_soundness`
+% TODO: uses the ZMod 2 acceptance-probability transfer and `BLR_soundness`
 \uses{thm:finite-field-blr-soundness} % TODO: check that this is actually the correct version that is used
 \end{proof}

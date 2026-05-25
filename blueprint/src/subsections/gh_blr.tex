@@ -411,7 +411,7 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 \begin{lemma}[Gowers-Hatami to linearity (Convex character Fourier hybrid)] \label{lem:gh_linearity_3}
 Suppose $F_f: G \to U(\cc^{q-1})$ defined in Equation~\ref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in Equation~\ref{eq:star}. 
 Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
-\be\label{eq:GH_linear_bound}
+\be%\label{eq:GH_linear_bound}
     \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
 \ee
 \end{lemma}
@@ -571,7 +571,7 @@ F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
 where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\mathcal{H} \cong \cc^{q-1}$ and the inner product between operators defined by $\inner{A}{B}_\sigma=\Tr(A^* B \sigma)$ and choose $\sigma = \I/(q-1)$. By \lemref{lem:rep-iff-blr}, since $f$ is rejected with probability $\varepsilon$, then $F_f$ is an $(\frac{q}{q-1}\varepsilon,\frac{\I}{q-1})$ approximate representation of $(G, \star)$.
 
 Then by \lemref{lem:gh_linearity_3}, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
-\be\label{eq:GH_linear_bound}
+\be%\label{eq:GH_linear_bound}
     \delta(f, \ell) \le \frac{q-1}{q} \frac{q}{q-1}\varepsilon = \varepsilon.
 \ee
 
