@@ -33,7 +33,18 @@ sigmaInner
 IsApproxRepresentation
 sigmaNormSq_sub_eq
 gh2_average_correlation
+gh2_compression_avg_eq_pair
+gh2_pair_correlation
 gowers_hatami_GH2_product
+BlrPcp.Twist.instCommGroup
+BlrPcp.gChar
+BlrPcp.gChar_mul
+BlrPcp.card_gChar_index
+BlrPcp.gChar_injective
+BlrPcp.liftMatrix
+BlrPcp.liftFin_isApproxRepresentation
+BlrPcp.gFourierCoeff_factor
+BlrPcp.gh_linearity
 QESAT
 OracleSpec
 randOracleSpec
@@ -51,6 +62,7 @@ BLR_basic_completeness_ZMod2
 BLR_basic_soundness_ZMod2
 LINEQ
 LINEQ.verifier
+LINEQ.linear_form_uniform_prob_mul_card_le_one
 LINEQ_LPCP
 TENSORQ
 TENSORQ.verifier
