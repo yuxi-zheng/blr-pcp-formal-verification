@@ -723,6 +723,54 @@ theorem gh2_average_correlation
   rcases hApprox with ⟨_, hApprox⟩
   simpa [hmain] using hApprox
 
+/--
+The compression-form average correlation equals the **pair-correlation**
+`E_{x,y} ⟪rho(x) rho(y), rho(x y)⟫_σ`.  This is the `= 𝒞(ρ)` identity of the
+blueprint's Gowers–Hatami Pair-Correlation lemma — the averaged form of
+`sigmaInner_gh2_compression`.
+-/
+theorem gh2_compression_avg_eq_pair
+    [DecidableEq G]
+    (sigma : Matrix (Fin d) (Fin d) Complex)
+    (rho : G -> Matrix (Fin d) (Fin d) Complex) :
+    (∑ x : G, (sigmaInner sigma (rho x)
+        (gh2Embedding G rho * gh2RightRegularMatrix (G := G) (d := d) x *
+          (gh2Embedding G rho)ᴴ)).re) / Fintype.card G =
+      (∑ x : G, ∑ y : G, (sigmaInner sigma (rho x * rho y) (rho (x * y))).re) /
+        (Fintype.card G ^ 2 : Real) := by
+  have hcard : (Fintype.card G : Real) ≠ 0 := by
+    exact_mod_cast Fintype.card_ne_zero
+  calc
+    (∑ x : G, (sigmaInner sigma (rho x)
+        (gh2Embedding G rho * gh2RightRegularMatrix (G := G) (d := d) x *
+          (gh2Embedding G rho)ᴴ)).re) / Fintype.card G
+        = (∑ x : G, ((Fintype.card G : Complex)⁻¹ *
+            ∑ y : G, sigmaInner sigma (rho y * rho x) (rho (y * x))).re) / Fintype.card G := by
+          simp [sigmaInner_gh2_compression G sigma rho]
+    _ = (∑ x : G, ∑ y : G, (sigmaInner sigma (rho y * rho x) (rho (y * x))).re) /
+          (Fintype.card G ^ 2 : Real) := by
+          simp [Complex.inv_re, hcard, Finset.mul_sum, div_eq_mul_inv,
+            pow_two, mul_left_comm, mul_comm]
+    _ = (∑ x : G, ∑ y : G, (sigmaInner sigma (rho x * rho y) (rho (x * y))).re) /
+          (Fintype.card G ^ 2 : Real) := by
+          rw [Finset.sum_comm]
+
+/--
+**Pair-correlation form of `gh2_average_correlation`.**  The average pair-correlation
+`E_{x,y} ⟪rho(x) rho(y), rho(x y)⟫_σ` of an `(ε, σ)`-approximate representation is at
+least `1 - ε`.  (Backs the inequality `𝒞(ρ) ≥ 1 - ε` of the blueprint lemma.)
+-/
+theorem gh2_pair_correlation
+    [DecidableEq G]
+    (sigma : Matrix (Fin d) (Fin d) Complex)
+    (rho : G -> Matrix (Fin d) (Fin d) Complex)
+    (eps : Real)
+    (hApprox : IsApproxRepresentation G sigma rho eps) :
+    (∑ x : G, ∑ y : G, (sigmaInner sigma (rho x * rho y) (rho (x * y))).re) /
+        (Fintype.card G ^ 2 : Real) >= 1 - eps := by
+  rw [← gh2_compression_avg_eq_pair G sigma rho]
+  exact gh2_average_correlation G sigma rho eps hApprox
+
 /-! ## Gowers-Hatami, regular-representation proof -/
 
 /--
