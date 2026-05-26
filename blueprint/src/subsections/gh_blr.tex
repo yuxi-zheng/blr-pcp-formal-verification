@@ -43,7 +43,7 @@ The operation $\star$ in~\eqref{eq:star} makes $G$ into an abelian group with id
 $e = (0, 1)$ and inverses $(x, a)^{-1} = (-a^2 x, a^{-1})$. 
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\leanok
 \emph{Associativity.} For $(x, a), (y, b), (z, c) \in G$,
 \begin{align*}
 \bigl((x, a) \star (y, b)\bigr) \star (z, c)
@@ -68,32 +68,32 @@ $(0, 1) \star (y, b) = (b^{-1}\cdot 0 + 1^{-1}\cdot y,\; 1\cdot b) = (y, b)$.
 \end{proof}
 
 It is at first surprising to come up with $\star$ operation, but $G$ is isomorphic to the direct product group. 
-\begin{proposition}[Group isomorphism to product group]\label{prop:group_iso}\uses{lem:group}
-    Let $(G, \star)$ be an abelian group defined by Equation~\ref{eq:star}. The map
+\begin{remark}[Group isomorphism to product group]
+The map
 \be
 \Psi : G \to (X, +) \times (A, \cdot), \qquad
 \Psi(x, a) := (ax, a),
 \ee
-is a group isomorphism, where the codomain is the direct product of $(X, +)$ and
-$(A, \cdot)$ with operation $\star_\Psi:(x,\; a) \star_\Psi (y,\; b) = (x+y,\; ab)$. 
-% In particular $|G| = q^n(q-1)$.
-\end{proposition}
-\begin{proof}
-    Compute
-\begin{align*}
-\Psi\bigl((x, a) \star (y, b)\bigr) = \Psi(b^{-1}x + a^{-1}y,\; ab)= \bigl(ab\cdot(b^{-1}x + a^{-1}y),\; ab\bigr) = (ax + by,\; ab),
-\end{align*}
-which equals $\Psi(x, a) \star_\Psi \Psi(y, b) = (ax + by,\; ab)$. The map $\Psi$ is bijective with
-inverse $\Psi^{-1}(y, b) = (b^{-1}y, b)$.
-\end{proof}
+is a group isomorphism onto the direct product of $(X, +)$ and $(A, \cdot)$ with operation
+$\star_\Psi:(x,\; a) \star_\Psi (y,\; b) = (x+y,\; ab)$. Indeed,
+\[
+\Psi\bigl((x, a) \star (y, b)\bigr) = \bigl(ab\cdot(b^{-1}x + a^{-1}y),\; ab\bigr) = (ax + by,\; ab)
+= \Psi(x, a) \star_\Psi \Psi(y, b),
+\]
+and $\Psi$ is bijective with inverse $\Psi^{-1}(y, b) = (b^{-1}y, b)$.
 
-\emph{Remark (formalization).} The isomorphism $\Psi$ is used here only to motivate and compute the characters. The Lean development does \emph{not} formalize $\Psi$ as a group isomorphism: it equips $G$ with its group structure (\lemref{lem:group}) and defines the characters $\chi_{\alpha,k}$ (\propref{prop:group_characaters}) directly on the twisted group, proving the homomorphism property by a direct computation rather than by pulling back through $\Psi$. Hence \propref{prop:group_iso} carries no \texttt{\textbackslash lean} link.
+This isomorphism is used only to \emph{motivate} the characters below. The Lean development does not
+formalize $\Psi$: it equips $G$ with its group structure (\lemref{lem:group}) and defines the characters
+$\chi_{\alpha,k}$ (\propref{prop:group_characaters}) directly on the twisted group, proving the homomorphism
+property by direct computation rather than by pulling back through $\Psi$. Accordingly it is recorded as a
+remark, with no \texttt{\textbackslash lean} link and no node in the dependency graph.
+\end{remark}
 
 The isomorphism gives us a easy way to compute its irreducible representations which forms the Pontryagin dual group (the set of irrep characters for an abelian group).
-\begin{fact}[Pontryagin dual over direct product]\label{fact:pontryagin_dual}
-    Let $G_1, G_2$ be finite abelian groups. Let $H = G_1 \times G_2$ be their direct product. Then the Pontryagin dual formed by all the irreps. is $\hat{H} = \hat{G_1} \times \hat{G_2}$.
-\end{fact}
-\begin{proposition}[Group characters]\label{prop:group_characaters}\lean{BlrPcp.gChar, BlrPcp.gChar_mul, BlrPcp.card_gChar_index, BlrPcp.gChar_injective}\leanok
+\begin{remark}[Pontryagin dual over direct product]
+For finite abelian groups $G_1, G_2$ with direct product $H = G_1 \times G_2$, the Pontryagin dual (the set of irreducible characters) factors as $\hat{H} = \hat{G_1} \times \hat{G_2}$. Like the isomorphism above, this is used only to motivate the character formula and is not part of the formalized graph.
+\end{remark}
+\begin{proposition}[Group characters]\label{prop:group_characaters}\uses{lem:group}\lean{BlrPcp.gChar, BlrPcp.gChar_mul, BlrPcp.card_gChar_index, BlrPcp.gChar_injective}\leanok
 The group $(G, \star)$ has the Pontryagin dual character group 
 \be
 \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \quad \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a),
@@ -101,7 +101,7 @@ The group $(G, \star)$ has the Pontryagin dual character group
 where $\psi_k(a) = e^{\frac{i 2 \pi m k}{q-1}}$ and $a=g_0^m$ for a fixed multiplicative generator $g_0\in A$.
 \end{proposition}
 \begin{proof}\leanok
-By \propref{prop:group_iso}, $(G, \star) \cong (X, +) \times (A, \cdot)$ via $\Psi(x, a) = (ax, a)$. First we consider the characters of the product group. Using Fact.~\ref{fact:pontryagin_dual}, we have 
+By the isomorphism $\Psi(x, a) = (ax, a)$ in the remark above, $(G, \star) \cong (X, +) \times (A, \cdot)$. First we consider the characters of the product group. Using the Pontryagin-dual factorization in the remark above, we have
 \[
 \widehat{(X, +) \times (A, \cdot)} = \hat{X} \times \hat{A}.
 \]
@@ -134,12 +134,12 @@ where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\m
 % \end{lemma}
 We first show that the BLR condition indeed gives an approximate represenatation.
 
-\begin{lemma}[Lift operation from BLR condition]\label{lem:rep-iff-blr}\uses{def:Flift}\lean{BlrPcp.liftFin_isApproxRepresentation}\leanok
+\begin{lemma}[Lift operation from BLR condition]\label{lem:rep-iff-blr}\uses{lem:group, def:finite-field-blr-test, def:Flift, approx-representation}\lean{BlrPcp.liftFin_isApproxRepresentation}\leanok
 Let $f : X \to \F_q$ and $(x, a), (y, b) \in G$ be rejected by the BLR test with probability $\varepsilon$,
 then the unitary matrix lift $F_f$ in Equation~\ref{eq:Flift-def} is an $(\frac{q}{q-1}\varepsilon, \frac{\I}{q-1})$ approximate representation of $(G, \star)$.
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\leanok
 The BLR test condition gives
 \[
 \Pr_{c,d,x,y}\!\bigl[c f(x) + d f(y) \neq f(cx + dy)\bigr] \leq \varepsilon.
@@ -386,7 +386,7 @@ where
 
 \end{proposition}
 
-\begin{proof}
+\begin{proof}\uses{prop:group_characaters}\leanok
     By \propref{prop:group_characaters}, the characters are given by
     \[
     \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a).
@@ -551,7 +551,7 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 % \end{proof}
 
 
-\begin{lemma}[Gowers-Hatami to linearity (formalized proof)] \label{lem:gh_linearity_formalized}\uses{prop:group_characaters, prop:Ff_fourier, gowers-hatami-correlation}\lean{BlrPcp.gh_linearity}\leanok
+\begin{lemma}[Gowers-Hatami to linearity (formalized proof)] \label{lem:gh_linearity_formalized}\uses{lem:group, def:Flift, approx-representation, def:linear-functions, def:relative-hamming-distance}\lean{BlrPcp.gh_linearity}\leanok
 Suppose $F_f: G \to U(\cc^{q-1})$ defined in Equation~\ref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in Equation~\ref{eq:star}. 
 Implicitly, $\epsilon \leq 1$.
 
@@ -562,7 +562,7 @@ Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the rel
 \ee
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\uses{gowers-hatami-correlation, prop:group_characaters, prop:Ff_fourier}\leanok
 Write the diagonal lift as $F_f(g) = \operatorname{diag}_{c \in \FF_q^\times}(\varphi_c(g))$, where the scalar functions are $\varphi_c(x,a) = \omega^{\Tr(caf(x))}$. 
 
 Because $F_f$ is diagonal and $\sigma = \I/(q-1)$, the trace equates to the average over the diagonal elements. 
@@ -641,10 +641,55 @@ we have
 
 % Finally, we are ready to prove the main theorem of BLR linearity test soundness. 
 
+
 % \setcounter{theorem}{0}
 % \begin{theorem}[Soundness of the BLR test]\label{thm:main}\uses{lem:rep-iff-blr, lem:gh_linearity_formalized}\lean{BlrPcp.blr_soundness}\leanok
 % Let $q$ be prime. For every $f : \F_q^n \to \F_q$, $\delta(f, \lin) \le \Pr_{a,b,x,y}\!\bigl[af(x) + bf(y) \ne f(ax + by)\bigr]$.
-% \end{theorem}    
+% \end{theorem} 
+
+\begin{lemma}
+[Soundness of the BLR test]\label{BLR_via_GH}
+\lean{BlrPcp.gh_blr_soundness}
+\uses{def:finite-field-blr-test,def:distance-to-linearity}
+\leanok
+Let $q$ be prime. For every $f : \F_q^n \to \F_q$, $\delta(f, \lin) \le \Pr_{a,b,x,y}\!\bigl[af(x) + bf(y) \ne f(ax + by)\bigr]$.
+\end{lemma}
+
+\begin{proof}[Alternative proof via Gowers–Hatami]\uses{lem:rep-iff-blr, lem:gh_linearity_formalized}\leanok
+First denote
+\[
+X := \F_q^n, \qquad A := \F_q^\times, \qquad \omega := e^{2\pi i/p}.
+\]
+Define a group $G$ on the set $X \times A$ with the binary operation
+\[
+(x, a) \star (y, b) := \bigl(b^{-1}x + a^{-1}y,\; ab\bigr).
+\]
+Let $F_f$ be the unitary matrix valued lift $F_f : G \to U(\cc^{q-1})$ given by the diagonal matrix
+\[
+F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
+\]
+where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\mathcal{H} \cong \cc^{q-1}$, the
+inner product between operators is $\inner{A}{B}_\sigma=\Tr(A^* B \sigma)$, and $\sigma = \I/(q-1)$. By
+\lemref{lem:rep-iff-blr}, since $f$ is rejected with probability $\varepsilon$, the lift $F_f$ is a
+$(\frac{q}{q-1}\varepsilon,\frac{\I}{q-1})$ approximate representation of $(G, \star)$.
+
+Then by \lemref{lem:gh_linearity_formalized}, there exists a linear function $\ell: \FF_q^n \to \FF_q$ whose
+relative Hamming distance to $f$ is bounded by
+\[
+    \delta(f, \ell) \le \frac{q-1}{q}\cdot\frac{q}{q-1}\varepsilon = \varepsilon.
+\]
+This proves the claim
+\[
+\delta(f, \lin) := \min_{\alpha} \delta(f, \ell_\alpha) \leq \delta(f, \ell) \leq \varepsilon.
+\]
+Miraculously, the loose factor $\frac{q}{q-1}$ in the approximate-representation parameter cancels the tighter
+factor $\frac{q-1}{q}$ of \lemref{lem:gh_linearity_formalized}.
+
+In Lean this route is formalized as \texttt{gh\_blr\_soundness\_acceptance}, which proves
+\texttt{acceptanceProbabilityBLR f $\le$ 1 - distanceToLinear f} (the statement of \texttt{blr\_soundness}),
+valid for $\frac{q}{q-1}\varepsilon\le1$; the unconditional statement is the direct proof above, since for
+$\frac{q}{q-1}\varepsilon>1$ the third-moment extraction's $\max\ge0$ step fails.
+\end{proof}
 
 % \begin{proof}
 % First denote 

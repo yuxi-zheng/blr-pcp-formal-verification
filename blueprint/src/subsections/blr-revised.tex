@@ -814,38 +814,3 @@ Using \cref{lem:exact-blr-acceptance} and \cref{lem:second-moment-bound},
 \end{proof}
 
 % Below is the GH-route to the same soundness results.
-\begin{proof}[Alternative proof via Gowers–Hatami]\uses{lem:rep-iff-blr, lem:gh_linearity_formalized}
-First denote
-\[
-X := \F_q^n, \qquad A := \F_q^\times, \qquad \omega := e^{2\pi i/p}.
-\]
-Define a group $G$ on the set $X \times A$ with the binary operation
-\[
-(x, a) \star (y, b) := \bigl(b^{-1}x + a^{-1}y,\; ab\bigr).
-\]
-Let $F_f$ be the unitary matrix valued lift $F_f : G \to U(\cc^{q-1})$ given by the diagonal matrix
-\[
-F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
-\]
-where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\mathcal{H} \cong \cc^{q-1}$, the
-inner product between operators is $\inner{A}{B}_\sigma=\Tr(A^* B \sigma)$, and $\sigma = \I/(q-1)$. By
-\lemref{lem:rep-iff-blr}, since $f$ is rejected with probability $\varepsilon$, the lift $F_f$ is a
-$(\frac{q}{q-1}\varepsilon,\frac{\I}{q-1})$ approximate representation of $(G, \star)$.
-
-Then by \lemref{lem:gh_linearity_formalized}, there exists a linear function $\ell: \FF_q^n \to \FF_q$ whose
-relative Hamming distance to $f$ is bounded by
-\[
-    \delta(f, \ell) \le \frac{q-1}{q}\cdot\frac{q}{q-1}\varepsilon = \varepsilon.
-\]
-This proves the claim
-\[
-\delta(f, \lin) := \min_{\alpha} \delta(f, \ell_\alpha) \leq \delta(f, \ell) \leq \varepsilon.
-\]
-Miraculously, the loose factor $\frac{q}{q-1}$ in the approximate-representation parameter cancels the tighter
-factor $\frac{q-1}{q}$ of \lemref{lem:gh_linearity_formalized}.
-
-In Lean this route is formalized as \texttt{gh\_blr\_soundness\_acceptance}, which proves
-\texttt{acceptanceProbabilityBLR f $\le$ 1 - distanceToLinear f} (the statement of \texttt{blr\_soundness}),
-valid for $\frac{q}{q-1}\varepsilon\le1$; the unconditional statement is the direct proof above, since for
-$\frac{q}{q-1}\varepsilon>1$ the third-moment extraction's $\max\ge0$ step fails.
-\end{proof}

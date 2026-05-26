@@ -28,7 +28,7 @@ Let $\sigma$ be positive semidefinite and let $A, B$ be matrices of the same dim
 \|A - B\|_\sigma^2 = \|A\|_\sigma^2 + \|B\|_\sigma^2 - 2\,\Re\inner{A}{B}_\sigma.
 \]
 \end{proposition}
-\begin{proof}
+\begin{proof}\leanok
     Expanding by linearity of the inner product,
     \[
     \|A-B\|_\sigma^2 = \Re\inner{A-B}{A-B}_\sigma
@@ -53,9 +53,17 @@ Let $\sigma$ be positive semidefinite and let $A, B$ be matrices of the same dim
 %     \ee
 % \end{definition}
 
-\begin{definition}[Unitary Representation]\label{UnitaryRep}
-    A \emph{unitary representation} of $G$ is a representation to unitary matrices $\rho : G \to U(V)$.
-\end{definition}
+In general, a representation of a group \(G\) on a vector space \(V\) over a
+field \(k\) is a homomorphism from \(G\) to the linear endomorphisms of \(V\).
+In mathlib this is the abbreviation \(\texttt{Representation}\), defined as
+\(G \to^* (V \to_{\!k} V)\), i.e. a monoid homomorphism into the \(k\)-linear
+endomorphisms of \(V\).
+
+We call a representation \emph{unitary} when its image lies in the unitary
+group; in the finite-dimensional matrix setting used below this means a
+homomorphism \(\rho : G \to U(V)\). In the Lean development this is represented
+directly as a monoid homomorphism into a matrix unitary group, for example
+\(G \to^* \texttt{Matrix.unitaryGroup}\).
 
 % \begin{definition}[Irreducible representation]
 %     A representation $\rho : G \to \mathrm{GL}(V)$ is called \emph{irreducible} if the only subspaces $W \subseteq V$ satisfying
@@ -90,7 +98,7 @@ Let $\sigma$ be positive semidefinite and let $A, B$ be matrices of the same dim
 %     \ee
 % \end{definition}
 
-\begin{definition}[Regular representation]\label{RegularRep}\uses{UnitaryRep}
+\begin{definition}[Regular representation]\label{RegularRep}
     Let $R: G \rightarrow \mathbb{C}[G]$ be a regular representation where $\{\ket{g}, g\in G\}$ forms a basis of \(\mathbb{C}[G]\). The representation is given by
     \be
     R(x) \ket{g} = \ket{xg}.
@@ -110,7 +118,7 @@ It is possible to decompose any representation of a finite group into direct sum
 
 \begin{sproof}
     Maschke's theorem is partially formalized in $\texttt{Mathlib.RepresentationTheory.Maschke}$ but incomplete.
-    Jonathan's team is formalizing this.
+    Filippo Berta, Jonathan Conrad, and Younous Malliefer are formalizing this.
 \end{sproof}
 
 % mathlib: `FDRep.char_orthonormal`
@@ -167,7 +175,7 @@ Let $G$ be a finite group and $\sum_\rho$ denotes summing over the complete set 
 \section{Gowers Hatami Theorem}
 
 \begin{theorem}[Gowers-Hatami]\label{gowers-hatami}
-  \uses{sigmaNormSqSub, approx-representation, GroupFourier, regular_repr_character}
+  \uses{sigmaNormSqSub, approx-representation,GroupFourier, regular_repr_character}
 Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d}(\mathbb{C})\) an \((\varepsilon, \sigma)\)-representation of \(G\). Then there exists a \(d^{\prime} \geq d\), an isometry \(V: \mathbb{C}^{d} \rightarrow \mathbb{C}^{d^{\prime}}\), and a representation \(g: G \rightarrow U_{d^{\prime}}(\mathbb{C})\) such that
 \be
 \mathbb{E}_{x \in G}\left\|f(x)-V^{*} g(x) V\right\|_{\sigma}^{2} \leq 2 \varepsilon.
@@ -214,7 +222,7 @@ and an exact representation \(\rho^\prime: G \rightarrow U(\mathcal{H}^\prime)\)
 \ee    
 \end{lemma}
 
-\begin{proof}
+\begin{proof}\leanok
     Here $\mathcal{H}^\prime = L(G, \mathcal{H})$ is the space of functions $f: G \to \mathcal{H}$.
     
     Let the isometry be defined by the action of the approximate representation on a state $u\in \mathcal{H}$ as
@@ -316,7 +324,7 @@ and an exact representation \(\rho^\prime: G \rightarrow U(\mathcal{H}^\prime)\)
 % \end{proof}
 
 \begin{theorem}[Gowers-Hatami-2]\label{gowers-hatami-2}\lean{gowers_hatami_GH2_product}\leanok
-  \uses{sigmaNormSqSub, approx-representation, gowers-hatami-correlation}
+  \uses{sigmaNormSqSub, approx-representation}
 Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(\rho: G \rightarrow U(\mathcal{H})\) an \((\varepsilon, \sigma)\)-representation of \(G\) on space $\mathcal{H}=\mathbb{C}^{d}$. 
 Then there exists an isometry \(V: \mathcal{H} \rightarrow \mathcal{H}^\prime\) to a different space $\mathcal{H}^\prime$, 
 and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
@@ -325,7 +333,9 @@ and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
 \ee 
 \end{theorem}
 
-\begin{proof}
+\begin{proof}\leanok
+    \uses{gowers-hatami-correlation}
+    \leanok
     A regular-representation proof of the Gowers-Hatami theorem appears in Morel's slides~\cite{Morel20}, following the original Gowers-Hatami theorem~\cite{GowHat17}.
 
     The rest of the proof follows by expanding the $\sigma$-norm, bounding the norm of $\EE_{x \in G} V^* \rho^\prime(x) V$ and applying the definition of $(\varepsilon, \sigma)$-representation.
@@ -347,4 +357,3 @@ and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
         \EE_{x \in G}\left\|\rho(x)-V^{*} \rho^\prime(x) V\right\|_{\sigma}^{2} \le  2 - 2(1 - \varepsilon) = 2\varepsilon.
     \ee
 \end{proof}
-
