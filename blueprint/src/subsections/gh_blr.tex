@@ -93,7 +93,7 @@ The isomorphism gives us a easy way to compute its irreducible representations w
 \begin{remark}[Pontryagin dual over direct product]
 For finite abelian groups $G_1, G_2$ with direct product $H = G_1 \times G_2$, the Pontryagin dual (the set of irreducible characters) factors as $\hat{H} = \hat{G_1} \times \hat{G_2}$. Like the isomorphism above, this is used only to motivate the character formula and is not part of the formalized graph.
 \end{remark}
-\begin{proposition}[Group characters]\label{prop:group_characaters}\uses{lem:group}\lean{BlrPcp.gChar, BlrPcp.gChar_mul, BlrPcp.card_gChar_index, BlrPcp.gChar_injective}\leanok
+\begin{proposition}[Group characters]\label{prop:group_characaters}\lean{BlrPcp.gChar, BlrPcp.gChar_mul, BlrPcp.card_gChar_index, BlrPcp.gChar_injective}\leanok
 The group $(G, \star)$ has the Pontryagin dual character group 
 \be
 \hat{G} = \{\chi_{\alpha, k}\}_{\alpha \in X, k \in [0, \cdots, q-2]}, \quad \chi_{\alpha, k}(x,a) = \omega^{\Tr \inner{\alpha}{a x}} \psi_k(a),
@@ -134,7 +134,7 @@ where $\{\ket{c}\}$ denotes the orthonormal basis vectors of a Hilbert space $\m
 % \end{lemma}
 We first show that the BLR condition indeed gives an approximate represenatation.
 
-\begin{lemma}[Lift operation from BLR condition]\label{lem:rep-iff-blr}\uses{lem:group, def:finite-field-blr-test, def:Flift, approx-representation}\lean{BlrPcp.liftFin_isApproxRepresentation}\leanok
+\begin{lemma}[Lift operation from BLR condition]\label{lem:rep-iff-blr}\uses{lem:group, def:Flift}\lean{BlrPcp.liftFin_isApproxRepresentation}\leanok
 Let $f : X \to \F_q$ and $(x, a), (y, b) \in G$ be rejected by the BLR test with probability $\varepsilon$,
 then the unitary matrix lift $F_f$ in Equation~\ref{eq:Flift-def} is an $(\frac{q}{q-1}\varepsilon, \frac{\I}{q-1})$ approximate representation of $(G, \star)$.
 \end{lemma}
