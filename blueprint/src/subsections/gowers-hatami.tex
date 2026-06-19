@@ -146,7 +146,7 @@ It is possible to decompose any representation of a finite group into direct sum
 
 \begin{proposition}[Character of regular representation.]\label{regular_repr_character}\uses{RegDecompIrrep}
 Let $G$ be a finite group and $\sum_\rho$ denotes summing over the complete set of inequivalent irreps $\hat{G}$
-    \be\label{eq:regular_repr_characterr}
+    \be\label{eq:regular-repr-characterr}
     \sum_{\rho \in \hat{G}} d_{\rho} \operatorname{Tr}(\rho(x))=|G| \delta_{x, e}.
     \ee
 \end{proposition}
@@ -186,7 +186,7 @@ Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d
     The theorem is due to Gowers and Hatami~\cite{GowHat17}; the constructive proof below follows Vidick's lecture notes, Theorem 2.3~\cite{VidickQMATH22}.
     In particular, the proof is constructive. The isometry is defined as 
     \(V: \mathbb{C}^{d} \rightarrow \mathbb{C}^{d} \otimes\left(\oplus_{\rho} \mathbb{C}^{d_{\rho}} \otimes \mathbb{C}^{d_{\rho}}\right)\) by
-    \be\label{eq:isometry_V}
+    \be\label{eq:isometry-V}
     V u = \bigoplus_{\rho} d_{\rho}^{1 / 2} \sum_{i=1}^{d_{\rho}}\left(\hat{f}(\rho)\left(u \otimes e_{i}\right)\right) \otimes e_{i}.
     \ee
     And the exact representation is defined as 
@@ -205,7 +205,7 @@ Let \(G\) be a finite group, \(\varepsilon \geq 0\), and \(f: G \rightarrow U_{d
         V^{*} g(x) V = \mathbb{E}_{z} f(z)^{*} f(z x).
         \ee
     \end{enumerate}
-    Both ingredients follow from the key identity over the regular representation in \equref{eq:regular_repr_characterr}.
+    Both ingredients follow from the key identity over the regular representation in \equref{eq:regular-repr-characterr}.
 \end{sproof}
 
 Next, we will give a different proof that does not directly decompose into irreps but instead uses the action of the regular representation.
@@ -254,13 +254,13 @@ and an exact representation \(\rho^\prime: G \rightarrow U(\mathcal{H}^\prime)\)
     \ee
 
     The compression of the exact representation ``averages'' over group multiplication. For any $u \in \mathcal{H}$:
-    \bea\label{eq:isometry_average} 
+    \bea\label{eq:isometry-average} 
     V^* \rho^\prime(x) V(u) & = & \EE_{y \in G} \left[ \rho^*(y) (\rho^\prime(x)\rho(y))(u) \right] \nonumber \\
     & = & \EE_{y \in G} \left[ \rho^*(y) \rho(yx)(u) \right].
     \eea
 
-    Substituting the average property from Eq.~\ref{eq:isometry_average} into the inner product, and using the unitarity of $\rho(y)$ to rewrite the adjoints ($\langle A, B^* C \rangle_\sigma = \langle B A, C \rangle_\sigma$), we obtain:
-    \bea \label{eq:inner_product_bound}
+    Substituting the average property from ~\equref{eq:isometry-average} into the inner product, and using the unitarity of $\rho(y)$ to rewrite the adjoints ($\langle A, B^* C \rangle_\sigma = \langle B A, C \rangle_\sigma$), we obtain:
+    \bea \label{eq:inner-product-bound}
     \EE_{x \in G} \Re \langle \rho(x), V^* \rho^\prime(x) V\rangle_\sigma 
     & = & \EE_{x,y \in G} \Re \langle \rho(x), \rho^*(y) \rho(yx) \rangle_\sigma \nonumber \\ 
     & = & \EE_{x,y \in G} \Re \langle \rho(y)\rho(x), \rho(yx) \rangle_\sigma \nonumber \\ 
@@ -310,13 +310,13 @@ and an exact representation \(\rho^\prime: G \rightarrow U(\mathcal{H}^\prime)\)
 %     \ee
 
 %     The isometry ``averages'' over group multiplication because
-%     \bea\label{eq:isometry_average} 
+%     \bea\label{eq:isometry-average} 
 %     V^* \rho^\prime(x) V(u) & = & \EE_{y \in G} \left[ \rho^*(y) (\rho^\prime(x)\rho(y))(u) \right] \\
 %     & = & \EE_{y \in G} \left[ \rho^*(y) (\rho(yx)(u)) \right].\nonumber
 %     \eea
 
-%     Finally, using the isometry average property in Eq.~\ref{eq:isometry_average} and the definition of $(\varepsilon, \sigma)$-representation, we have
-%     \bea \label{eq:inner_product_bound}
+%     Finally, using the isometry average property in ~\equref{eq:isometry-average} and the definition of $(\varepsilon, \sigma)$-representation, we have
+%     \bea \label{eq:inner-product-bound}
 %     && \EE_{x \in G} \Re \langle \rho(x), V^* \rho^\prime(x) V\rangle_\sigma, \\ \nonumber
 %     & = & \EE_{x,y \in G} \Re \langle \rho(x), \rho^*(y) \rho(yx) \rangle_\sigma, \\ \nonumber
 %     &\ge & 1 - \varepsilon. 
@@ -346,13 +346,13 @@ and a representation \(\rho^\prime: G \rightarrow \mathcal{H}^\prime\) such that
     \eea        
 
     Because $\rho$ is unitary and $\Tr \sigma = 1$, $\EE_{x \in G} \| \rho(x) \|_\sigma^2 = 1$.
-    For the second term, recall from \equref{eq:isometry_average} that the compression is the group average $V^* \rho^\prime(x) V = \EE_{y \in G} \rho^*(y)\rho(yx)$. Each summand $\rho^*(y)\rho(yx)$ is a product of unitaries, hence unitary, so $\|\rho^*(y)\rho(yx)\|_\sigma = 1$. By convexity of the $\sigma$-norm---the triangle inequality applied to the average---we obtain
-    \be \label{eq:isometry_unitary_bound}
+    For the second term, recall from \equref{eq:isometry-average} that the compression is the group average $V^* \rho^\prime(x) V = \EE_{y \in G} \rho^*(y)\rho(yx)$. Each summand $\rho^*(y)\rho(yx)$ is a product of unitaries, hence unitary, so $\|\rho^*(y)\rho(yx)\|_\sigma = 1$. By convexity of the $\sigma$-norm---the triangle inequality applied to the average---we obtain
+    \be \label{eq:isometry-unitary-bound}
     \|V^* \rho^\prime(x) V\|_\sigma = \left\| \EE_{y \in G} \rho^*(y)\rho(yx) \right\|_\sigma \le \EE_{y \in G} \|\rho^*(y)\rho(yx)\|_\sigma = 1,
     \ee
     hence $\EE_{x \in G}\|V^* \rho^\prime(x) V\|_\sigma^2 \le 1$.
 
-    Therefore using the bounds in Eq.~\ref{eq:isometry_unitary_bound} and Eq.~\ref{eq:inner_product_bound} by applying Lemma~\ref{gowers-hatami-correlation}, we have
+    Therefore using the bounds in ~\equref{eq:isometry-unitary-bound} and ~\equref{eq:inner-product-bound} by applying Lemma~\ref{gowers-hatami-correlation}, we have
     \be
         \EE_{x \in G}\left\|\rho(x)-V^{*} \rho^\prime(x) V\right\|_{\sigma}^{2} \le  2 - 2(1 - \varepsilon) = 2\varepsilon.
     \ee

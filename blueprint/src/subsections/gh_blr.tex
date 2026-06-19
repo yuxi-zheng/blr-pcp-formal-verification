@@ -39,7 +39,7 @@ Define a group $G$ by the set $X \times A$ with the binary operation
 \end{equation}
 
 \begin{lemma}[$G$ is an abelian group]\label{lem:group}\lean{BlrPcp.Twist.instCommGroup}\leanok
-The operation $\star$ in~\eqref{eq:star} makes $G$ into an abelian group with identity
+The operation $\star$ in~\equref{eq:star} makes $G$ into an abelian group with identity
 $e = (0, 1)$ and inverses $(x, a)^{-1} = (-a^2 x, a^{-1})$. 
 \end{lemma}
 
@@ -136,7 +136,7 @@ We first show that the BLR condition indeed gives an approximate represenatation
 
 \begin{lemma}[Lift operation from BLR condition]\label{lem:rep-iff-blr}\uses{lem:group, def:Flift}\lean{BlrPcp.liftFin_isApproxRepresentation}\leanok
 Let $f : X \to \F_q$ and $(x, a), (y, b) \in G$ be rejected by the BLR test with probability $\varepsilon$,
-then the unitary matrix lift $F_f$ in Equation~\ref{eq:Flift-def} is an $(\frac{q}{q-1}\varepsilon, \frac{\I}{q-1})$ approximate representation of $(G, \star)$.
+then the unitary matrix lift $F_f$ in ~\equref{eq:Flift-def} is an $(\frac{q}{q-1}\varepsilon, \frac{\I}{q-1})$ approximate representation of $(G, \star)$.
 \end{lemma}
 
 \begin{proof}\leanok
@@ -149,7 +149,7 @@ First we observe that
 \Pr_{g, h \in G}\!\bigl[F_f(g \star h) = F_f(g)F_f(h)\bigr]
 = \Pr_{c,d,x,y}\!\bigl[c f(x) + d f(y) = f(cx + dy)\bigr].
 \end{equation}
-Using~Equation~\ref{eq:star} and~Equation~\ref{eq:Flift-def},
+Using~\equref{eq:star} and~\equref{eq:Flift-def},
 \begin{align*}
 F_f\bigl((x,a)\star(y,b)\bigr) &= \sum_{c\in A}\omega^{\Tr\, cab\,f(b^{-1}x + a^{-1}y)} \ket{c}\bra{c}, \\
 F_f(x, a)\,F_f(y, b) &= \sum_{c\in A} \omega^{\Tr\, c(af(x) + bf(y))} \ket{c}\bra{c}.
@@ -166,7 +166,7 @@ Since $a, b$ have a multiplicative inverse, substitute $c := b^{-1}$, $d := a^{-
 \[
 f(cx + d y) = c f(x) + d f(y),
 \]
-which proves Equation~\ref{eq:rep-eq-blr}.
+which proves ~\equref{eq:rep-eq-blr}.
 
 To relate the test condition to the approximate representation, first note the equivalent definition of approximate representation
 \be
@@ -200,7 +200,7 @@ The approximate representation ``appears'' slightly worse than what we would hav
 % $f \in \lin$.
 % \end{fact}
 % \begin{proof}
-%     If $F_f$ is an exact representation of $G$, then~Equation~\ref{eq:rep-eq-blr} forces
+%     If $F_f$ is an exact representation of $G$, then~\equref{eq:rep-eq-blr} forces
 % $\varepsilon = 0$. Setting $c = d = 1$ in the BLR condition gives $f(x + y) = f(x) + f(y)$
 % for all $x, y$, so $f$ is additive. Set $y = 0$ and $c = 1 \in A$: $f(x) = f(x) + d\, f(0)$ for any
 % $d \in A$. Set $y = 0$ and $d=1$, then $f(0)=0$ and $f(c x) = c f(x)$. Combined with additivity, $f$ is $\F_q$-linear, so $f \in \lin$.
@@ -221,10 +221,10 @@ The proof outlined here correspond to the formalized version in lean. The most c
 % \end{enumerate}
 
 % \begin{lemma}[Gowers-Hatami to linearity (Convex character proof)] \label{lem:gh_linearity_1}
-% Suppose $F_f: G \to U(\cc^{q-1})$ defined in Equation~\ref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in Equation~\ref{eq:star}. 
+% Suppose $F_f: G \to U(\cc^{q-1})$ defined in ~\equref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in ~\equref{eq:star}. 
 % % Furthermore, suppose $1 - \epsilon > \frac{\sqrt{q}}{q-1}$.
 % Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
-% \be\label{eq:GH_linear_bound}
+% \be\label{eq:GH-linear-bound}
 %     \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
 % \ee
 % \end{lemma}
@@ -243,7 +243,7 @@ The proof outlined here correspond to the formalized version in lean. The most c
 %         \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-\Tr\, caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
 %     \]
 %     where $\ket{v_c} = V\ket{c} \in \mathcal{H}^\prime$.
-%     Taking the expectation over $g = (x, a)$ and taking the real part, condition Equation~\ref{eq:inner1} becomes:
+%     Taking the expectation over $g = (x, a)$ and taking the real part, condition ~\equref{eq:inner1} becomes:
 %     \begin{equation}
 %         \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
 %     \end{equation}
@@ -274,7 +274,7 @@ The proof outlined here correspond to the formalized version in lean. The most c
 %     \sum_{\alpha, k} p_{c, \alpha, k} = 1, \quad \forall c \in \FF_q^\times.
 %     \ee
 
-%     Substituting the spectral decomposition Equation~\ref{eq:reg_repr_decomp} back into Equation~\ref{eq:expanded}, we get:
+%     Substituting the spectral decomposition ~\equref{eq:reg_repr_decomp} back into ~\equref{eq:expanded}, we get:
 %     \[
 %         \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \chi_{\alpha, k}(x, a) \right] \right) \ge 1 - \epsilon.
 %     \]
@@ -283,7 +283,7 @@ The proof outlined here correspond to the formalized version in lean. The most c
 %         \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, c^*af(x)} \omega^{\Tr \langle \alpha^*, ax \rangle} \psi_{k^*}(a) \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
 %     \end{equation}
 
-%     Because $c^* \in \FF_q^\times$ is invertible, we define a specific linear function $\ell(x) := \langle (c^*)^{-1} \alpha^*, x \rangle$. Notice that $\langle \alpha^*, ax \rangle = c^* a \ell(x)$. We can rewrite the argument of the expectation in Equation~\ref{eq:dominant} as:
+%     Because $c^* \in \FF_q^\times$ is invertible, we define a specific linear function $\ell(x) := \langle (c^*)^{-1} \alpha^*, x \rangle$. Notice that $\langle \alpha^*, ax \rangle = c^* a \ell(x)$. We can rewrite the argument of the expectation in ~\equref{eq:dominant} as:
 %     \[
 %         E^* := \EE_{x} \left[ \EE_{a} \left[ \omega^{\Tr\, c^* a (\ell(x) - f(x))} \psi_{k^*}(a) \right] \right].
 %     \]
@@ -309,7 +309,7 @@ The proof outlined here correspond to the formalized version in lean. The most c
 %     \[
 %         \Re E^* = E^* = 1 \cdot (1 - \delta(f, \ell)) + \left( \frac{-1}{q-1} \right) \cdot \delta(f, \ell) = 1 - \delta(f, \ell) \left( 1 + \frac{1}{q-1} \right) = 1 - \delta(f, \ell) \left( \frac{q}{q-1} \right).
 %     \]
-%     Applying our bound from Equation~\ref{eq:dominant}, we have:
+%     Applying our bound from ~\equref{eq:dominant}, we have:
 %     \[
 %         1 - \delta(f, \ell) \left( \frac{q}{q-1} \right) \ge 1 - \epsilon.
 %     \]
@@ -352,7 +352,7 @@ The proof outlined here correspond to the formalized version in lean. The most c
 %     \[
 %     \Re E^* = \Re \left( \frac{\psi_{k^*}(z^{-1})}{q-1} \mathcal{G}(\psi_{k^*})\right) \delta(f, \ell) \leq \frac{\abs{\mathcal{G}(\psi_{k^*})}}{q-1} = \frac{\sqrt{q}}{q-1}.
 %     \]
-%     On the other hand, from Equation~\ref{eq:dominant} we have
+%     On the other hand, from ~\equref{eq:dominant} we have
 %     \[
 %     \Re E^* \geq 1- \epsilon.
 %     \]
@@ -361,7 +361,7 @@ The proof outlined here correspond to the formalized version in lean. The most c
 %     \be\label{eq:epsilon_bound}
 %     \frac{\sqrt{q}}{q-1} < 1- \epsilon.
 %     \ee
-%     Then if we have a good test outcome such that Equation~\ref{eq:epsilon_bound} is satisfied, then we only have a contribution from $k^*=0$, where we have already achieved the bound.
+%     Then if we have a good test outcome such that ~\equref{eq:epsilon_bound} is satisfied, then we only have a contribution from $k^*=0$, where we have already achieved the bound.
 %     \end{enumerate}
     
 % \end{proof}
@@ -376,11 +376,11 @@ First let us write down statements about Fourier coefficients of $F_f$, which we
 F_f(x, a) = D(a f(x)) := \sum_{c \in A} \omega^{\Tr\, c a f(x)}\ket{c}\bra{c},
 \end{equation*}
 then its Fourier coefficients can be written as
-\be\label{eq:factored_coeff}
+\be\label{eq:factored-coeff}
 [\hat{F}_f(\chi_{c\beta, k})]_{cc} = \psi_k(c) \nu_k(\beta),
 \ee
 where 
-\be\label{def:nu_k}
+\be\label{def:nu-k}
 \nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
 \ee
 
@@ -413,9 +413,9 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 
 
 % \begin{lemma}[Gowers-Hatami to linearity (Convex character Fourier hybrid)] \label{lem:gh_linearity_2}
-% Suppose $F_f: G \to U(\cc^{q-1})$ defined in Equation~\ref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in Equation~\ref{eq:star}. 
+% Suppose $F_f: G \to U(\cc^{q-1})$ defined in ~\equref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in ~\equref{eq:star}. 
 % Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
-% \be\label{eq:GH_linear_bound}
+% \be\label{eq:GH-linear-bound}
 %     \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
 % \ee
 % \end{lemma}
@@ -435,7 +435,7 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 %         \langle F_f(g), V^* R(g) V \rangle_\sigma = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \langle c | F_f^*(g) V^* R(g) V | c \rangle = \frac{1}{q-1} \sum_{c \in \FF_q^\times} \omega^{-\Tr\, caf(x)} \langle v_c, R(g) v_c \rangle_{L(G, \mathcal{H})},
 %     \]
 %     where $\ket{v_c} = V\ket{c} \in \mathcal{H}^\prime$.
-%     Taking the expectation over $g = (x, a)$ and taking the real part, condition Equation~\ref{eq:inner1} becomes:
+%     Taking the expectation over $g = (x, a)$ and taking the real part, condition ~\equref{eq:inner1} becomes:
 %     \begin{equation}
 %         \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right] \ge 1 - \epsilon. \label{eq:expanded}
 %     \end{equation}
@@ -478,7 +478,7 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 %     \[
 %     \nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr\, b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
 %     \]
-%     is defined in Equation~\ref{def:nu_k}.   
+%     is defined in ~\equref{def:nu-k}.   
     
 %     Since $V$ is an isometry $V^* V = \I_{\mathcal{H}}$, we have $\bra{c} V^* V \ket{c} = \inner{c}{c}_{\mathcal{H}} = 1$. 
 %     Equivalently, we have $\inner{v_c}{v_c}_{L(G, \mathcal{H})} = 1$. 
@@ -496,7 +496,7 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 %     \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \leq \sum_{\beta \in \FF_q^n} \sum_k |\nu_k(\beta)|^2 = 1.
 %     \ee
     
-%     Substituting the spectral decomposition Equation~\ref{eq:reg_repr_decomp} back into Equation~\ref{eq:expanded}, we define:
+%     Substituting the spectral decomposition ~\equref{eq:reg_repr_decomp} back into ~\equref{eq:expanded}, we define:
 %     \begin{align*}
 %             E &:= \frac{1}{q-1} \sum_{c \in \FF_q^\times} \EE_{x, a} \Re \left[ \omega^{-\Tr\, caf(x)} \langle v_c, R(x, a) v_c \rangle \right], \\
 %             % & = \sum_{c \in \FF_q^\times} \left( \frac{1}{q-1} \right) \sum_{\alpha, k} p_{c, \alpha, k} \Re \left( \EE_{x, a} \left[ \omega^{-\Tr\, caf(x)} \chi_{\alpha, k}(x, a) \right] \right), \\
@@ -516,7 +516,7 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 %     E = \sum_{\beta} \abs{\nu_0(\beta)}^2 \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta}{x} - f(x))} \right] \right).
 %     \]
     
-%     This is a convex combination (a weighted average) of real values less than $1$ with the weight sum to less than 1 by Equation~\ref{eq:nu_less_1}. Because the average is at least $E \geq 1 - \epsilon$, there must exist at least one specific configuration $\beta^*$ such that its individual value satisfies:
+%     This is a convex combination (a weighted average) of real values less than $1$ with the weight sum to less than 1 by ~\equref{eq:nu_less_1}. Because the average is at least $E \geq 1 - \epsilon$, there must exist at least one specific configuration $\beta^*$ such that its individual value satisfies:
 %     \begin{equation}
 %         E^* := \Re \left( \EE_{x, b} \left[ \omega^{\Tr\, b(\inner{\beta^*}{x} - f(x))} \right] \right) \ge 1 - \epsilon. \label{eq:dominant}
 %     \end{equation}
@@ -539,7 +539,7 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 %         \[
 %             E^* = 1 \cdot (1 - \delta(f, \ell_\beta)) + \left( \frac{-1}{q-1} \right) \cdot \delta(f, \ell_\beta) = 1 - \delta(f, \ell_\beta) \left( 1 + \frac{1}{q-1} \right) = 1 - \delta(f, \ell_\beta) \left( \frac{q}{q-1} \right).
 %         \]
-%         Applying our bound from Equation~\ref{eq:dominant}, we have:
+%         Applying our bound from ~\equref{eq:dominant}, we have:
 %         \[
 %             1 - \delta(f, \ell_\beta) \left( \frac{q}{q-1} \right) \ge 1 - \epsilon.
 %         \]
@@ -552,12 +552,12 @@ where $\nu_k(\beta) := \EE_{x,b} \left[ \omega^{\Tr b(f(x) - \langle \beta, x \r
 
 
 \begin{lemma}[Gowers-Hatami to linearity (formalized proof)] \label{lem:gh_linearity_formalized}\uses{lem:group, def:Flift, approx-representation, def:linear-functions, def:relative-hamming-distance}\lean{BlrPcp.gh_linearity}\leanok
-Suppose $F_f: G \to U(\cc^{q-1})$ defined in Equation~\ref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in Equation~\ref{eq:star}. 
+Suppose $F_f: G \to U(\cc^{q-1})$ defined in ~\equref{eq:Flift-def} via $f : \FF_q^n \to \FF_q$ is an $(\epsilon, \sigma)$ approximate unitary representation of $(G, \star)$ defined in ~\equref{eq:star}. 
 Implicitly, $\epsilon \leq 1$.
 
 Then, there exists a linear function $\ell: \FF_q^n \to \FF_q$ such that the relative Hamming distance $\delta(f, \ell)$ is bounded by:
 
-\be\label{eq:GH_linear_bound}
+\be\label{eq:GH-linear-bound}
 \delta(f, \ell) \le \frac{q-1}{q} \epsilon.
 \ee
 \end{lemma}
@@ -568,7 +568,7 @@ Write the diagonal lift as $F_f(g) = \operatorname{diag}_{c \in \FF_q^\times}(\v
 Because $F_f$ is diagonal and $\sigma = \I/(q-1)$, the trace equates to the average over the diagonal elements. 
 By an intermediate statement in the proof of Gowers-Hatami theorem using Lemma.~\ref{gowers-hatami-correlation}, the compression from an exact representation can be rewritten as a pair-correlation:
 \begin{equation}
-    \mathcal{C}(f) := \EE_{g,h} \Re \inner{F_f(g) F_f(h)}{F_f(gh)}_\sigma \ge 1 - \epsilon. \label{eq:gh_pair_correlation}
+    \mathcal{C}(f) := \EE_{g,h} \Re \inner{F_f(g) F_f(h)}{F_f(gh)}_\sigma \ge 1 - \epsilon. \label{eq:gh-pair-correlation}
 \end{equation}
 
 
@@ -588,7 +588,7 @@ By the orthogonality of characters, the expectations over $g$ and $h$ independen
     \]
 
     Using the substitution $\alpha = c\beta$, summing over all $\alpha$ is equivalent to summing over all $\beta$. 
-Substituting our factored coefficient from Eq. \eqref{eq:factored_coeff} in \propref{prop:Ff_fourier}: 
+Substituting our factored coefficient from ~\eqref{eq:factored-coeff} in \propref{prop:Ff_fourier}: 
     \begin{align*}
         \sum_{\chi \in \widehat{G}} \Tr(\hat{F}_f^*(\chi)\hat{F}_f(\chi)\hat{F}_f^*(\chi) \sigma) &= \frac{1}{q-1}\sum_{c \in \FF_q^\times} \sum_{\beta \in \FF_q^n} \sum_{k=0}^{q-2} |\psi_k(c)\nu_k(\beta)|^2 \overline{\psi_k(c)\nu_k(\beta)} \\
         &= \frac{1}{q-1}\sum_{\beta, k} |\nu_k(\beta)|^2 \overline{\nu_k(\beta)} \sum_{c \in \FF_q^\times} \overline{\psi_k(c)},
@@ -597,21 +597,21 @@ Substituting our factored coefficient from Eq. \eqref{eq:factored_coeff} in \pro
     \[
     \nu_k(\beta) := \EE_{x,b} \left[ \omega^{b(f(x) - \langle \beta, x \rangle)} \overline{\psi_k(b)} \right],
     \]
-    is defined in \equref{def:nu_k}.
+    is defined in \equref{def:nu-k}.
 
     Use the indicator function of $\FF_q^\times$:
     \[
         \sum_{c \in \FF_q^\times} \overline{\psi_k(c)} = (q-1) \I(k=0)
     \] 
 we have
-    \be\label{eq:triple_F_nu0}
+    \be\label{eq:triple-F-nu0}
         \sum_{\chi \in \widehat{G}} \Tr(\hat{F}_f^*(\chi)\hat{F}_f(\chi)\hat{F}_f^*(\chi) \sigma) = \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \overline{\nu_0(\beta)}.
     \ee
     Note that $\nu_0(\beta) \in \mathbb{R}$ is related to the hamming distance $\delta(f, \ell_\beta)$ for liner function $\ell_\beta = \inner{f}{\ell_\beta}$ via
-    \be\label{eq:nu0_hamming}
+    \be\label{eq:nu0-hamming}
     \nu_0(\beta) = (1 - \delta(f, \ell_\beta)) - \frac{1}{q-1}\delta(f, \ell_\beta) = 1 - \frac{q}{q-1}\delta(f, \ell_\beta).
     \ee
-    Moreover, because the Fourier coefficients sum to identity by \equref{eq:F_parseval}, we have
+    Moreover, because the Fourier coefficients sum to identity by unitarity of $F_f$, we have
     \begin{align}
         1& = \frac{1}{q-1}\sum_{\chi\in\hat{G}}\Tr\left[\hat{F}^*_f(\chi)\hat{F}_f(\chi)\right] , \nonumber \\
         &= \frac{1}{q-1}\sum_{c \in \FF_q^\times} \sum_{\beta \in \FF_q^n} \sum_k |\psi_k(c)\nu_k(\beta)|^2, \nonumber \\
@@ -627,7 +627,7 @@ we have
     \be
     \nu_0(\beta^*) := \max_{\beta \in \FF_q^n} \nu_0(\beta).
     \ee
-    Therefore from Gowers-Hatami implication in \equref{eq:gh_pair_correlation} and the simplification of Fourier coefficeints in \equref{eq:triple_F_nu0}, we have the bound
+    Therefore from Gowers-Hatami implication in \equref{eq:gh-pair-correlation} and the simplification of Fourier coefficeints in \equref{eq:triple-F-nu0}, we have the bound
     \begin{align}
         1 - \epsilon \leq \Re \sum_{\chi\in\widehat G} \Tr(\hat{F}_f^*(\chi)\hat{F}_f(\chi)\hat{F}_f^*(\chi) \sigma) = \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \overline{\nu_0(\beta)} \leq  \nu_0(\beta^*) \sum_{\beta \in \FF_q^n} |\nu_0(\beta)|^2 \leq  \nu_0(\beta^*).
     \end{align}
