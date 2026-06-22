@@ -155,7 +155,7 @@ jobs:
           build-args: :blueprint
       
       - name: Build homepage, API docs, and blueprint
-        uses: leanprover-community/docgen-action@main
+        uses: leanprover-community/docgen-action@v1
         with:
           blueprint: true
           homepage: home_page
